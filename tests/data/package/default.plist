@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<string></string>
+	<key>jamf</key>
+	<dict>
+		<key>category</key>
+		<string></string>
+	</dict>
+	<key>schema</key>
+	<dict>
+		<key>name</key>
+		<string>{}</string>
+	</dict>
+	<key>policy</key>
+	<dict/>
+	<key>patch</key>
+	<dict>
+		<key>title</key>
+		<dict/>
+		<key>policies</key>
+		<array/>
+		<key>definition</key>
+		<dict/>
+	</dict>
+	<key>application</key>
+	<dict/>
+<!-- 
+	<key>description</key>
+	<data></data>
+ -->
+	<key>icon</key>
+	<dict/>
+<!-- 
+	<key>install_location</key>
+	<string>/Applications</string>
+ -->
+	<key>packages</key>
+	<array/>
+</dict>
+</plist>

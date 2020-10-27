@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pkg-info overwrite-permissions="true" relocatable="false" identifier="test.package" postinstall-action="none" version="1.0.1" format-version="2" generator-version="InstallCmds-681 (18G2022)" install-location="/Applications/Test Package" auth="root">
+    <payload numberOfFiles="8" installKBytes="3"/>
+    <bundle path="./package.app" id="edu.utah.mlib.package.test" CFBundleShortVersionString="1.0.0" CFBundleVersion="100"/>
+    <bundle-version>
+        <bundle id="edu.utah.mlib.package.test"/>
+    </bundle-version>
+    <upgrade-bundle>
+        <bundle id="edu.utah.mlib.package.test"/>
+    </upgrade-bundle>
+    <update-bundle/>
+    <atomic-update-bundle/>
+    <strict-identifier>
+        <bundle id="edu.utah.mlib.package.test"/>
+    </strict-identifier>
+    <relocate>
+        <bundle id="edu.utah.mlib.package.test"/>
+    </relocate>
+</pkg-info>

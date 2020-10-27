@@ -1,0 +1,201 @@
+{
+    "appName": "Spotify.app",
+    "bundleId": "com.spotify.client",
+    "currentVersion": "1.1.20.510",
+    "extensionAttributes": [],
+    "id": "Spotify",
+    "lastModified": "2019-12-19T19:43:16Z",
+    "name": "Spotify",
+    "patches": [
+        {
+            "capabilities": [
+                {
+                    "and": true,
+                    "name": "Operating System Version",
+                    "operator": "greater than or equal",
+                    "type": "recon",
+                    "value": "10.10"
+                }
+            ],
+            "components": [
+                {
+                    "criteria": [
+                        {
+                            "and": true,
+                            "name": "Application Bundle ID",
+                            "operator": "is",
+                            "type": "recon",
+                            "value": "com.spotify.client"
+                        },
+                        {
+                            "and": true,
+                            "name": "Application Version",
+                            "operator": "is",
+                            "type": "recon",
+                            "value": "1.1.20.510.g7d28aaaa"
+                        }
+                    ],
+                    "name": "Spotify",
+                    "version": "1.1.20.510"
+                }
+            ],
+            "dependencies": [],
+            "killApps": [
+                {
+                    "appName": "Spotify.app",
+                    "bundleId": "com.spotify.client"
+                }
+            ],
+            "minimumOperatingSystem": "10.10",
+            "reboot": false,
+            "releaseDate": "2019-12-04T19:41:17Z",
+            "standalone": true,
+            "version": "1.1.20.510"
+        },
+        {
+            "capabilities": [
+                {
+                    "and": true,
+                    "name": "Operating System Version",
+                    "operator": "greater than or equal",
+                    "type": "recon",
+                    "value": "10.10"
+                }
+            ],
+            "components": [
+                {
+                    "criteria": [
+                        {
+                            "and": true,
+                            "name": "Application Bundle ID",
+                            "operator": "is",
+                            "type": "recon",
+                            "value": "com.spotify.client"
+                        },
+                        {
+                            "and": true,
+                            "name": "Application Version",
+                            "operator": "is",
+                            "type": "recon",
+                            "value": "1.1.17.543.geb9254e9"
+                        }
+                    ],
+                    "name": "Spotify",
+                    "version": "1.1.17.543"
+                }
+            ],
+            "dependencies": [],
+            "killApps": [
+                {
+                    "appName": "Spotify.app",
+                    "bundleId": "com.spotify.client"
+                }
+            ],
+            "minimumOperatingSystem": "10.10",
+            "reboot": false,
+            "releaseDate": "2019-10-14T19:41:02Z",
+            "standalone": true,
+            "version": "1.1.17.543"
+        },
+        {
+            "capabilities": [
+                {
+                    "and": true,
+                    "name": "Operating System Version",
+                    "operator": "greater than or equal",
+                    "type": "recon",
+                    "value": "10.10"
+                }
+            ],
+            "components": [
+                {
+                    "criteria": [
+                        {
+                            "and": true,
+                            "name": "Application Bundle ID",
+                            "operator": "is",
+                            "type": "recon",
+                            "value": "com.spotify.client"
+                        },
+                        {
+                            "and": true,
+                            "name": "Application Version",
+                            "operator": "is",
+                            "type": "recon",
+                            "value": "1.1.15.448.g00fba0e3"
+                        }
+                    ],
+                    "name": "Spotify",
+                    "version": "1.1.15.448"
+                }
+            ],
+            "dependencies": [],
+            "killApps": [
+                {
+                    "appName": "Spotify.app",
+                    "bundleId": "com.spotify.client"
+                }
+            ],
+            "minimumOperatingSystem": "10.10",
+            "reboot": false,
+            "releaseDate": "2019-09-20T15:20:43Z",
+            "standalone": true,
+            "version": "1.1.15.448"
+        },
+        {
+            "capabilities": [
+                {
+                    "and": true,
+                    "name": "Operating System Version",
+                    "operator": "greater than or equal",
+                    "type": "recon",
+                    "value": "10.10"
+                }
+            ],
+            "components": [
+                {
+                    "criteria": [
+                        {
+                            "and": true,
+                            "name": "Application Bundle ID",
+                            "operator": "is",
+                            "type": "recon",
+                            "value": "com.spotify.client"
+                        },
+                        {
+                            "and": true,
+                            "name": "Application Version",
+                            "operator": "is",
+                            "type": "recon",
+                            "value": "1.1.10.540.gfcf0430f"
+                        }
+                    ],
+                    "name": "Spotify",
+                    "version": "1.1.10.540"
+                }
+            ],
+            "dependencies": [],
+            "killApps": [
+                {
+                    "appName": "Spotify.app",
+                    "bundleId": "com.spotify.client"
+                }
+            ],
+            "minimumOperatingSystem": "10.10",
+            "reboot": false,
+            "releaseDate": "2019-07-30T16:17:29Z",
+            "standalone": true,
+            "version": "1.1.10.540"
+        }
+    ],
+    "publisher": "Spotify",
+    "requirements": [
+        {
+            "and": true,
+            "name": "Application Bundle ID",
+            "operator": "is",
+            "type": "recon",
+            "value": "com.spotify.client"
+        }
+    ]
+}

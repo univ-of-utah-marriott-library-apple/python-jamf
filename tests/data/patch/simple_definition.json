@@ -1,0 +1,66 @@
+{
+    "appName": "",
+    "bundleId": "",
+    "currentVersion": "1.0.0",
+    "extensionAttributes": [],
+    "id": "SimplePatchTest",
+    "lastModified": "2020-01-24T18:43:44Z",
+    "name": "Simple Patch Test",
+    "patches": [
+        {
+            "capabilities": [
+                {
+                    "and": true,
+                    "name": "Operating System Version",
+                    "operator": "greater than or equal",
+                    "type": "recon",
+                    "value": "10.0"
+                }
+            ],
+            "components": [
+                {
+                    "criteria": [
+                        {
+                            "and": true,
+                            "name": "Application Bundle ID",
+                            "operator": "is",
+                            "type": "recon",
+                            "value": "edu.utah.mlib.patch.test.simple"
+                        },
+                        {
+                            "and": true,
+                            "name": "Application Version",
+                            "operator": "is",
+                            "type": "recon",
+                            "value": "1.0.0"
+                        }
+                    ],
+                    "name": "Test",
+                    "version": "1.0"
+                }
+            ],
+            "dependencies": [],
+            "killApps": [
+                {
+                    "appName": "PatchTest.app",
+                    "bundleId": "edu.utah.mlib.patch.test.simple"
+                }
+            ],
+            "minimumOperatingSystem": "10.0",
+            "reboot": false,
+            "releaseDate": "2020-01-24T18:41:43Z",
+            "standalone": true,
+            "version": "1.0"
+        }
+    ],
+    "publisher": "Marriott Library, Client Platform Services.",
+    "requirements": [
+        {
+            "and": true,
+            "name": "Application Bundle ID",
+            "operator": "is",
+            "type": "recon",
+            "value": "edu.utah.mlib.patch.test.simple"
+        }
+    ]
+}
