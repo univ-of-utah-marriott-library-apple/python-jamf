@@ -11,7 +11,7 @@ setuptools.setup(
     description="Maintaining & automating Jamf Pro via the API",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/univ-of-utah-marriott-library-apple/jctl",
+    url="https://github.com/univ-of-utah-marriott-library-apple/python-jamf",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
