@@ -4,49 +4,39 @@ This is a Python 3 utility for maintaining & automating Jamf Pro patch managemen
 
 ## Under construction!
 
-Note: we are currently (late 2020) splitting this project into 2 different repositories and adding it to pypi.org so that it can be easily installed with pip. Because we are in the middle of the move, we haven't updated this readme to reflect any of those changes. These instructions are accurate for commit [9e8343eb10](https://github.com/univ-of-utah-marriott-library-apple/jctl/tree/9e8343eb10634ee74cd6024885e348672146181d).
+Note: we are currently (late 2020) splitting this project into 2 different repositories and adding it to pypi.org so that it can be easily installed with pip. Because we are in the middle of the move, we haven't finished updating this readme to reflect all of those changes. The last commit before we started making changes is  [9e8343eb10](https://github.com/univ-of-utah-marriott-library-apple/jctl/tree/9e8343eb10634ee74cd6024885e348672146181d).
 
 ## Requirements
 
-The python-jamf project requires python3 and requests library. Please make sure you have those by running the following commands.
+The python-jamf project requires python3 and the requests library. Please make sure you have those by running the following commands.
 
-```bash
-$> python3
-```
+	python --version
 
-```python
-import requests
-```
+or
 
-macOS does not include python3. You can get python3 with anaconda or homebrew.
+	python3 --version
+
+To check requests, run this.
+
+	python3
+	import requests
+
+macOS does not include python3. You can get python3 with [Anaconda](https://www.anaconda.com/) or [Homerew](https://brew.sh/). For example, this is how you install python3 with Homebrew.
+
+	brew install python3
 
 ## Installation
 
-In a new shell:
+To install python-jamf:
 
-```
-$> cd scripts
-$> sudo install.py
-$> echo 'export PYTHONPATH=/Library/Python/3.6/site-packages' >> ~/.bash_profile
-```
-
-If you're using zsh use ~/.zshenv instead of ~/.bash_profile.
+	pip3 install python-jamf
+	pip3 install requests
 
 If you have /usr/local/bin/plistlib.py make sure it is the python 3 version.
 
 ## Authentication
 
-### Authentication Setup
-
-Run the following command to setup or fix the authentication property list file. Note: 8443 is automatically added to the hostname so don't include it.
-
-```$ patch.py config
-JSS Hostname: [JAMF PRO HOSTNAME]
-username: [USERNAME]
-Password: [PASSWORD]
-```
-
-The username and password provided will have to be added and given the appropriate access rights.
+In order to talk to your Jamf Pro server, you need to set the hostname, username, and password first. This can setup several ways. First, you can download [jctl](https://github.com/univ-of-utah-marriott-library-apple/jctl) and run the setconfig.py script. Or you can use the [JSSImporter/python-jss configuration](https://github.com/jssimporter/python-jss/wiki/Configuration). Or, you can do it by running some python commands. Instructions are forthcoming.
 
 ### Troubleshooting Authentication Setup
 
@@ -89,8 +79,8 @@ The API script interacts with Jamf using the get, post, put, and delete commands
 The api can be interacted with via python3 shell. This is how you set it up.
 
 ```bash
-$> cd python-jamf
-$> python3
+cd python-jamf
+python3
 ```
 
 ```python
@@ -107,7 +97,7 @@ logger.debug("creating api")
 jss = jamf.API()
 ```
 
-### Example: Getting data.
+### Getting data
 
 Note: The API get method downloads the data from Jamf. If you store it in a variable, it does not update itself. If you make changes on the server, you'll need to run the API get again.
 
@@ -153,7 +143,7 @@ computergroupids = [i['id'] for i in computergroups]
 pprint(computergroupids)
 ```
 
-### Example: Posting data.
+### Posting data
 
 ```python
 # Create a new static computer group. Note, the id in the url ("1") is ignored and the next available id is used. The name in the url ("ignored") is also ignored and the name in the data ("realname") is what is actually used.
@@ -162,7 +152,7 @@ jss.post("computergroups/id/1",json.loads( '{"computer_group": {"name": "test", 
 jss.post("computergroups/name/ignored",json.loads( '{"computer_group": {"name": "realname", "is_smart": "false", "site": {"id": "-1", "name": "None"}, "criteria": {"size": "0"}, "computers": {"size": "0"}}}' ))
 ```
 
-### Example: Updating data.
+### Updating data
 
 ```python
 # Create a new static computer group. Note, the id ("1") is ignored and the next available id is used.
@@ -172,14 +162,14 @@ jss.put("computergroups/name/realname",json.loads( '{"computer_group": {"name": 
 jss.put("computergroups/id/900",json.loads( '{"computer_group": {"name": "newer name", "is_smart": "false", "site": {"id": "-1", "name": "None"}, "criteria": {"size": "0"}, "computers": {"size": "0"}}}' ))
 ```
 
-### Example: Deleting data.
+### Deleting data
 
 ```python
 jss.delete("computergroups/name/new name")
 jss.delete("computergroups/id/900")
 ```
 
-### Example: Updating policies en masse.
+### Updating policies en masse
 
 This is where the real power of this utility comes in.
 
@@ -239,16 +229,7 @@ chmod 755 custom_triggers_2.py
 
 Then edit custom_triggers_2.py with the custom triggers you want (and remove what you don't want to modify). Then run custom_triggers_2.py.
 
-### Updating policies en masse.
-
-Scripts that do very similar things as the above two scripts are as follows:
-
-* policy_categories.py, allows you to change all policy categories at once
-* policy_packages.py, allows you to change all policy packages at once
-
-Please see the headers of these scripts for instructions. They aren't exactly normal scripts. This is still 0.1.
-
-## Categories
+### Categories
 
 ```python
 from jamf.category import Categories
@@ -270,54 +251,19 @@ repr(category)
 ## Running Tests
 
 ```bash
-$> cd python-jamf
+cd python-jamf
 
 # runs all tests
-$> python3 -m unittest discover -v
+python3 -m unittest discover -v
 
 # run tests individually
-$> python3 -m jamf.tests.test_api
-$> python3 -m jamf.tests.test_config
-$> python3 -m jamf.tests.test_convert
-$> python3 -m jamf.tests.test_package
+python3 -m jamf.tests.test_api
+python3 -m jamf.tests.test_config
+python3 -m jamf.tests.test_convert
+python3 -m jamf.tests.test_package
 ```
 
 If you see an error that says something like SyntaxError: invalid syntax, check to see if you're using python3.
-
-## patch.py
-
-### Getting Help
-```
-$> patch.py --help
-$> patch.py list --help
-$> patch.py upload --help
-$> patch.py config --help
-$> patch.py remove --help
-$> patch.py info --help
-$> patch.py update --help
-```
-
-### List all Patch Management Title Names
-```$> patch.py list```
-
-### List all uploaded packages
-`$> patch.py list --pkgs`
-
-### List all versions (and associated packages)
-```
-$> patch.py list --versions <Name of Patch Management Title>
-$> patch.py list --patches <Name of Patch Management Title>
-```
-
-### Modify Patch settings
-
-The following requires the user to have Jamf Admin Privileges
-
-```
-$> patch.py info /PATH/TO/PACKAGE
-$> patch.py upload /PATH/TO/PACKAGE
-$> patch.py remove <PACKAGE NAME>
-```
 
 ## Contributers
 
