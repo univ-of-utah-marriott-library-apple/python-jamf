@@ -8,19 +8,22 @@ __author__ = 'Sam Forester'
 __email__ = 'sam.forester@utah.edu'
 __copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
 __license__ = 'MIT'
-__version__ = "1.2.2"
+__version__ = "1.2.3"
 
-import sys
 import copy
 import getpass
 import logging
 import pathlib
 import plistlib
 import itertools
+from os import path
+from sys import stderr
 from xml.parsers.expat import ExpatError
 
-DOMAIN = 'edu.utah.mlib.jamfutil'
-PREFERENCES = pathlib.Path.home()/'Library'/'Preferences'/f"{DOMAIN}.plist"
+LINUX_PREFS = pathlib.Path.home()/'.edu.utah.mlib.jamfutil.plist'
+MACOS_PREFS = pathlib.Path.home()/'Library'/'Preferences'/'edu.utah.mlib.jamfutil.plist'
+AUTOPKG_PREFS = pathlib.Path.home()/'Library'/'Preferences'/'com.github.autopkg.plist'
+JAMF_PREFS = '/Library/Preferences/com.jamfsoftware.jamf.plist'
 MAGIC =  (125, 137, 82, 35, 210, 188, 221, 234, 163, 185, 31)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -38,61 +41,103 @@ class ValidationError(Error):
 
 
 class Config:
-
-    def __init__(self, path=None, default=None):
+    def __init__(self, config_path=None, prompt=0):
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        self.path = pathlib.Path(path) if path else PREFERENCES
-        try:
-            self.data = self.load(self.path)
-        except FileNotFoundError:
-            self.data = copy.deepcopy(default) if default else {}
+        self.prompt = prompt
+        self.hostname = None
+        self.auth = None
+        if not config_path:
+            if path.exists(MACOS_PREFS):
+                self.config_path = MACOS_PREFS
+            elif path.exists(LINUX_PREFS):
+                self.config_path = LINUX_PREFS
+            elif path.exists(AUTOPKG_PREFS):
+                self.config_path = AUTOPKG_PREFS
+            elif path.exists(JAMF_PREFS):
+                self.config_path = JAMF_PREFS
+            else:
+                self.config_path = None
+        else:
+            if config_path[0] == '~':
+                self.config_path = path.expanduser(config_path)
+            else:
+                self.config_path = config_path
+        # Load the prefs
+        if self.prompt==2 or (not self.config_path and self.prompt==1):
+            # Prompt 2 takes precedence over file
+            hostname = prompt_user('JSS Hostname https://')
+            self.hostname = f"https://{hostname}"
+            self.auth = credentials_prompt()
+        elif self.config_path and path.exists(self.config_path):
+            fptr = open(self.config_path, 'rb')
+            prefs = plistlib.load(fptr)
+            # TODO remove this when it's no longer used anywhere else.
+            self.data = prefs
+            fptr.close()
+            if 'JSSHostname' in prefs:
+                hostname = prefs['JSSHostname']
+                self.hostname = f"https://{hostname}:8443"
+                c = prefs.get('Credentials', {})
+                self._credentials = Credentials(c, callback=transposition(MAGIC))
+                self.auth = self.credentials('jamf.biology.utah.edu', None)
+            elif 'JSS_URL' in prefs:
+                self.hostname = prefs["JSS_URL"]
+                self.auth = (prefs["API_USERNAME"], prefs["API_PASSWORD"])
+            elif 'jss_url' in prefs:
+                self.hostname = prefs["jss_url"]
+                # No auth in that file
+            # Prompt 1 for any missing prefs
+            if not self.hostname and self.prompt==1:
+                hostname = prompt_user('JSS Hostname https://')
+                self.hostname = f"https://{hostname}"
+            if not self.auth and self.prompt==1:
+                self.auth = credentials_prompt()
+        elif not self.config_path:
+            print("No jamf config file could be found and prompt is off.")
+            exit(1)
+        else:
+            raise FileNotFoundError(self.config_path)
 
-    def load(self, path=None):
-        path = pathlib.Path(path) if path else self.path
-        try:
-            with open(path, 'rb') as f:
-                return plistlib.load(f)
-        except ExpatError:
-            pass
-        raise CorruptedConfigError(self.path)
+
 
     def save(self):
+        self.data.update({'Credentials': bytes(self._credentials)})
         _prev = None
         try:
             _prev = self.load()
         except FileNotFoundError:
-            self.log.debug(f"missing: {self.path}")
+            self.log.debug(f"missing: {self.config_path}")
         except ExpatError:
-            self.log.error(f"corrupted: {self.path}")
-        self.log.info(f"saving: {self.path}")
+            self.log.error(f"corrupted: {self.config_path}")
+        self.log.info(f"saving: {self.config_path}")
         try:
             # save the data
-            with open(self.path, 'wb') as f:
+            with open(self.config_path, 'wb') as f:
                 plistlib.dump(self.data, f)
         except TypeError as e:
             # file is partially overwritten when error occurs
             self.log.error(f"invalid plist value: {e}")
             if _prev is not None:
                 # restore the file to the previous state (if any)
-                self.log.info(f"restoring: {self.path}")
-                with open(self.path, 'wb') as f:
+                self.log.info(f"restoring: {self.config_path}")
+                with open(self.config_path, 'wb') as f:
                     plistlib.dump(_prev, f)
             else:
                 # remove the empty/corrupted file (no previous data)
                 self.log.debug("removing empty file")
-                self.path.unlink()
+                self.config_path.unlink()
             raise e
 
-    def get(self, key, prompt='', **kwargs):
-        value = self.data.get(key)
-        if value is None:
-            if prompt:
-                value = prompt_user(prompt, **kwargs)
-                self.set(key, value)
-            if not value:
-                raise KeyError(key)
-            self.set(key, value)
-        return value
+#     def get(self, key, prompt='', **kwargs):
+#         value = self.data.get(key)
+#         if value is None:
+#             if prompt:
+#                 value = prompt_user(prompt, **kwargs)
+#                 self.set(key, value)
+#             if not value:
+#                 raise KeyError(key)
+#             self.set(key, value)
+#         return value
 
     def set(self, key, value):
         if value is None:
@@ -106,26 +151,11 @@ class Config:
             pass
 
     def exists(self):
-        return self.path.exists()
-
-    def reset(self):
-        self.data = {}
-        self.save()
-
-
-class SecureConfig(Config):
-
-    def __init__(self, path=None, **kwargs):
-        super().__init__(path=path, **kwargs)
-        self.log = logging.getLogger(f"{__name__}.SecureConfig")
-        c = self.data.get('Credentials', {})
-        self._credentials = Credentials(c, callback=transposition(MAGIC))
-
-    def save(self):
-        self.data.update({'Credentials': bytes(self._credentials)})
-        super().save()
+        return self.config_path.exists()
 
     def credentials(self, hostname, auth=None):
+        print(hostname)
+        hostname="jamf.biology.utah.edu"
         if auth:
             self._credentials.register(hostname, auth)
             self.data['Credentials'] = bytes(self._credentials)
@@ -141,7 +171,8 @@ class SecureConfig(Config):
             return auth
 
     def reset(self):
-        super().reset()
+        self.data = {}
+        self.save()
         self._credentials = Credentials({}, callback=transposition(MAGIC))
 
 
@@ -204,7 +235,7 @@ def credentials_prompt(user=None):
 
 def prompt_user(prompt, callback=None, attempts=3):
     if not callback:
-        value = input(f"{prompt}: ")
+        value = input(f"{prompt}")
     else:
         count = 0
         value = None
@@ -213,7 +244,7 @@ def prompt_user(prompt, callback=None, attempts=3):
             try:
                 callback(_input)
             except Exception as e:
-                print(f"invalid {prompt}", file=sys.stderr)
+                print(f"invalid {prompt}", file=stderr)
             else:
                 value = _input
             count += 1
