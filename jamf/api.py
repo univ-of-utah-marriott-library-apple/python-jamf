@@ -4,16 +4,13 @@
 """
 JSS API
 Modifications by Tony Williams (tonyw@honestpuck.com) (ARW)
-Modifications have been to make "raw=True" always return raw, removed the
-ability to ask for json, and simplified the config code. It no longer
-asks for config but reads a config file in AutoPkg format.
 """
 
 __author__ = 'Sam Forester'
 __email__ = 'sam.forester@utah.edu'
 __copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
 __license__ = 'MIT'
-__version__ = "0.4.0"
+__version__ = "0.4.3"
 
 import html.parser
 import logging
@@ -23,6 +20,7 @@ from os import path
 import plistlib
 import subprocess
 import requests
+from sys import exit
 
 from . import convert
 from . import config
@@ -69,41 +67,30 @@ class API(metaclass=Singleton):
     """
     session = False
 
-    def __init__(self, autopkg_config=None, hostname=None, auth=None, config_path=None):
+    def __init__(self, hostname=None, auth=None, config_path=None, prompt=1):
         """
         Create requests.Session with JSS address and authentication
 
-        :param autopkg_config <str>: Path to file containing config. If it
+        :param config_path <str>:    Path to file containing config. If it
                                      starts with '~' character we pass it
                                      to expanduser.
-        :param hostname <str>:       hostname of server
+        :param hostname <str>:       Hostname of server
         :param auth <(str, str)>:    (username, password) for server
+        :param prompt <bool>:        (username, password) for server
         """
         self.log = logging.getLogger(f"{__name__}.API")
         self.log.setLevel(LOGLEVEL)
-
-        conf = config.SecureConfig(path=config_path)
-        if conf.exists():
-            # get url from /Library/Preferences/com.jamfsoftware.jamf.plist?
-            hostname = hostname or conf.get('JSSHostname', prompt='JSS Hostname')
-            auth = conf.credentials(hostname, auth)
-            hostname = f"https://{hostname}:8443"
-
-        if not hostname:
-            if not autopkg_config:
-                autopkg_config = "~/Library/Preferences/com.github.autopkg.plist"
-
-            if autopkg_config[0] == '~':
-                plist = path.expanduser(autopkg_config)
-            else:
-                plist = autopkg_config
-            fptr = open(plist, 'rb')
-            prefs = plistlib.load(fptr)
-            fptr.close()
-            hostname = prefs["JSS_URL"]
-            auth = (prefs["API_USERNAME"], prefs["API_PASSWORD"])
-
-        self.url = f"{hostname}/JSSResource"
+        # Load Prefs and Init session
+        conf = config.Config(config_path=config_path, prompt=prompt)
+        hostname = hostname or conf.hostname
+        auth = auth or conf.auth
+        if not hostname and not auth:
+            print("No jamf hostname or credentials could be found.")
+            exit(1)
+        if hostname[-1] == '/':
+            self.url = f"{hostname}JSSResource"
+        else:
+            self.url = f"{hostname}/JSSResource"
         self.session = requests.Session()
         self.session.auth = auth
         self.session.headers.update({'Accept': 'application/xml'})
@@ -411,11 +398,18 @@ class API(metaclass=Singleton):
         """
         url = f"{self.url}/{endpoint}"
         self.log.debug("getting: %s", endpoint)
-        response = self.session.get(url)
+        try:
+            response = self.session.get(url)
+        except requests.exceptions.ConnectionError as error:
+            print(error)
+            exit(1)
 
         if raw:
             return response
         if not response.ok:
+            if response.status_code == 401:
+                print("401 Unauthorized")
+                exit(1)
             raise APIError(response)
         return convert.xml_to_dict(response.text)
 
@@ -433,11 +427,18 @@ class API(metaclass=Singleton):
         self.log.debug("creating: %s", endpoint)
         if isinstance(data, dict):
             data = convert.dict_to_xml(data)
-        response = self.session.post(url, data=data)
+        try:
+            response = self.session.post(url, data=data)
+        except requests.exceptions.ConnectionError as error:
+            print(error)
+            exit(1)
 
         if raw:
             return response
         if not response.ok:
+            if response.status_code == 401:
+                print("401 Unauthorized")
+                exit(1)
             raise APIError(response)
 
         # return successfull response data (usually: {'id': jssid})
@@ -457,11 +458,18 @@ class API(metaclass=Singleton):
         self.log.debug("updating: %s", endpoint)
         if isinstance(data, dict):
             data = convert.dict_to_xml(data)
-        response = self.session.put(url, data=data)
+        try:
+            response = self.session.put(url, data=data)
+        except requests.exceptions.ConnectionError as error:
+            print(error)
+            exit(1)
 
         if raw:
             return response
         if not response.ok:
+            if response.status_code == 401:
+                print("401 Unauthorized")
+                exit(1)
             raise APIError(response)
 
         # return successful response data (usually: {'id': jssid})
@@ -478,11 +486,18 @@ class API(metaclass=Singleton):
         """
         url = f"{self.url}/{endpoint}"
         self.log.debug("getting: %s", endpoint)
-        response = self.session.delete(url)
+        try:
+            response = self.session.delete(url)
+        except requests.exceptions.ConnectionError as error:
+            print(error)
+            exit(1)
 
         if raw:
             return response
         if not response.ok:
+            if response.status_code == 401:
+                print("401 Unauthorized")
+                exit(1)
             raise APIError(response)
 
         # return successful response data (usually: {'id': jssid})
@@ -633,8 +648,9 @@ class API(metaclass=Singleton):
         return all_endpoints
 
     def __del__(self):
-        self.log.debug("closing session")
-        self.session.close()
+        if self.session:
+            self.log.debug("closing session")
+            self.session.close()
 
 #pylint: disable=too-few-public-methods, abstract-method
 class _DummyTag:
@@ -711,56 +727,3 @@ def parse_html_error(error):
     # NOTE: get first two <p> tags from HTML error response
     #       3rd <p> is always 'You can get technical details here...'
     return [t.text for t in soup.find_all('p')][0:2]
-
-    def upload(self, endpoint, path, name=None, mime_type=None):
-        """
-        Upload files to JSS
-
-        :param endpoint <str>:  JSS fileuploads endpoint (e.g. "policies/id/0")
-        :param path <str>:      Path to file
-
-        Optional:
-        :param name <str>:      Name of file (requires extension)
-        :param mime_type <str>: MIME type (e.g. 'image/png')
-
-        if unspecified, MIME type will attempt to be calculated via `file`
-
-        :returns None:
-        """
-        url = f"{self.url}/fileuploads/{endpoint}"
-        path = pathlib.Path(path)
-        self.log.debug(f"uploading: {url!r}: {path}")
-
-        if not path.exists():
-            raise FileNotFoundError(path)
-        # determine filename (if unspecified)
-        name = name or path.name()
-
-        # NOTE: JSS requires filename extension (or upload will fail)
-        if not path.suffix:
-            raise Error(f"missing file extension: {path}")
-
-        # determine mime-type of file (if unspecified)
-        mime_type = mime_type or file_mime_type(path)
-
-        with open(path, 'rb') as f:
-            # Example of posted data:
-            # {'name': ('example.png',
-            #           <_io.BufferedReader name="./example.png">,
-            #           'image/png')}
-            files = {'name': (name, f, mime_type)}
-            self.log.debug(f"files: {files}")
-            response = self.session.post(url, files=files)
-
-        if not response.ok:
-            raise APIError(response)
-
-def file_mime_type(path):
-    """
-    Uses `/usr/bin/file` to determine mime-type (requires Developer Tools)
-
-    :param path <str>:  Path to file
-    :returns str:       content type of file
-    """
-    cmd = ['/usr/bin/file', '-b', '--mime-type', path]
-    return subprocess.check_output(cmd).rstrip()
