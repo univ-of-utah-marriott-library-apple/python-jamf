@@ -10,7 +10,7 @@ __author__ = 'Sam Forester'
 __email__ = 'sam.forester@utah.edu'
 __copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
 __license__ = 'MIT'
-__version__ = "0.4.3"
+__version__ = "0.4.4"
 
 import html.parser
 import logging
@@ -67,7 +67,7 @@ class API(metaclass=Singleton):
     """
     session = False
 
-    def __init__(self, hostname=None, auth=None, config_path=None, prompt=1):
+    def __init__(self, hostname=None, auth=None, config_path=None, prompt=True):
         """
         Create requests.Session with JSS address and authentication
 
@@ -83,7 +83,7 @@ class API(metaclass=Singleton):
         # Load Prefs and Init session
         conf = config.Config(config_path=config_path, prompt=prompt)
         hostname = hostname or conf.hostname
-        auth = auth or conf.auth
+        auth = auth or (conf.username, conf.password)
         if not hostname and not auth:
             print("No jamf hostname or credentials could be found.")
             exit(1)

@@ -13,22 +13,5 @@
 *private/
 
 notes.md
-dist/python-jamf-0.4.2.tar.gz
-dist/python_jamf-0.4.2-py3-none-any.whl
-Updating a package on pypi | widdowquinn.github.io.webloc
-build/lib/jamf/__init__.py
-build/lib/jamf/admin.py
-build/lib/jamf/api.py
-build/lib/jamf/category.py
-build/lib/jamf/config.py
-build/lib/jamf/convert.py
-build/lib/jamf/package.py
-build/lib/jamf/records.py
-build/lib/tests/__init__.py
-build/lib/tests/data.py
-build/lib/tests/MockAPI.py
-build/lib/tests/test_api.py
-build/lib/tests/test_config.py
-build/lib/tests/test_convert.py
-build/lib/tests/test_package.py
-build/lib/tests/test_records.py
+dist
+build
