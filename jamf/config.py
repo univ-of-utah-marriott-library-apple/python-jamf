@@ -16,14 +16,11 @@ import logging
 import plistlib
 import itertools
 from os import path
-from sys import stderr
-from xml.parsers.expat import ExpatError
-
-LINUX_PREFS = '~/.edu.utah.mlib.jamfutil.plist'
-MACOS_PREFS = '~/Library/Preferences/edu.utah.mlib.jamfutil.plist'
-AUTOPKG_PREFS = '~/Library/Preferences/com.github.autopkg.plist'
+LINUX_PREFS_TILDA = '~/.edu.utah.mlib.jamfutil.plist'
+MACOS_PREFS_TILDA = '~/Library/Preferences/edu.utah.mlib.jamfutil.plist'
+AUTOPKG_PREFS_TILDA = '~/Library/Preferences/com.github.autopkg.plist'
 JAMF_PREFS = '/Library/Preferences/com.jamfsoftware.jamf.plist'
-MAGIC =  (125, 137, 82, 35, 210, 188, 221, 234, 163, 185, 31)
+MAGIC = (125, 137, 82, 35, 210, 188, 221, 234, 163, 185, 31)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
@@ -40,32 +37,52 @@ class ValidationError(Error):
 
 
 class Config:
-    def __init__(self, config_path=None, prompt=False, hostname=None, username=None, password=None):
+    def __init__(self,
+                 config_path=None,
+                 prompt=False,
+                 hostname=None,
+                 username=None,
+                 password=None,
+                 explain=False):
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.prompt = prompt
         self.hostname = hostname
         self.username = username
         self.password = password
         self._credentials = None
-
+        macos_prefs = path.expanduser(MACOS_PREFS_TILDA)
         if not config_path:
-            if path.exists(MACOS_PREFS):
-                self.config_path = MACOS_PREFS
-            elif path.exists(LINUX_PREFS):
-                self.config_path = LINUX_PREFS
-            elif path.exists(AUTOPKG_PREFS):
-                self.config_path = AUTOPKG_PREFS
+            linux_prefs = path.expanduser(LINUX_PREFS_TILDA)
+            autopkg_prefs = path.expanduser(AUTOPKG_PREFS_TILDA)
+            if path.exists(macos_prefs):
+                if explain:
+                    print("Using "+macos_prefs)
+                self.config_path = macos_prefs
+            elif path.exists(linux_prefs):
+                if explain:
+                    print("Using "+linux_prefs)
+                self.config_path = linux_prefs
+            elif path.exists(autopkg_prefs):
+                if explain:
+                    print("Using "+autopkg_prefs)
+                self.config_path = autopkg_prefs
             elif path.exists(JAMF_PREFS):
+                if explain:
+                    print("Using "+JAMF_PREFS)
                 self.config_path = JAMF_PREFS
             else:
-                self.config_path = MACOS_PREFS
+                if explain:
+                    print("Using "+macos_prefs+" but it doesn't exist yet.")
+                self.config_path = macos_prefs
         else:
+            if explain:
+                print("Using "+config_path+" because you said so.")
             self.config_path = config_path
 
         if self.config_path[0] == '~':
             self.config_path = path.expanduser(self.config_path)
-
-        print(self.config_path)
+            if explain:
+                print("Expanding the path. Using "+self.config_path)
 
         if not self.hostname and not self.username and not self.password:
             if path.exists(self.config_path):
@@ -103,7 +120,7 @@ class Config:
     def save(self):
         if not self._credentials:
             self._credentials = Credentials({}, callback=transposition(MAGIC))
-        self._credentials.register(self.hostname, (self.username,self.password))
+        self._credentials.register(self.hostname, (self.username, self.password))
         creds = bytes(self._credentials)
         data = {
             'JSSHostname': self.hostname,
@@ -167,10 +184,11 @@ def transposition(key):
         key = bytes(key, encoding='utf-8')
     if not all(isinstance(x, int) for x in key):
         raise ValueError(f"invalid key: {key!r}")
+
     def _wrapped(data):
         if isinstance(data, str):
             data = bytes(data, encoding='utf-8')
-        return bytes(x^y for x, y in zip(data, itertools.cycle(key)))
+        return bytes(x ^ y for x, y in zip(data, itertools.cycle(key)))
     return _wrapped
 
 
