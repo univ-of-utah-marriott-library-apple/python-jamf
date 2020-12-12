@@ -39,10 +39,10 @@ class ValidationError(Error):
 class Config:
     def __init__(self,
                  config_path=None,
-                 prompt=False,
                  hostname=None,
                  username=None,
                  password=None,
+                 prompt=False,
                  explain=False):
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.prompt = prompt
@@ -50,59 +50,58 @@ class Config:
         self.username = username
         self.password = password
         self._credentials = None
-        macos_prefs = path.expanduser(MACOS_PREFS_TILDA)
-        if not config_path:
-            linux_prefs = path.expanduser(LINUX_PREFS_TILDA)
-            autopkg_prefs = path.expanduser(AUTOPKG_PREFS_TILDA)
-            if path.exists(macos_prefs):
-                if explain:
-                    print("Using "+macos_prefs)
-                self.config_path = macos_prefs
-            elif path.exists(linux_prefs):
-                if explain:
-                    print("Using "+linux_prefs)
-                self.config_path = linux_prefs
-            elif path.exists(autopkg_prefs):
-                if explain:
-                    print("Using "+autopkg_prefs)
-                self.config_path = autopkg_prefs
-            elif path.exists(JAMF_PREFS):
-                if explain:
-                    print("Using "+JAMF_PREFS)
-                self.config_path = JAMF_PREFS
-            else:
-                if explain:
-                    print("Using "+macos_prefs+" but it doesn't exist yet.")
-                self.config_path = macos_prefs
-        else:
-            if explain:
-                print("Using "+config_path+" because you said so.")
-            self.config_path = config_path
-
-        if self.config_path[0] == '~':
-            self.config_path = path.expanduser(self.config_path)
-            if explain:
-                print("Expanding the path. Using "+self.config_path)
-
         if not self.hostname and not self.username and not self.password:
-            if path.exists(self.config_path):
-                fptr = open(self.config_path, 'rb')
-                prefs = plistlib.load(fptr)
-                fptr.close()
-                if 'JSSHostname' in prefs:
-                    self.hostname = prefs['JSSHostname']
-                    c = prefs.get('Credentials', {})
-                    self._credentials = Credentials(c, callback=transposition(MAGIC))
-                    (self.username, self.password) = self.read_credentials(self.hostname)
-                elif 'JSS_URL' in prefs:
-                    self.hostname = prefs["JSS_URL"]
-                    self.username = prefs["API_USERNAME"]
-                    self.password = prefs["API_PASSWORD"]
-                elif 'jss_url' in prefs:
-                    self.hostname = prefs["jss_url"]
-                    # No auth in that file
-            else:
-                self.log.debug(f"file not found: {self.config_path}")
+            macos_prefs = path.expanduser(MACOS_PREFS_TILDA)
+            if not config_path:
+                linux_prefs = path.expanduser(LINUX_PREFS_TILDA)
+                autopkg_prefs = path.expanduser(AUTOPKG_PREFS_TILDA)
+                if path.exists(macos_prefs):
+                    if explain:
+                        print("Using "+macos_prefs)
+                    config_path = macos_prefs
+                elif path.exists(linux_prefs):
+                    if explain:
+                        print("Using "+linux_prefs)
+                    config_path = linux_prefs
+                elif path.exists(autopkg_prefs):
+                    if explain:
+                        print("Using "+autopkg_prefs)
+                    config_path = autopkg_prefs
+                elif path.exists(JAMF_PREFS):
+                    if explain:
+                        print("Using "+JAMF_PREFS)
+                    config_path = JAMF_PREFS
+                else:
+                    if explain:
+                        print("Using "+macos_prefs+" but it doesn't exist yet.")
+                    config_path = macos_prefs
+            elif explain:
+                    print("Using "+config_path+" because you said so.")
+
+            if config_path[0] == '~':
+                config_path = path.expanduser(config_path)
+                if explain:
+                    print("Expanding the path. Using "+config_path)
+
+            if not self.hostname and not self.username and not self.password:
+                if path.exists(config_path):
+                    fptr = open(config_path, 'rb')
+                    prefs = plistlib.load(fptr)
+                    fptr.close()
+                    if 'JSSHostname' in prefs:
+                        self.hostname = prefs['JSSHostname']
+                        c = prefs.get('Credentials', {})
+                        self._credentials = Credentials(c, callback=transposition(MAGIC))
+                        (self.username, self.password) = self.read_credentials(self.hostname)
+                    elif 'JSS_URL' in prefs:
+                        self.hostname = prefs["JSS_URL"]
+                        self.username = prefs["API_USERNAME"]
+                        self.password = prefs["API_PASSWORD"]
+                    elif 'jss_url' in prefs:
+                        self.hostname = prefs["jss_url"]
+                        # No auth in that file
+                else:
+                    self.log.debug(f"file not found: {config_path}")
 
         # Prompt for any missing prefs
         if self.prompt:
@@ -113,11 +112,11 @@ class Config:
             if not self.password:
                 self.password = getpass.getpass()
         elif not self.hostname and not self.username and not self.password:
-#             raise FileNotFoundError(self.config_path)
+#             raise FileNotFoundError(config_path)
             print("No jamf config file could be found and prompt is off.")
             exit(1)
 
-    def save(self):
+    def save(self, config_path=None):
         if not self._credentials:
             self._credentials = Credentials({}, callback=transposition(MAGIC))
         self._credentials.register(self.hostname, (self.username, self.password))
@@ -126,13 +125,10 @@ class Config:
             'JSSHostname': self.hostname,
             'Credentials': creds
         }
-        self.log.info(f"saving: {self.config_path}")
-        fptr = open(self.config_path, 'wb')
+        self.log.info(f"saving: {config_path}")
+        fptr = open(config_path, 'wb')
         plistlib.dump(data, fptr)
         fptr.close()
-
-#     def exists(self):
-#         return self.config_path.exists()
 
     def read_credentials(self, hostname):
         return tuple(self._credentials.retrieve(hostname))
@@ -193,4 +189,4 @@ def transposition(key):
 
 
 def prompt_hostname():
-    return input('JSS Hostname (don\'t forget https:// and :8443): ')
+    return input('Hostname (don\'t forget https:// and :8443): ')
