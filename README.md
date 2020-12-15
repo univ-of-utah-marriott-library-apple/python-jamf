@@ -2,75 +2,127 @@
 
 This is a Python 3 utility for maintaining & automating Jamf Pro patch management via command-line. The idea behind it is to have a class that maps directly to the Jamf API (https://example.com:8443/api). The API class doesn't abstract anything or hide anything from you. It simply wraps the url requests, authentication, and converts between python dictionaries and xml. It also prints json.
 
-## Under construction!
-
-Note: we are currently (late 2020) splitting this project into 2 different repositories and adding it to pypi.org so that it can be easily installed with pip. Because we are in the middle of the move, we haven't finished updating this readme to reflect all of those changes. The last commit before we started making changes is  [9e8343eb10](https://github.com/univ-of-utah-marriott-library-apple/jctl/tree/9e8343eb10634ee74cd6024885e348672146181d).
-
 ## Requirements
 
-The python-jamf project requires python3 and the requests library. Please make sure you have those by running the following commands.
+This utility has been tested on macOS 10.14, macOS 10.15, macOS 11, and CentOS 7.
 
-	python --version
+The python-jamf project requires python3. Please make sure you have that by running the following command.
+
+```bash
+python --version
+```
 
 or
 
-	python3 --version
-
-To check requests, run this.
-
-	python3
-	import requests
+```bash
+python3 --version
+```
 
 macOS does not include python3. You can get python3 with [Anaconda](https://www.anaconda.com/) or [Homerew](https://brew.sh/). For example, this is how you install python3 with Homebrew.
 
-	brew install python3
+```bash
+brew install python3
+```
 
 ## Installation
 
-To install python-jamf:
+To install python-jamf globally:
 
-	pip3 install python-jamf
-	pip3 install requests
+```bash
+sudo pip3 install python-jamf
+```
+
+To install it locally for the current user:
+
+```bash
+pip3 install python-jamf --user
+```
 
 If you have /usr/local/bin/plistlib.py make sure it is the python 3 version.
 
-## Authentication
+If you don't want to install python-jamf globally you will also need to install requests first.
 
-In order to talk to your Jamf Pro server, you need to set the hostname, username, and password first. This can setup several ways. First, you can download [jctl](https://github.com/univ-of-utah-marriott-library-apple/jctl) and run the setconfig.py script. Or you can use the [JSSImporter/python-jss configuration](https://github.com/jssimporter/python-jss/wiki/Configuration). Or, you can do it by running some python commands. Instructions are forthcoming.
-
-### Troubleshooting Authentication Setup
-
-The above command should reset the authorization property list, but if you have issues with it not working properly delete the property list file and run the command above again.
-
-`rm ~/Library/Preferences/edu.utah.mlib.jamfutil.plist`
-
-### Authenication File Obfuscation
-
-The authorization property list is obfuscated and encrypted based upon the hostname of the Jamf Pro server and user credentials.
-
-### View Authentication File
-
-To view what is stored in this property list, you could use a command-line tool like `cat`, `less`, etc.
-
-For example...
-
+```bash
+pip3 install requests
+pip3 install python-jamf
 ```
-$ cat ~/Library/Preferences/edu.utah.mlib.jamfutil.plist
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>Credentials</key>
-	<data>
-	YnBsaXN0MDSRAQRfEBNjYXNwZXIuc2NsLnV0YWguZWR1TxBCH/k+SqHI7doBuB0l/GIS
-	4onl2JLjVwjkMFax1+6YgrEUaYlSI9K83euiuR99iVIj0r/d6qO5H32JUiPSvN3qo7kA
-	CAshAAAAAAAAAQEAAAAAAAAAAwAAAAAAAAAAAAAAACAAAGY=
-	</data>
-	<key>JSSHostname</key>
-	<string>jamf.domain.edu</string>
-</dict>
-</plist>
+
+## Test
+
+To test your install, start python3's REPL.
+
+```bash
+python3
 ```
+
+Create an api.
+
+```python
+import jamf
+api = jamf.API()
+```
+
+Enter your credentials (it is only interactive if you don't have a config file--see below).
+
+	Hostname (don't forget https:// and :8443): https://example.com:8443
+	username: james
+	Password:
+
+Then pull some data from the server and print it out.
+
+```python
+from pprint import pprint
+pprint(api.get('accounts'))
+```
+
+You should see something like this.
+
+	{'accounts': {'groups': None,
+				'users': {'user': [{'id': '2', 'name': 'james'},
+									{'id': '1', 'name': 'root'}]}}}
+
+Are you exited? Try getting these as well.
+
+```python
+pprint(api.get('computers'))
+pprint(api.get('computergroups'))
+pprint(api.get('policies'))
+pprint(api.get('categories'))
+```
+
+You can view all of the things you can query by going to this url on your jamf server. https://example.com:8443/api/
+
+## Config file
+
+The config file can be setup several ways.
+
+First, you can download [jctl](https://github.com/univ-of-utah-marriott-library-apple/jctl) and run the setconfig.py script. Please see that project for instructions.
+
+Or you can use the [JSSImporter/python-jss configuration](https://github.com/jssimporter/python-jss/wiki/Configuration).
+
+If you don't want to do either of these methods, this script will also look for /Library/Preferences/com.jamfsoftware.jamf.plist and grab the server from there and just ask for username and password.
+
+Or you can specify it in code. By specifying any of the connection settings in code, the config file will be ignored. You either have to specify hostname, username, and password, or you have to pass in promt=True to get it to prompt if you don't specify one of the required parameters (hostname, username, password).
+
+```bash
+python3
+```
+
+This specifies all of the credentials
+
+```python
+import jamf
+api = jamf.API(hostname='https://example.com:8443', username='james', password='secret')
+```
+
+Or to prompt for the password, use this.
+
+```python
+import jamf
+api = jamf.API(hostname='https://example.com:8443', username='james', prompt=True)
+```
+
+Note, on Linux, the config file is stored as a plist file at ~/.edu.utah.mlib.jamfutil.plist
 
 ## Using the API
 
@@ -79,62 +131,59 @@ The API script interacts with Jamf using the get, post, put, and delete commands
 The api can be interacted with via python3 shell. This is how you set it up.
 
 ```bash
-cd python-jamf
 python3
 ```
 
 ```python
 from pprint import pprint
-import logging
 import jamf
-
-fmt = '%(asctime)s: %(levelname)8s: %(name)s - %(funcName)s(): %(message)s'
-logging.basicConfig(level=logging.DEBUG, format=fmt)
-logger = logging.getLogger(__name__)
-
-# create an jamf.API object (requires requests lib)
-logger.debug("creating api")
-jss = jamf.API()
+api = jamf.API()
 ```
 
 ### Getting data
 
 Note: The API get method downloads the data from Jamf. If you store it in a variable, it does not update itself. If you make changes on the server, you'll need to run the API get again.
 
+Get any information from your jamf server using the classic api endpoints. This includes nested dictionaries.
+
 ```python
-# Get any information from your jss using the classic api endpoints. This includes nested dictionaries.
+pprint(api.get('accounts'))
+pprint(api.get('buildings'))
+pprint(api.get('categories'))
+pprint(api.get('computergroups'))
+pprint(api.get('computers'))
+pprint(api.get('departments'))
+pprint(api.get('licensedsoftware'))
+pprint(api.get('networksegments'))
+pprint(api.get('osxconfigurationprofiles'))
+pprint(api.get('packages'))
+pprint(api.get('patches'))
+pprint(api.get('policies'))
+pprint(api.get('scripts'))
+```
 
-pprint(jss.get('accounts'))
-pprint(jss.get('buildings'))
-pprint(jss.get('categories'))
-pprint(jss.get('computergroups'))
-pprint(jss.get('computers'))
-pprint(jss.get('departments'))
-pprint(jss.get('licensedsoftware'))
-pprint(jss.get('networksegments'))
-pprint(jss.get('osxconfigurationprofiles'))
-pprint(jss.get('packages'))
-pprint(jss.get('patches'))
-pprint(jss.get('policies'))
-pprint(jss.get('scripts'))
+Get all categories (and deal with the nested dictionaries)
 
-# Get all categories (and deal with the nested dictionaries)
-
-categories = jss.get('categories')['categories']['category']
+```python
+categories = api.get('categories')['categories']['category']
 category_names = [x['name'] for x in categories]
 print(f"first category: {category_names[0]}")
 pprint(category_names)
+```
 
-# Get computer management information (this demonstrates using an id in the get request)
+Get computer management information (this demonstrates using an id in the get request)
 
-computers = jss.get('computers')['computers']['computer']
+```python
+computers = api.get('computers')['computers']['computer']
 pprint(computers[0])
-pprint(jss.get(f"computermanagement/id/{computers[0]['id']}"))
-pprint(jss.get(f"computermanagement/id/{computers[0]['id']}/subset/general"))
+pprint(api.get(f"computermanagement/id/{computers[0]['id']}"))
+pprint(api.get(f"computermanagement/id/{computers[0]['id']}/subset/general"))
+```
 
-# Getting smart computer groups using list comprehension filtering.
+Getting computer groups and filtering using list comprehension filtering.
 
-computergroups = jss.get('computergroups')['computer_groups']['computer_group']
+```python
+computergroups = api.get('computergroups')['computer_groups']['computer_group']
 smartcomputergroups = [i for i in computergroups if i['is_smart'] == 'true']
 pprint(smartcomputergroups)
 staticcomputergroups = [i for i in computergroups if i['is_smart'] != 'true']
@@ -145,28 +194,43 @@ pprint(computergroupids)
 
 ### Posting data
 
+Create a new static computer group. Note, the id in the url ("1") is ignored and the next available id is used. The name in the url ("ignored") is also ignored and the name in the data ("realname") is what is actually used.
+
 ```python
-# Create a new static computer group. Note, the id in the url ("1") is ignored and the next available id is used. The name in the url ("ignored") is also ignored and the name in the data ("realname") is what is actually used.
 import json
-jss.post("computergroups/id/1",json.loads( '{"computer_group": {"name": "test", "is_smart": "false", "site": {"id": "-1", "name": "None"}, "criteria": {"size": "0"}, "computers": {"size": "0"}}}' ))
-jss.post("computergroups/name/ignored",json.loads( '{"computer_group": {"name": "realname", "is_smart": "false", "site": {"id": "-1", "name": "None"}, "criteria": {"size": "0"}, "computers": {"size": "0"}}}' ))
+api.post("computergroups/id/1",json.loads( '{"computer_group": {"name": "test", "is_smart": "false", "site": {"id": "-1", "name": "None"}, "criteria": {"size": "0"}, "computers": {"size": "0"}}}' ))
+api.post("computergroups/name/ignored",json.loads( '{"computer_group": {"name": "realname", "is_smart": "false", "site": {"id": "-1", "name": "None"}, "criteria": {"size": "0"}, "computers": {"size": "0"}}}' ))
 ```
 
 ### Updating data
 
-```python
-# Create a new static computer group. Note, the id ("1") is ignored and the next available id is used.
+This changes the group "realname" created above to "new name".
 
+```python
 import json
-jss.put("computergroups/name/realname",json.loads( '{"computer_group": {"name": "new name", "is_smart": "false", "site": {"id": "-1", "name": "None"}, "criteria": {"size": "0"}, "computers": {"size": "0"}}}' ))
-jss.put("computergroups/id/900",json.loads( '{"computer_group": {"name": "newer name", "is_smart": "false", "site": {"id": "-1", "name": "None"}, "criteria": {"size": "0"}, "computers": {"size": "0"}}}' ))
+api.put("computergroups/name/realname",json.loads( '{"computer_group": {"name": "new name", "is_smart": "false", "site": {"id": "-1", "name": "None"}, "criteria": {"size": "0"}, "computers": {"size": "0"}}}' ))
+```
+
+This is how you'd get the id.
+
+```python
+computergroups = api.get('computergroups')['computer_groups']['computer_group']
+newgroup = [i for i in computergroups if i['name'] == 'new name']
+```
+
+And this is how to change the name by id.
+
+```python
+api.put(f"computergroups/id/{newgroup[0]['id']}",json.loads( '{"computer_group": {"name": "newer name", "is_smart": "false", "site": {"id": "-1", "name": "None"}, "criteria": {"size": "0"}, "computers": {"size": "0"}}}' ))
 ```
 
 ### Deleting data
 
+This deletes the 2 groups we just created.
+
 ```python
-jss.delete("computergroups/name/new name")
-jss.delete("computergroups/id/900")
+api.delete("computergroups/name/test")
+api.delete(f"computergroups/id/{newgroup[0]['id']}")
 ```
 
 ### Updating policies en masse
@@ -180,16 +244,16 @@ The following example searches all policies for the custom trigger "update_later
 
 import jamf
 
-jss = jamf.API()
-all_policies = jss.get('policies')['policies']['policy']
+api = jamf.API()
+all_policies = api.get('policies')['policies']['policy']
 for policy_hook in all_policies:
-    policy = jss.get(f"policies/id/{policy_hook['id']}")
+    policy = api.get(f"policies/id/{policy_hook['id']}")
     name = policy['policy']['general']['name']
     custom_trigger = policy['policy']['general']['trigger_other']
     print(f"Working on {name}")
     if (custom_trigger == "update_later"):
         policy['policy']['general']['trigger_other'] = "update_now"
-        jss.put(f"policies/id/{policy_hook['id']}", policy)
+        api.put(f"policies/id/{policy_hook['id']}", policy)
         print(f"Changed custom trigger from {custom_trigger} to update_now")
 ```
 
@@ -200,24 +264,24 @@ The next example prints out the code you'd need to enter into a python3 repl to 
 
 import jamf
 
-jss = jamf.API()
-all_policies = jss.get('policies')['policies']['policy']
+api = jamf.API()
+all_policies = api.get('policies')['policies']['policy']
 
 print("""#!/usr/bin/env python3
 
 import jamf
 
-jss = jamf.API()
+api = jamf.API()
 """)
 
 for policy_hook in all_policies:
-    policy = jss.get(f"policies/id/{policy_hook['id']}")
+    policy = api.get(f"policies/id/{policy_hook['id']}")
     custom_trigger = policy['policy']['general']['trigger_other']
     print(f"print(f\"Working on {policy['policy']['general']['name']}\")\n"
-          f"policy = jss.get(\"policies/id/{policy_hook['id']}\")\n"
+          f"policy = api.get(\"policies/id/{policy_hook['id']}\")\n"
           f"policy['policy']['general']['trigger_other'] = "
           f"\"{policy['policy']['general']['trigger_other']}\"\n"
-          f"jss.put(\"policies/id/{policy_hook['id']}\", policy)\n\n")
+          f"api.put(\"policies/id/{policy_hook['id']}\", policy)\n\n")
 ```
 
 Save the script as "custom_triggers_1.py" Run it like this.
@@ -250,6 +314,8 @@ repr(category)
 
 ## Running Tests
 
+The following doesn't work as of 2020/12.
+
 ```bash
 cd python-jamf
 
@@ -257,7 +323,7 @@ cd python-jamf
 python3 -m unittest discover -v
 
 # run tests individually
-python3 -m jamf.tests.test_api
+python3 -m python-jamf.tests.test_api
 python3 -m jamf.tests.test_config
 python3 -m jamf.tests.test_convert
 python3 -m jamf.tests.test_package

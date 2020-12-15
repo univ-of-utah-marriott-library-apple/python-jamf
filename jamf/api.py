@@ -10,7 +10,7 @@ __author__ = 'Sam Forester'
 __email__ = 'sam.forester@utah.edu'
 __copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
 __license__ = 'MIT'
-__version__ = "0.4.6"
+__version__ = "0.4.7"
 
 import html.parser
 import logging
@@ -25,7 +25,7 @@ from sys import exit
 from . import convert
 from . import config
 
-LOGLEVEL = logging.DEBUG
+LOGLEVEL = logging.INFO
 
 #pylint: disable=unnecessary-pass
 class Error(Exception):
@@ -51,6 +51,7 @@ class APIError(Error):
         rsp = self.response
         return f"{rsp}: {rsp.request.method} - {rsp.url}: {self.message}"
 
+
 class Singleton(type):
     """ allows us to share a single object """
     _instances = {}
@@ -66,7 +67,12 @@ class API(metaclass=Singleton):
     """
     session = False
 
-    def __init__(self, hostname=None, auth=None, config_path=None, prompt=True):
+    def __init__(self,
+                 config_path=None,
+                 hostname=None,
+                 username=None,
+                 password=None,
+                 prompt=True):
         """
         Create requests.Session with JSS address and authentication
 
@@ -74,16 +80,23 @@ class API(metaclass=Singleton):
                                      starts with '~' character we pass it
                                      to expanduser.
         :param hostname <str>:       Hostname of server
-        :param auth <(str, str)>:    (username, password) for server
-        :param prompt <bool>:        (username, password) for server
+        :param username <str>:       username for server
+        :param password <str>:       password for server
+        :param prompt <bool>:        Allow the script to prompt if any info is missing
         """
         self.log = logging.getLogger(f"{__name__}.API")
         self.log.setLevel(LOGLEVEL)
         # Load Prefs and Init session
-        conf = config.Config(config_path=config_path, prompt=prompt)
+        conf = config.Config(config_path=config_path,
+                             hostname=hostname,
+                             username=username,
+                             password=password,
+                             prompt=prompt)
         hostname = hostname or conf.hostname
-        auth = auth or (conf.username, conf.password)
-        if not hostname and not auth:
+        username = username or conf.username
+        password = password or conf.password
+
+        if not hostname and not username and not password:
             print("No jamf hostname or credentials could be found.")
             exit(1)
         if hostname[-1] == '/':
@@ -91,7 +104,7 @@ class API(metaclass=Singleton):
         else:
             self.url = f"{hostname}/JSSResource"
         self.session = requests.Session()
-        self.session.auth = auth
+        self.session.auth = (username, password)
         self.session.headers.update({'Accept': 'application/xml'})
 
         # The commented ones are untested because I don't have any data of that
