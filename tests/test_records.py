@@ -9,7 +9,7 @@ Test the Jamf object classes
 
 import unittest
 
-from .. import records
+from jamf import records
 from . import data
 from .MockAPI import MockAPI, MockAPIError
 

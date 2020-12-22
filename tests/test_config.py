@@ -18,7 +18,7 @@ import plistlib
 import unittest
 import datetime as dt
 
-from .. import config
+from jamf import config
 
 # temporary files created with tests
 LOCATION = pathlib.Path(__file__).parent

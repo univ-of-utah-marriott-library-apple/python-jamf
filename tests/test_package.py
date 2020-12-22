@@ -16,9 +16,9 @@ import shutil
 import pathlib
 import unittest
 
-from .. import package
-from .. import api
-from .. import category
+from jamf import package
+from jamf import api
+from jamf import category
 
 # location for temporary files created with tests
 LOCATION = pathlib.Path(__file__).parent
