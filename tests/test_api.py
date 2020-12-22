@@ -14,7 +14,7 @@ __version__ = "0.0.0"
 import unittest
 import logging
 
-from .. import api
+from jamf import api
 
 
 class MockResponse:
