@@ -331,6 +331,80 @@ python3 -m jamf.tests.test_package
 
 If you see an error that says something like SyntaxError: invalid syntax, check to see if you're using python3.
 
+## Uninstall
+
+Uninstalling python-jamf is easy if you installed it via PIP.
+```bash
+pip3 uninstall python-jamf
+
+```
+PIP will ask you if you want to remove the repositories.
+```bash
+% pip3 uninstall python-jamf
+Found existing installation: python-jamf 0.4.7
+Uninstalling python-jamf-0.4.7:
+  Would remove:
+    /Library/Frameworks/Python.framework/Versions/3.8/lib/python3.8/site-packages/jamf/*
+    /Library/Frameworks/Python.framework/Versions/3.8/lib/python3.8/site-packages/python_jamf-0.4.7.dist-info/*
+    /Library/Frameworks/Python.framework/Versions/3.8/lib/python3.8/site-packages/tests/*
+Proceed (y/n)? 
+
+```
+Enter "y" and python-jamf will be removed.
+
+If downloaded via other means you will have to find the package and delete it from there. To find where an older python-jamf version is hiding, look below in the troubleshooting section.
+
+## Troubleshooting
+
+Having errors with different elements of python-jamf. Here are some common errors and how to fix them.
+
+### Which python-jamf is Python using?
+
+With Python having different locations where site-packages can be stored, it can be a difficult to make sure that it is using the correct version. Python-jamf is located in one of the site-package directories. To find the location we have to look at how Python uses site-packages. Python has a hierarchical list of directories it checks for the library. 
+The list can be found by using Python's site command.
+ ```bash
+python3 -m site
+
+```
+This produces the list of site-package directories Python checks.
+ ```bash
+% python3 -m site                                               
+sys.path = [
+    '/Users/topher/Documents/GitHub/jctl',
+    '/Library/Frameworks/Python.framework/Versions/3.8/lib/python38.zip',
+    '/Library/Frameworks/Python.framework/Versions/3.8/lib/python3.8',
+    '/Library/Frameworks/Python.framework/Versions/3.8/lib/python3.8/lib-dynload',
+    '/Users/topher/Library/Python/3.8/lib/python/site-packages',
+    '/Library/Frameworks/Python.framework/Versions/3.8/lib/python3.8/site-packages',
+]
+USER_BASE: '/Users/topher/Library/Python/3.8' (exists)
+USER_SITE: '/Users/topher/Library/Python/3.8/lib/python/site-packages' (exists)
+ENABLE_USER_SITE: True
+
+```
+The top directory in the list is the first place that Python tries to find the particular site-package. Preform a list directory on the file and see if you find "jamf" or "python-jamf" in the directory. "jamf" was the old name that was installed pre-0.4.0. Continue down the list until you have reached where pip has installed python-jamf for you. 
+
+To figure out where PIP has installed python-jamf for you, use this command:
+ ```bash
+pip show python-jamf
+
+```
+In location it will display where PIP has installed python-jamf.
+ ```bash
+% pip show python-jamf
+Name: python-jamf
+Version: 0.4.7
+Summary: Python wrapper for Jamf Pro API
+Home-page: https://github.com/univ-of-utah-marriott-library-apple/python-jamf
+Author: The University of Utah
+Author-email: mlib-its-mac@lists.utah.edu
+License: UNKNOWN
+Location: /Library/Frameworks/Python.framework/Versions/3.8/lib/python3.8/site-packages
+Requires: requests
+Required-by: 
+```
+By the time that you have reached the PIP installed directory, the other python-jamf should have been discovered.
+
 ## Contributers
 
 - Sam Forester

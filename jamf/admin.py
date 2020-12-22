@@ -26,6 +26,7 @@ import requests
 import subprocess
 from xml.etree import ElementTree as et
 
+from . import api
 from . import config
 from . import convert
 from . import package
@@ -69,7 +70,12 @@ class JamfAdmin(metaclass=Singleton):
     """
     Class for uploading/updating packages in Jamf Admin.app
     """
-    def __init__(self, hostname=None, auth=None, path=None, port=8443):
+    def __init__(self,
+                 config_path=None,
+                 hostname=None,
+                 username=None,
+                 password=None,
+                 prompt=True):
         """
         :param hostname <str>:  JSS hostname (e.g. 'your.jss.domain')
         :param auth <tuple>:    JSS authentication credentials (user, passwd)
@@ -77,16 +83,24 @@ class JamfAdmin(metaclass=Singleton):
         :param port <int>:      JSS port (default: 8443)
         """
         self.log = logging.getLogger(f"{__name__}.JamfAdmin")
-        self.config = config.SecureConfig(path)
-        if not hostname:
-            hostname = self.config.get('JSSHostname', prompt="JSS hostname")
-        if not auth:
-            auth = self.config.credentials(hostname)
+        
+        conf = config.Config(config_path=config_path,
+                             hostname=hostname,
+                             username=username,
+                             password=password,
+                             prompt=prompt)
+        hostname = hostname or conf.hostname
+        username = username or conf.username
+        password = password or conf.password
+
+        if not hostname and not username and not password:
+            print("No jamf hostname or credentials could be found.")
+            exit(1)
+            
         self.hostname = hostname
-        self.url = f"https://{hostname}:{port}"
+             
         self.session = requests.Session()
-        self.auth = auth
-        self.user = auth[0]
+        self.session.auth = (username, password)
         self.data = self.authenticate()
         self.categories = category.Categories()
         for share in self.fileservers:
@@ -154,11 +168,11 @@ class JamfAdmin(metaclass=Singleton):
         Authenticate Jamf Admin session
         """
         self.log.debug("authenticating session: %r", self.hostname)
-        username, passwd = self.auth
+        username, passwd = self.session.auth
         form = {'username': username, 'password': passwd,
                 'casperAdminVersion': '', 'skipComputers': 'true'}
         # authenticate session (uses 'JSESSIONID' cookie for future requests)
-        response = self.session.post(f"{self.url}//casper.jxml", data=form)
+        response = self.session.post(f"{self.hostname}//casper.jxml", data=form)
         # NOTE: failed requests will still return <Response [200]>
         #       failed requests will only have
         if not response.ok:
@@ -257,11 +271,11 @@ class JamfAdmin(metaclass=Singleton):
 
         # get package data form
         form = package_upload_form(pkg)
-        form.update({'username': self.user,
-                     'password': self.auth[1]})
+        form.update({'username': self.session.auth[0],
+                     'password': self.session.auth[1]})
         # submit package upload form
         self.log.debug("submitting package form")
-        url = f"{self.url}//casperAdminAddObject.jxml"
+        url = f"{self.hostname}//casperAdminAddObject.jxml"
         r = self.session.post(url, data=form)
         # get the ID of the newly created package
         jssid = convert.xml_to_dict(r.text)['jamfServlet']['new_id']
@@ -285,10 +299,10 @@ class JamfAdmin(metaclass=Singleton):
             jssid = self.find(x.name).jssid
         elif isinstance(x, (str, int)):
             jssid = x
-        form = {'username': self.user,
+        form = {'username': self.session.auth[0],
                 'allScriptsMigratedToJSS': 'true',
                 'deletedPackageID': jssid}
-        self.session.post(f"{self.url}//casperAdminSave.jxml", data=form)
+        self.session.post(f"{self.hostname}//casperAdminSave.jxml", data=form)
 
     def update(self, pkg, notes=''):
         if not hasattr(pkg, 'jssid'):
@@ -301,12 +315,12 @@ class JamfAdmin(metaclass=Singleton):
 
         self.log.info(f"updating package: id: {pkg.jssid}: {pkg.name}")
         form = package_update_form(pkg)
-        form.update({'username': self.user,
-                     'password': self.auth[1],
+        form.update({'username': self.session.auth[0],
+                     'password': self.session.auth[1],
                      'allScriptsMigratedToJSS': 'true'})
         if notes:
             form['packageNotes'] = notes
-        self.session.post(f"{self.url}//casperAdminSave.jxml", data=form)
+        self.session.post(f"{self.hostname}//casperAdminSave.jxml", data=form)
 
     def find(self, name):
         """
