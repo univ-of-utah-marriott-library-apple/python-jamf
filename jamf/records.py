@@ -20,7 +20,21 @@ from . import convert
 
 import sys
 
-__all__ = ('Categories', 'Computers', 'ComputerGroups', 'JamfError')
+__all__ = (
+    'Categories',
+    'ComputerExtensionAttributes',
+    'Computers', 
+    'ComputerGroups',
+    'ComputerSearches',
+    'ConfigProfiles',
+    'Departments',
+    'Packages',
+    'PatchPolicies',
+    'PatchSoftwareTitles',
+    'Policies',
+    'Scripts',
+    'Sites',
+    'JamfError')
 
 #pylint: disable=unnecessary-pass
 class Error(Exception):
@@ -154,8 +168,9 @@ class Record():
 class ComputerSearches(Record):
     def __new__(cls):
         prefs = {
-            'end': 'advanced_computer_searches',
+            'end': 'advancedcomputersearches',
             'single': 'advanced_computer_search',
+            'list': 'advanced_computer_searches',
             'put_by_name': True,
             'post_by_name': True,
             'delete_by_name': True
