@@ -1,6 +1,6 @@
 # python-jamf
 
-This is a Python 3 utility for maintaining & automating Jamf Pro patch management via command-line. The idea behind it is to have a class that maps directly to the Jamf API (https://example.com:8443/api). The API class doesn't abstract anything or hide anything from you. It simply wraps the url requests, authentication, and converts between python dictionaries and xml. It also prints json.
+This is a Python 3 module to access the Jamf Pro classic API. The idea behind it is to have a class that maps directly to the API (https://example.com:8443/api). The API class doesn't abstract anything or hide anything from you. It simply wraps the url requests, authentication, and converts between python dictionaries and xml. It also prints json.
 
 ## Requirements
 
