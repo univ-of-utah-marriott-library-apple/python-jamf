@@ -314,7 +314,7 @@ repr(category)
 
 ## Running Tests
 
-The following doesn't work as of 2020/12.
+The following mostly work as of 2020/12. Some tests are failing unnecessarily.
 
 ```bash
 cd python-jamf
@@ -323,13 +323,14 @@ cd python-jamf
 python3 -m unittest discover -v
 
 # run tests individually
-python3 -m python-jamf.tests.test_api
-python3 -m jamf.tests.test_config
-python3 -m jamf.tests.test_convert
-python3 -m jamf.tests.test_package
+python3 tests/test_api.py
+python3 tests/test_config.py
+python3 tests/test_convert.py
+python3 tests/test_package.py
+python3 tests/test_records.py
 ```
 
-If you see an error that says something like SyntaxError: invalid syntax, check to see if you're using python3.
+If you see an error that says something like SyntaxError: invalid syntax, check to see you're using python3.
 
 ## Uninstall
 
