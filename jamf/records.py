@@ -17,13 +17,14 @@ __version__ = "0.2.0"
 
 from .api import API
 from . import convert
+from pprint import pprint
 
 import sys
 
 __all__ = (
     'Categories',
     'ComputerExtensionAttributes',
-    'Computers', 
+    'Computers',
     'ComputerGroups',
     'ComputerSearches',
     'ConfigProfiles',
@@ -102,6 +103,7 @@ class Record():
         """
         idn = self.idn
         dct = {}
+
         keys = list(lst[0].keys())
         if len(keys) == 2:
             for elem in lst:
@@ -114,8 +116,11 @@ class Record():
 
     def get(self, record=''):
         if record == '':
-            lst = self.session.get(self._endpoint)[self._objects][self._object]
-            return self.list_to_dict(lst)
+            lst = self.session.get(self._endpoint)[self._objects]
+            if 'size' in lst and lst['size'] != '0':
+                return self.list_to_dict(lst[self._object])
+            else:
+                return {}
         try:
             end = f'{self._endpoint}/id/{int(record)}'
         except ValueError:
@@ -196,7 +201,8 @@ class ComputerExtensionAttributes(Record):
     def __new__(cls):
         prefs = {
             'end': 'computerextensionattributes',
-            'single': 'computerextensionattributes'
+            'list': 'computer_extension_attributes',
+            'single': 'computer_extension_attribute'
         }
         return super().__new__(cls, prefs=prefs)
 
@@ -235,7 +241,8 @@ class ConfigProfiles(Record):
     def __new__(cls):
         prefs = {
             'end': 'osxconfigurationprofiles',
-            'single': 'osxconfigurationprofile'
+            'list': 'os_x_configuration_profiles',
+            'single': 'os_x_configuration_profile'
         }
         return super().__new__(cls, prefs=prefs)
 
@@ -248,7 +255,11 @@ class Packages(Record):
 
 class PatchPolicies(Record):
     def __new__(cls):
-        prefs = {'end': 'patch_policies', 'single': 'patch_policy'}
+        prefs = {
+            'end': 'patchpolicies',
+            'list': 'patch_policies',
+            'single': 'patch_policy'
+        }
         return super().__new__(cls, prefs=prefs)
 
     def get_softwaretitleconfig(self, record=''):
@@ -267,7 +278,8 @@ class PatchPolicies(Record):
 class PatchSoftwareTitles(Record):
     def __new__(cls):
         prefs = {
-            'end': 'patch_software_titles',
+            'end': 'patchsoftwaretitles',
+            'list': 'patch_software_titles',
             'single': 'patch_software_title'
         }
         return super().__new__(cls, prefs=prefs)
@@ -276,6 +288,12 @@ class Policies(Record):
     def __new__(cls):
         prefs = {'end': 'policies', 'single': 'policy'}
         return super().__new__(cls, prefs=prefs)
+
+    def scope(self, record):
+        """
+        """
+        from pprint import pprint
+        return record['scope']
 
 class Scripts(Record):
     def __new__(cls):
