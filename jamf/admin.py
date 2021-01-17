@@ -83,7 +83,7 @@ class JamfAdmin(metaclass=Singleton):
         :param port <int>:      JSS port (default: 8443)
         """
         self.log = logging.getLogger(f"{__name__}.JamfAdmin")
-        
+
         conf = config.Config(config_path=config_path,
                              hostname=hostname,
                              username=username,
@@ -96,9 +96,9 @@ class JamfAdmin(metaclass=Singleton):
         if not hostname and not username and not password:
             print("No jamf hostname or credentials could be found.")
             exit(1)
-            
+
         self.hostname = hostname
-             
+
         self.session = requests.Session()
         self.session.auth = (username, password)
         self.data = self.authenticate()
