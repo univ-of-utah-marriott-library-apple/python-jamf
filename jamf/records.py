@@ -255,12 +255,12 @@ class Record():
         except ValueError:
             if hasattr(self,'_put_by_name') and self._put_by_name:
                 end = f'{self._p_endpoint}/name/{record}'
-                return self.session.post(end, out, raw)
+                return self.session.put(end, out, raw)
             else:
                 raise JamfError("Endpoint does not support put by name.")
-            return self.session.post(end, out, raw)
+            return self.session.put(end, out, raw)
         end = f'{self._p_endpoint}/id/{val}'
-        return self.session.post(end, out, raw)
+        return self.session.put(end, out, raw)
 
     def post(self, record, data, raw=False):
         out = {self._ss_def_name: data}
