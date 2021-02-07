@@ -151,17 +151,17 @@ class Record():
         if ('xml' in _p_def_swagger and 'name' in _p_def_swagger['xml']):
             rec._p_def_name = _p_def_swagger['xml']['name']
 
-        if (hasattr(cls, '_id')):
-            rec._s_endpoint = rec._p_endpoint+'/'+cls._id
-            if (not '/'+rec._s_endpoint+'/{'+cls._id+'}' in cls._swagger['paths']):
+        if (hasattr(cls, '_id_name')):
+            rec._s_endpoint = rec._p_endpoint+'/'+cls._id_name
+            if (not '/'+rec._s_endpoint+'/{'+cls._id_name+'}' in cls._swagger['paths']):
                 rec._s_endpoint = None
         else:
             rec._s_endpoint = rec._p_endpoint+'/id'
             if (not '/'+rec._s_endpoint+'/{id}' in cls._swagger['paths']):
                 rec._s_endpoint = None
 
-        if (hasattr(cls, '_id2')):
-            rec._s_endpoint2 = rec._s_endpoint+"/{"+cls._id2+"}"
+        if (hasattr(cls, '_id_name2')):
+            rec._s_endpoint2 = rec._s_endpoint+"/{"+cls._id_name2+"}"
         else:
             rec._s_endpoint2 = rec._s_endpoint+'/{id}'
 
@@ -203,8 +203,8 @@ class Record():
         name and id. For those it is keyed on ID still but that contains
         a further dict with the remaining keys
         """
-        if (hasattr(self, '_id')):
-            idn = self._id
+        if (hasattr(self, '_id_name')):
+            idn = self._id_name
         else:
             idn = 'id'
         dct = {}
@@ -259,9 +259,11 @@ class Record():
         try:
             # This wont work if the name is actually a number...
             end = f'{self._s_endpoint}/{int(record)}'
+            self._id = int(record)
         except ValueError:
             if self._n_endpoint:
                 end = f'{self._n_endpoint}/{record}'
+                self._name = record
             else:
                 raise JamfError(f"{record} isn't a valid search type"
                                 " (must be number)")
@@ -280,20 +282,25 @@ class Record():
             raise JamfError(f"Endpoint {end} has no member named "
                             f"{self._ss_def_name} (_ss_def_name).")
 
-    def put(self, record, data, raw=False):
-        out = {self._ss_def_name: data}
-        out = convert.dict_to_xml(out)
-        try:
-            val = int(record)
-        except ValueError:
-            if hasattr(self,'_put_by_name') and self._put_by_name:
-                end = f'{self._p_endpoint}/name/{record}'
-                return self.session.put(end, out, raw)
+    def put(self, data=None, raw=False):
+        if not self.plural:
+            if data:
+                out = {self._ss_def_name: data}
             else:
-                raise JamfError("Endpoint does not support put by name.")
+                out = {self._ss_def_name: self._data}
+            out = convert.dict_to_xml(out)
+            if hasattr(self, '_id'):
+                end = f'{self._p_endpoint}/id/{self._id}'
+            elif hasattr(self, '_name'):
+                if hasattr(self,'_put_by_name') and self._put_by_name:
+                    end = f'{self._p_endpoint}/name/{self._name}'
+                else:
+                    raise JamfError("Endpoint does not support put by name.")
+            else:
+                raise JamfError("Record has no id or name.")
             return self.session.put(end, out, raw)
-        end = f'{self._p_endpoint}/id/{val}'
-        return self.session.put(end, out, raw)
+        else:
+            raise JamfError("Can't put to a list of records yet")
 
     def post(self, record, data, raw=False):
         out = {self._ss_def_name: data}
@@ -338,6 +345,19 @@ class Record():
                     print(item)
             else:
                 pass
+
+    def path(self, path):
+        if self._data:
+            if self.plural:
+                pass
+            else:
+                placeholder = self._data
+                for ii in path:
+                    if ii in placeholder:
+                        placeholder = placeholder[ii]
+                    else:
+                        raise JamfError(f"Couldn't find {ii} in record")
+                return placeholder
 
     def records_by_name(self, name=None):
         if self.plural:
@@ -500,8 +520,8 @@ class MobileDeviceApplications(Record):
 
 
 class MobileDeviceCommands(Record):
-    _id = "uuid"
-    _id2 = "uuid"
+    _id_name = "uuid"
+    _id_name2 = "uuid"
     def __new__(cls, *args, **kwargs):
         return super().__new__(cls, args, kwargs)
 
