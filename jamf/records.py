@@ -13,7 +13,7 @@ __email__ = 'tonyw@honestpuck.com'
 __copyright__ = 'Copyright (c) 2020 Tony Williams'
 __license__ = 'MIT'
 __date__ = '2020-09-21'
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 from . import convert
 from .api import API
@@ -432,6 +432,24 @@ class ComputerExtensionAttributes(Record):
 class ComputerGroups(Record):
     def __new__(cls, *args, **kwargs):
         return super().__new__(cls, args, kwargs)
+
+    def add_computers(self, new_computers):
+        """
+        adds an array of computers in this format:
+        [
+            { 'computer': { 'id': '1' }, },
+            { 'computer': { 'name': 'xserve-01' }, },
+            { 'computer': { 'serial_number': 'C01234567890' }, },
+        ]
+        """
+        self.put( { 'computer_additions': new_computers } )
+
+    def add_computer(self, new_computer):
+        """
+        adds a computer in this format: { 'key': 'val' }
+        key can be id, name, serial_number, and maybe even more.
+        """
+        self.put( { 'computer_additions': { 'computer': new_computer } } )
 
     def members(self, record):
         """
