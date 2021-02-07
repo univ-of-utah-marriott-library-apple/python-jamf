@@ -13,14 +13,14 @@ __email__ = 'tonyw@honestpuck.com'
 __copyright__ = 'Copyright (c) 2020 Tony Williams'
 __license__ = 'MIT'
 __date__ = '2020-09-21'
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
-from .api import API
 from . import convert
+from .api import API
+from os import path
 from pprint import pprint
 import json
-from os import path
-
+import re
 import sys
 
 __all__ = (
@@ -80,7 +80,19 @@ __all__ = (
     'VPPAssignments',
     'VPPInvitations',
     'WebHooks',
+    # Add all non-Jamf Record classes to valid_records below
     'JamfError')
+
+def valid_records():
+    valid = tuple(x for x in __all__ if not x in ['JamfError'])
+    return valid
+
+def class_name(class_name):
+    if class_name in valid_records():
+        return eval(class_name)
+    else:
+        raise JamfError(f"{class_name} is not a valid record.")
+
 
 #pylint: disable=unnecessary-pass
 class Error(Exception):
@@ -112,7 +124,7 @@ class Record():
     """
     _debug = False
     _swagger = json.load(open(path.dirname(__file__)+'/records.json', 'r'))
-    def __new__(cls):
+    def __new__(cls, args, kwargs):
         """
         See the class docstring for an explanation of the parameters
         """
@@ -141,15 +153,21 @@ class Record():
 
         if (hasattr(cls, '_id')):
             rec._s_endpoint = rec._p_endpoint+'/'+cls._id
+            if (not '/'+rec._s_endpoint+'/{'+cls._id+'}' in cls._swagger['paths']):
+                rec._s_endpoint = None
         else:
             rec._s_endpoint = rec._p_endpoint+'/id'
+            if (not '/'+rec._s_endpoint+'/{id}' in cls._swagger['paths']):
+                rec._s_endpoint = None
+
         if (hasattr(cls, '_id2')):
             rec._s_endpoint2 = rec._s_endpoint+"/{"+cls._id2+"}"
         else:
             rec._s_endpoint2 = rec._s_endpoint+'/{id}'
 
-
         rec._n_endpoint = rec._p_endpoint+'/name'
+        if (not '/'+rec._n_endpoint+'/{name}' in cls._swagger['paths']):
+            rec._n_endpoint = None
 
         if (hasattr(cls, '_ps_def_name2')):
             rec._ps_def_name = cls._ps_def_name2
@@ -166,8 +184,16 @@ class Record():
         else:
             rec._ss_def_name = rec._ps_def_name
 
+        rec._data = None
+
         rec.session = API()
         return rec
+
+    def __init__(self, record='', new=None):
+        if new != None:
+            self.post(0,new)
+        else:
+            self.get(record)
 
     def list_to_dict(self, lst):
         """
@@ -194,13 +220,14 @@ class Record():
 
     def get(self, record=''):
         if record == '':
-            return self.getPlural()
+            self.getPlural()
         else:
-            return self.getSingle(record)
+            self.getSingle(record)
 
     def getPlural(self):
         if self.__class__._debug:
             pprint("getPlural")
+        self.plural = True
         lst = self.session.get(self._p_endpoint)
         if self._p_def_name in lst:
             lst2 = lst[self._p_def_name]
@@ -209,9 +236,9 @@ class Record():
             elif self._ps_def_name in lst2:
 
                 if 'size' in lst2 and lst2['size'] == '1':
-                    return self.list_to_dict([lst2[self._ps_def_name]])
+                    self._data = self.list_to_dict([lst2[self._ps_def_name]])
                 else:
-                    return self.list_to_dict(lst2[self._ps_def_name])
+                    self._data = self.list_to_dict(lst2[self._ps_def_name])
             else:
                 if self.__class__._debug:
                     pprint(lst2)
@@ -227,18 +254,24 @@ class Record():
     def getSingle(self, record):
         if self.__class__._debug:
             pprint(f"getSingle: {record}")
+        self.plural = False
+
         try:
             # This wont work if the name is actually a number...
             end = f'{self._s_endpoint}/{int(record)}'
         except ValueError:
-            end = f'{self._n_endpoint}/{record}'
+            if self._n_endpoint:
+                end = f'{self._n_endpoint}/{record}'
+            else:
+                raise JamfError(f"{record} isn't a valid search type"
+                                " (must be number)")
 
         results = self.session.get(end)
         if self._ss_def_name in results:
             if results[self._ss_def_name]:
-                return results[self._ss_def_name]
+                self._data = results[self._ss_def_name]
             else:
-                return {}
+                self._data = {}
         else:
             print("-------------------------------------"
                   "-------------------------------------\n"
@@ -290,14 +323,42 @@ class Record():
         return self.session.delete(end, raw)
 
     def print(self):
-        pprint(self)
+        pprint(self._data)
+
+    def list(self, regex=None):
+        if self._data:
+            if self.plural:
+                names = list(self._data.values())
+                if not isinstance(names[0], str):
+                    names = [x['name'] for x in names]
+                if regex:
+                    names = list(filter(re.compile(regex).search, names))
+                s_names = sorted(names, key=lambda k: (k is None, k == "", k))
+                for item in s_names:
+                    print(item)
+            else:
+                pass
+
+    def records_by_name(self, name=None):
+        if self.plural:
+            objs = {}
+            for ii in self._data:
+                objs[self._data[ii]['name']] = ii
+            return objs
+
+    def id(self, name=None):
+        if self.plural and name != None:
+            objs = self.records_by_name()
+            return(objs[name])
+        else:
+            return self._data['id']
 
 class AdvancedComputerSearches(Record):
     _put_by_name = True,
     _post_by_name = True,
     _delete_by_name = True
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
     def members(self, record):
         """
@@ -309,48 +370,48 @@ class AdvancedComputerSearches(Record):
 
 
 class AdvancedMobileDeviceSearches(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class AdvancedUserSearches(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Buildings(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class BYOProfiles(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Categories(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Classes(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class ComputerConfigurations(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class ComputerExtensionAttributes(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class ComputerGroups(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
     def members(self, record):
         """
@@ -364,150 +425,150 @@ class ComputerGroups(Record):
 class ComputerReports(Record):
 #     _ps_def_name2 = 'computer_report'
     _ss_def_name2 = 'computer_reports'
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Computers(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Departments(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class DirectoryBindings(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class DiskEncryptionConfigurations(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class DistributionPoints(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class DockItems(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Ebooks(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Ibeacons(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class JSONWebTokenConfigurations(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class LDAPServers(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class LicensedSoftware(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class MacApplications(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class ManagedPreferenceProfiles(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class MobileDeviceApplications(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class MobileDeviceCommands(Record):
     _id = "uuid"
     _id2 = "uuid"
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class MobileDeviceConfigurationProfiles(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class MobileDeviceEnrollmentProfiles(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class MobileDeviceExtensionAttributes(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class MobileDeviceInvitations(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class MobileDeviceProvisioningProfiles(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class MobileDevices(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class NetbootServers(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class NetworkSegments(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class OSXConfigurationProfiles(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Packages(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class PatchExternalSources(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class PatchInternalSources(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class PatchPolicies(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
     def get_softwaretitleconfig(self, record=''):
         """ 7 is a good example """
@@ -523,94 +584,93 @@ class PatchPolicies(Record):
         return self.session.post(end, data, raw)
 
 class PatchSoftwareTitles(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Peripherals(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class PeripheralTypes(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Policies(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
     def scope(self, record):
         """
         returns a dict of the scope categories to the policy when passed a record
         """
-        from pprint import pprint
         return record['scope']
 
 
 class Printers(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class RemovableMACAddresses(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class RestrictedSoftware(Record):
     _ps_def_name2 = 'restricted_software_title'
     _ss_def_name2 = 'restricted_software'
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Scripts(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Sites(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class SoftwareUpdateServers(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class UserExtensionAttributes(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class UserGroups(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class Users(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class VPPAccounts(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class VPPAssignments(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class VPPInvitations(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
 
 
 class WebHooks(Record):
-    def __new__(cls):
-        return super().__new__(cls)
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, args, kwargs)
