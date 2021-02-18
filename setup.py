@@ -15,6 +15,10 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/univ-of-utah-marriott-library-apple/python-jamf",
     packages=setuptools.find_packages(),
+    package_data={'': ['*.json']},
+    entry_points={
+        'console_scripts': ['jamfconfig=jamf.setconfig:setconfig']
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
