@@ -13,7 +13,7 @@ __email__ = 'tonyw@honestpuck.com'
 __copyright__ = 'Copyright (c) 2020 Tony Williams'
 __license__ = 'MIT'
 __date__ = '2020-09-21'
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 
 from . import convert
 from .api import API
@@ -90,10 +90,13 @@ def valid_records():
     ])
     return valid
 
-def class_name(class_name):
-    if class_name in valid_records():
+def class_name(class_name, case_sensitive=True):
+    if case_sensitive and class_name in valid_records():
         return eval(class_name)
     else:
+        for temp in valid_records():
+            if class_name.lower() == temp.lower():
+                return eval(temp)
         raise JamfError(f"{class_name} is not a valid record.")
 
 
@@ -340,24 +343,37 @@ class Record():
     def json(self):
         return json.dumps(self._data)
 
-    def list(self, regex=None, ids=None):
-        if self._data and self.plural:
-            _results = []
-            for _id, _name in self._data.items():
-                _append = True
-                if _name:
-                    if not isinstance(_name, str) and 'name' in _name:
-                        _name = _name['name']
-                    if regex and not re.search(regex, _name):
-                        _append = False
-                elif regex:
-                   _append = False
-                if _append:
-                    if ids:
-                        _results.append(_id)
+    def list(self, regexes=None, exactMatches=None, ids=None, returnIds=False):
+        results_ = []
+        if not self._data or not self.plural:
+            return results_
+
+        for recordId, recordName in self._data.items():
+            append_ = False
+            if recordName:
+                # some results are id:name, some are id:{name:name}
+                if not isinstance(recordName, str) and 'name' in recordName:
+                    recordName = recordName['name']
+                if ids:
+                    for id_ in ids:
+                        if id_ and recordId == id_:
+                            append_ = True
+                if regexes:
+                    for rr in regexes:
+                        if not append_ and re.search(rr, recordName):
+                            append_ = True
+                if exactMatches:
+                    for em in exactMatches:
+                        if not append_ and recordName == em:
+                            append_ = True
+                if not regexes and not exactMatches and not ids:
+                   append_ = True
+                if append_:
+                    if returnIds:
+                        results_.append([recordName,recordId])
                     else:
-                        _results.append(_name)
-            return sorted(_results, key=lambda k: (k is None, k == "", k))
+                        results_.append(recordName)
+        return sorted(results_, key=lambda k: (k is None, k == "", k))
 
     def path(self, paths):
         if self._data:
