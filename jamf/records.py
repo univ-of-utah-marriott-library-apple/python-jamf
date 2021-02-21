@@ -13,7 +13,7 @@ __email__ = 'tonyw@honestpuck.com'
 __copyright__ = 'Copyright (c) 2020 Tony Williams'
 __license__ = 'MIT'
 __date__ = '2020-09-21'
-__version__ = "0.3.3"
+__version__ = "0.3.4"
 
 from . import convert
 from .api import API
