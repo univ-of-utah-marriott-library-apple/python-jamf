@@ -316,6 +316,7 @@ class Package:
         """
         :returns: minimum version of macOS that will install the package
         """
+        #print(f"This is the version key?: '{VERSIONKEY}'")
         if not self._min_os_ver:
             # check for our metadata flag
             try:
@@ -362,7 +363,10 @@ class Package:
                 self._min_os_ver = StrictVersion('10.0')
             # save the metadata for future use
             try:
+                #print(f"The path is: '{self.path}'")
+
                 xattr('-w', VERSIONKEY, self._min_os_ver, self.path)
+                xattr('-w', VERSIONKEY, self._min_os_ver, self.payload)
             except subprocess.CalledProcessError:
                 self.log.error(f"xattr failed")
         return self._min_os_ver
@@ -371,7 +375,9 @@ class Package:
     def info(self):
         if not self._info:
             try:
-                _pkginfo = extract(self.path, 'PackageInfo')
+                #print(self.path)
+                _pkginfo = extract(self.path, 'PackageInfo', TMPDIR)
+                #print(_pkginfo)
             except subprocess.CalledProcessError:
                 raise InvalidPackageError(self.path)
             _pkg = package_information(info=_pkginfo)
@@ -412,12 +418,14 @@ class Package:
         """
         if not self.expanded:
             self.log.info(f"expanding: {self.name}")
+            #print(f"The tmpdir is here: '{TMPDIR}'")
             if not TMPDIR.exists():
                 TMPDIR.mkdir(mode=0o755)
             e = TMPDIR / self.path.stem
+            #print(f"e is here: '{e}'")
             if e.exists():
                 # check to see if the information matches
-                _extracted = extract(self.path, 'PackageInfo')
+                _extracted = extract(self.path, 'PackageInfo', e)
                 _pkg = package_information(info=_extracted)
                 _exists = package_information(path=e/'PackageInfo')
                 # continue with expansion if different, or use existing
@@ -446,8 +454,10 @@ class Package:
     def __del__(self):
         try:
             if self.expanded:
-                self.log.debug(f"cleaning up: '{self.expanded}'")
+                self.log.info(f"cleaning up: '{self.expanded}'")
                 shutil.rmtree(self.expanded, ignore_errors=True)
+                self.log.info(f"cleaning up: '{TMPDIR}'")
+                shutil.rmtree(TMPDIR, ignore_errors=True)
         except AttributeError:
             pass
 
@@ -782,14 +792,37 @@ def extract_info_plist(payload, app_path):
     :param app_path <str|Path>:     path to app to extract in payload
     """
     path = pathlib.Path(app_path) / 'Contents' / 'Info.plist'
-    return plistlib.loads(extract(payload, path))
+#     print(f"The path is: '{path}'")
+#     print(f"The payload is: '{payload}'")
+    return plistlib.loads(extract_tar(path, payload))
 
-
-def extract(payload, path):
+def extract_tar(payload, path):
     logger = logging.getLogger(__name__)
-    logger.info(f"extracting: '{path}'")
-    logger.debug(f"> tar -xOf '{payload}' '{path}'")
-    return subprocess.check_output(['/usr/bin/tar', '-xOf', payload, path])
+    logger.info(f"extracting using tar: '{path}'")
+#     print(f"The path is: '{path}'")
+#     print(f"The payload is: '{payload}'")
+
+    logger.info(f"> tar -xOf '{payload}' '{path}'")
+    tar_output = subprocess.check_output(['/usr/bin/tar', '-xOf', path, payload])
+    #print(tar_output)
+    return tar_output
+
+def extract(path, payload, save_dir):
+    logger = logging.getLogger(__name__)
+    logger.info(f"extracting using xar: '{path}'")
+    
+#     print(f"The path is: '{path}'")
+#     print(f"The payload is: '{payload}'")
+    if not TMPDIR.exists():
+        TMPDIR.mkdir(mode=0o755)
+
+    logger.info(f"> xar -xf '{path}' '{payload}' -C '{save_dir}'")
+    xar_output = subprocess.check_output(['/usr/bin/xar', '-xf', path, payload, '-C', save_dir])
+    #print(xar_output)
+    print(f"The save directory is '{save_dir}'")
+    pkg_info = subprocess.check_output(['/bin/cat', save_dir / payload])
+    #print(pkg_info)
+    return (pkg_info)
 
 
 def find_payload(archive):
@@ -797,7 +830,7 @@ def find_payload(archive):
     locate payload inside of an archive
     """
     # https://dev.to/aarohmankad/bash-functions-a-more-powerful-alias-4p3i
-    cmd = ['/usr/bin/tar', '-tf', archive]
+    cmd = ['/usr/bin/xar', '-tf', archive]
     raise NotImplementedError()
 
 
@@ -856,7 +889,10 @@ def xattr(*args):
     Execute `xattr` with specified args (see `man pkgutil` for more info)
     """
     logger = logging.getLogger(__name__)
-    logger.debug(f"xattr args: {args!r}")
+    logger.info(f"xattr args: {args!r}")
     cmd = ['/usr/bin/xattr'] + [str(x) for x in args]
+    print(f"The xattr command is: '{cmd}'")
     out = subprocess.check_output(cmd, stderr=subprocess.PIPE)
+    print(f"The output message is: '{out}'")
+    #print(f"The output message that will be returned: '{out.decode('utf-8').rstrip()}'")
     return out.decode('utf-8').rstrip()
