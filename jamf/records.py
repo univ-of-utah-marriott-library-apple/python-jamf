@@ -15,14 +15,15 @@ __license__ = 'MIT'
 __date__ = '2020-09-21'
 __version__ = "0.3.3"
 
-from . import convert
-from .api import API
-from os import path
-from pprint import pprint
+
 import json
 import re
 import sys
-
+from os import path, _exit
+from pprint import pprint
+#pylint: disable=relative-beyond-top-level
+from . import convert
+from .api import API
 __all__ = (
     'AdvancedComputerSearches',
     'AdvancedMobileDeviceSearches',
@@ -90,29 +91,21 @@ def valid_records():
     ])
     return valid
 
-def class_name(class_name, case_sensitive=True):
-    if case_sensitive and class_name in valid_records():
-        return eval(class_name)
-    else:
-        for temp in valid_records():
-            if class_name.lower() == temp.lower():
-                return eval(temp)
-        raise JamfError(f"{class_name} is not a valid record.")
-
-
-#pylint: disable=unnecessary-pass
-class Error(Exception):
-    """ just passing through """
-    pass
+#pylint: disable=eval-used
+def class_name(name, case_sensitive=True):
+    if case_sensitive and name in valid_records():
+        return eval(name)
+    for temp in valid_records():
+        if name.lower() == temp.lower():
+            return eval(temp)
+    raise JamfError(f"{name} is not a valid record.")
 
 
 #pylint: disable=super-init-not-called
-class JamfError(Error):
+class JamfError(Exception):
     def __init__(self, message):
-        self.message = message
-
-    def __str__(self):
-        return self.message
+        print(f"jctl: error: {message}", file=sys.stderr)
+        _exit(1)
 
 
 class Record():
@@ -145,12 +138,12 @@ class Record():
         rec._index = -1
 
         # The endpoint url, e.g. "Policies" class becomes "policies" endpoint
-        if (not hasattr(cls, '_swagger_path_name')):
+        if not hasattr(cls, '_swagger_path_name'):
             rec._swagger_path_name = cls.__name__.lower()
 
         # Get the definition name, which almost always is the plural name
         # exceptions: LicensedSoftware
-        if (not hasattr(cls, '_swagger_def_name')):
+        if not hasattr(cls, '_swagger_def_name'):
             rec._swagger_def_name = rec.get_schema(rec._swagger_path_name)
             # If there's an xml entry, use it for the definition name
             temp2 = cls._swagger['definitions'][rec._swagger_def_name]
@@ -163,16 +156,16 @@ class Record():
         if not hasattr(cls, '_id_text2'):
             rec._id_text2 = "id"
 
-        if (not hasattr(cls, '_swagger_plural_key')):
+        if not hasattr(cls, '_swagger_plural_key'):
             # Get the schema, which almost always is the singular name
             temp1 = rec._swagger_path_name+'/'+rec._id_text+"/{"+rec._id_text2+"}"
             rec._swagger_plural_key = rec.get_schema(temp1)
             #getPlural and below
 
-        if (not hasattr(cls, '_swagger_singular_key')):
+        if not hasattr(cls, '_swagger_singular_key'):
             rec._swagger_singular_key = rec._swagger_plural_key
 
-        if (not hasattr(cls, '_list_to_dict_key')):
+        if not hasattr(cls, '_list_to_dict_key'):
             rec._list_to_dict_key = 'id'
 
         return rec
@@ -181,13 +174,13 @@ class Record():
         if json_data:
             python_data = json.load(json_data)
             self.post(python_data)
-        elif json_file != None:
+        elif json_file is not None:
             if path.exists(json_file):
                 python_data = json.load(open(json_file, 'r'))
                 self.post(python_data)
             else:
-                raise JamfError(f"File does not exist: {file}.")
-        elif python_data != None:
+                raise JamfError(f"File does not exist: {json_file}.")
+        elif python_data is not None:
             self.post(python_data)
         else:
             self.get(query)
@@ -204,8 +197,7 @@ class Record():
             lst2 = lst[self._swagger_def_name]
             if not lst2 or 'size' in lst2 and lst2['size'] == '0':
                 return {}
-            elif self._swagger_plural_key in lst2:
-
+            if self._swagger_plural_key in lst2:
                 if 'size' in lst2 and lst2['size'] == '1':
                     self._data = self.list_to_dict([lst2[self._swagger_plural_key]])
                 else:
@@ -220,7 +212,7 @@ class Record():
                             f"member named {self._swagger_def_name}. Check "
                             f"the swagger definition file for the name of "
                             f"{self._swagger_path_name} and set the property "
-                            f"_swagger_def_name for class ({cls.__name__}).")
+                            f"_swagger_def_name for class ({self._swagger_path_name}).")
 
     def getSingle(self, record, key_text=None):
         if key_text:
@@ -317,7 +309,7 @@ class Record():
     def get_schema(self, swagger_path):
         temp1 = self._swagger['paths']['/'+swagger_path]['get']
         schema = temp1['responses']['200']['schema']['$ref']
-        if ( schema.startswith("#/definitions/") ):
+        if schema.startswith("#/definitions/"):
             schema = schema[14:]
         return schema
 
@@ -367,7 +359,7 @@ class Record():
                         if not append_ and recordName == em:
                             append_ = True
                 if not regexes and not exactMatches and not ids:
-                   append_ = True
+                    append_ = True
                 if append_:
                     if returnIds:
                         results_.append([recordName,recordId])
@@ -384,34 +376,39 @@ class Record():
                 for ii in paths:
                     temp = ii.split(',')
                     placeholder = self._data
+                    previous = ""
                     for jj in temp:
                         if jj in placeholder:
                             placeholder = placeholder[jj]
+                            previous = jj
                         else:
+                            if previous == "":
+                                previous = "record"
+                            print(f"{previous}: ")
                             pprint(placeholder)
-                            raise JamfError(f"Couldn't find {jj} in record")
+                            print("")
+                            raise JamfError(f"Couldn't find '{jj}' in {previous}")
                     results.append(placeholder)
                 return results
 
     def records_by_name(self):
-        if self.plural:
-            objs = {}
-            for ii in self._data:
-                jj = self._data[ii]
-                if isinstance(jj, str):
-                    objs[jj] = ii
-                elif 'name' in self._data[ii]:
-                    objs[self._data[ii]['name']] = ii
-                else:
-                    pprint(self._data)
-                    raise JamfError("Couldn't flip names and id's because"
-                                    "name is missing.")
-            return objs
+        objs = {}
+        for ii in self._data:
+            jj = self._data[ii]
+            if isinstance(jj, str):
+                objs[jj] = ii
+            elif 'name' in self._data[ii]:
+                objs[self._data[ii]['name']] = ii
+            else:
+                pprint(self._data)
+                raise JamfError("Couldn't flip names and id's because"
+                                "name is missing.")
+        return objs
 
     def id(self, name=None):
-        if self.plural and name != None:
+        if self.plural and name is not None:
             objs = self.records_by_name()
-            return(objs[name])
+            return objs[name]
         else:
             return self._data['id']
 
