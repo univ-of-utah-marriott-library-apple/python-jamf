@@ -627,3 +627,6 @@ class TestComputerGroups(unittest.TestCase):
         expected = Data.members_expected
         result = self.c.members(Data.computer_group_by_id_expected)
         self.assertEqual(expected, result)
+
+if __name__ == '__main__':
+    unittest.main(verbosity=1)
