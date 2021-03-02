@@ -13,7 +13,7 @@ __email__ = 'tonyw@honestpuck.com'
 __copyright__ = 'Copyright (c) 2020 Tony Williams'
 __license__ = 'MIT'
 __date__ = '2020-09-21'
-__version__ = "0.3.3"
+__version__ = "0.3.4"
 
 
 import json
@@ -326,14 +326,8 @@ class Record():
         except ValueError:
             raise JamfError(f"Couldn't convert {record_name} to id")
 
-    def print(self):
-        pprint(self._data)
-
     def data(self):
         return self._data
-
-    def json(self):
-        return json.dumps(self._data)
 
     def list(self, regexes=None, exactMatches=None, ids=None, returnIds=False):
         results_ = []
@@ -367,11 +361,12 @@ class Record():
                         results_.append(recordName)
         return sorted(results_, key=lambda k: (k is None, k == "", k))
 
-    def path(self, paths):
+    def path(self, path):
         if self._data:
             if self.plural:
                 pass
             else:
+<<<<<<< HEAD
                 results = []
                 for ii in paths:
                     temp = ii.split(',')
@@ -390,6 +385,17 @@ class Record():
                             raise JamfError(f"Couldn't find '{jj}' in {previous}")
                     results.append(placeholder)
                 return results
+=======
+                temp = path.split(',')
+                placeholder = self._data
+                for jj in temp:
+                    if jj in placeholder:
+                        placeholder = placeholder[jj]
+                    else:
+                        pprint(placeholder)
+                        raise JamfError(f"Couldn't find {jj} in record")
+                return placeholder
+>>>>>>> upstream/main
 
     def records_by_name(self):
         objs = {}
