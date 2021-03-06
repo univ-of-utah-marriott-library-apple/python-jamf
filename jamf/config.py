@@ -8,16 +8,15 @@ __author__ = 'Sam Forester'
 __email__ = 'sam.forester@utah.edu'
 __copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
 __license__ = 'MIT'
-__version__ = "1.2.3"
+__version__ = "1.2.4"
 
-import os
 import copy
 import getpass
 import logging
 import plistlib
 import itertools
 import keyring
-from os import path
+from os import path, remove
 LINUX_PREFS_TILDA = '~/.edu.utah.mlib.jamfutil.plist'
 MACOS_PREFS_TILDA = '~/Library/Preferences/edu.utah.mlib.jamfutil.plist'
 AUTOPKG_PREFS_TILDA = '~/Library/Preferences/com.github.autopkg.plist'
@@ -51,8 +50,6 @@ class Config:
         self.hostname = hostname
         self.username = username
         self.password = password
-        # what is this for?
-        self._credentials = None
         if not self.hostname and not self.username and not self.password:
             macos_prefs = path.expanduser(MACOS_PREFS_TILDA)
             if not config_path:
@@ -92,8 +89,14 @@ class Config:
                     prefs = plistlib.load(fptr)
                     fptr.close()
                     if 'JSSHostname' in prefs:
+                        if 'Credentials' in prefs:
+                            print("Please delete the prefs "+config_path+" "
+                                  "and recreate them (format has changed).")
+                            exit(1)
                         self.hostname = prefs['JSSHostname']
                         self.username = prefs['Username']
+                        self.password = keyring.get_password(self.hostname,
+                                                             self.username)
                     elif 'JSS_URL' in prefs:
                         self.hostname = prefs["JSS_URL"]
                         self.username = prefs["API_USERNAME"]
@@ -129,8 +132,7 @@ class Config:
 
     def reset(self, path):
         keyring.delete_password(self.hostname, self.username)
-        os.remove(path)
-
+        remove(path)
 
 
 def prompt_hostname():

@@ -13,7 +13,7 @@ __email__ = 'tonyw@honestpuck.com'
 __copyright__ = 'Copyright (c) 2020 Tony Williams'
 __license__ = 'MIT'
 __date__ = '2020-09-21'
-__version__ = "0.3.5"
+__version__ = "0.3.6"
 
 
 import json
@@ -274,7 +274,7 @@ class Record():
             out = convert.dict_to_xml(out)
             return self.session.post(end, out, raw)
         else:
-            raise JamfError("Can't post an record, use put")
+            raise JamfError("Can't post a record, use put")
 
     def delete(self, raw=False):
         if not self.plural:
@@ -361,7 +361,7 @@ class Record():
                         results_.append(recordName)
         return sorted(results_, key=lambda k: (k is None, k == "", k))
 
-    def path(self, path):
+    def get_path(self, path):
         if self._data:
             if self.plural:
                 pass
@@ -369,12 +369,33 @@ class Record():
                 temp = path.split(',')
                 placeholder = self._data
                 for jj in temp:
-                    if jj in placeholder:
-                        placeholder = placeholder[jj]
+                    if placeholder:
+                        if jj in placeholder:
+                            placeholder = placeholder[jj]
+                        else:
+                            return None
                     else:
-                        pprint(placeholder)
-                        raise JamfError(f"Couldn't find {jj} in record")
+                        return None
                 return placeholder
+
+    def set_path(self, path, value):
+        if self._data:
+            if self.plural:
+                pass
+            else:
+                temp = path.split(',')
+                key = temp.pop()
+                placeholder = self._data
+                for jj in temp:
+                    if placeholder:
+                        if jj in placeholder:
+                            placeholder = placeholder[jj]
+                        else:
+                            return False
+                    else:
+                        return False
+                placeholder[key] = value
+                return True
 
     def records_by_name(self):
         objs = {}
