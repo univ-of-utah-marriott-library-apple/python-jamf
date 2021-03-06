@@ -8,14 +8,15 @@ __author__ = 'Sam Forester'
 __email__ = 'sam.forester@utah.edu'
 __copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
 __license__ = 'MIT'
-__version__ = "1.2.3"
+__version__ = "1.2.4"
 
 import copy
 import getpass
 import logging
 import plistlib
 import itertools
-from os import path
+import keyring
+from os import path, remove
 LINUX_PREFS_TILDA = '~/.edu.utah.mlib.jamfutil.plist'
 MACOS_PREFS_TILDA = '~/Library/Preferences/edu.utah.mlib.jamfutil.plist'
 AUTOPKG_PREFS_TILDA = '~/Library/Preferences/com.github.autopkg.plist'
@@ -49,7 +50,6 @@ class Config:
         self.hostname = hostname
         self.username = username
         self.password = password
-        self._credentials = None
         if not self.hostname and not self.username and not self.password:
             macos_prefs = path.expanduser(MACOS_PREFS_TILDA)
             if not config_path:
@@ -89,10 +89,14 @@ class Config:
                     prefs = plistlib.load(fptr)
                     fptr.close()
                     if 'JSSHostname' in prefs:
+                        if 'Credentials' in prefs:
+                            print("Please delete the prefs "+config_path+" "
+                                  "and recreate them (format has changed).")
+                            exit(1)
                         self.hostname = prefs['JSSHostname']
-                        c = prefs.get('Credentials', {})
-                        self._credentials = Credentials(c, callback=transposition(MAGIC))
-                        (self.username, self.password) = self.read_credentials(self.hostname)
+                        self.username = prefs['Username']
+                        self.password = keyring.get_password(self.hostname,
+                                                             self.username)
                     elif 'JSS_URL' in prefs:
                         self.hostname = prefs["JSS_URL"]
                         self.username = prefs["API_USERNAME"]
@@ -112,80 +116,23 @@ class Config:
             if not self.password:
                 self.password = getpass.getpass()
         elif not self.hostname and not self.username and not self.password:
-#             raise FileNotFoundError(config_path)
             print("No jamf config file could be found and prompt is off.")
             exit(1)
 
     def save(self, config_path=None):
-        if not self._credentials:
-            self._credentials = Credentials({}, callback=transposition(MAGIC))
-        self._credentials.register(self.hostname, (self.username, self.password))
-        creds = bytes(self._credentials)
+        keyring.set_password(self.hostname, self.username, self.password)
         data = {
             'JSSHostname': self.hostname,
-            'Credentials': creds
+            'Username': self.username
         }
         self.log.info(f"saving: {config_path}")
         fptr = open(config_path, 'wb')
         plistlib.dump(data, fptr)
         fptr.close()
 
-    def read_credentials(self, hostname):
-        return tuple(self._credentials.retrieve(hostname))
-
-    def reset(self):
-        self.save()
-        self._credentials = Credentials({}, callback=transposition(MAGIC))
-
-
-class Credentials:
-    def __init__(self, data, callback=None):
-        self.data = data
-        if isinstance(data, (list, tuple, dict)):
-            self.data = copy.deepcopy(data)
-        elif isinstance(data, bytes):
-            self.data = plistlib.loads(data)
-        self.transpose = callback if callback else lambda x: x
-
-    def retrieve(self, key):
-        value = self.data[key]
-        data = self.transpose(value)
-        try:
-            return plistlib.loads(data)
-        except plistlib.InvalidFileException:
-            try:
-                return data.decode('utf-8')
-            except AttributeError:
-                return data
-
-    def register(self, key, value):
-        if isinstance(value, Credentials):
-            value = bytes(value)
-        else:
-            value = bytes(Credentials(value, self.transpose))
-        self.data[key] = self.transpose(value)
-
-    def reset(self):
-        self.data = {}
-
-    def __bytes__(self):
-        return plistlib.dumps(self.data, fmt=plistlib.FMT_BINARY)
-
-    def __bool__(self):
-        return True if self.data else False
-
-
-def transposition(key):
-    if isinstance(key, str):
-        key = bytes(key, encoding='utf-8')
-    if not all(isinstance(x, int) for x in key):
-        raise ValueError(f"invalid key: {key!r}")
-
-    def _wrapped(data):
-        if isinstance(data, str):
-            data = bytes(data, encoding='utf-8')
-        return bytes(x ^ y for x, y in zip(data, itertools.cycle(key)))
-    return _wrapped
+    def reset(self, path):
+        keyring.delete_password(self.hostname, self.username)
+        remove(path)
 
 
 def prompt_hostname():
