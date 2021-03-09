@@ -1,1 +1,2 @@
 requests==2.24.0
+keyring>=23.0.0

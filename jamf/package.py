@@ -362,7 +362,7 @@ class Package:
                 self._min_os_ver = StrictVersion('10.0')
             # save the metadata for future use
             try:
-                xattr('-w', VERSIONKEY, self._min_os_ver, self.payload)
+                xattr('-w', VERSIONKEY, self._min_os_ver, self.path)
             except subprocess.CalledProcessError:
                 self.log.error(f"xattr failed")
         return self._min_os_ver
