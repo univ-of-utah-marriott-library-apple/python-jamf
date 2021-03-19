@@ -124,5 +124,4 @@ api = jamf.API(hostname='https://example.com:8443', username='james', prompt=Tru
 
 Note, on Linux, the config file is stored as a plist file at ~/.edu.utah.mlib.jamfutil.plist
 
-*For further details please check out [the wiki](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/Introduction).
-
+*For further details please check out [the wiki](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/wiki).
