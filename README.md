@@ -1,5 +1,5 @@
 # python-jamf
-Programmatic Access & Automation of Jamf Pro
+_Programmatic Automation, Access & Control of Jamf Pro_
 
 ## Introduction
 
