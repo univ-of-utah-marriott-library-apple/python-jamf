@@ -9,6 +9,12 @@ The `python-jamf` API class doesn't hide anything from you. It handles the URL r
 
 The python-jamf module also provides undocumented access to Jamf Admin functionality used for uploading items to Jamf Distribution Points.
 
+### Supported Jamf Records
+
+Currently, the python-jamf supports 56 Jamf records like Buildings, Categories, Computers, OSXConfigurationProfiles, and Policies for example.
+
+Each record is a Python object, but they are generic. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the data() method. Lists of records and individual records use the same object type as well. So all class names are plural, regardless if they represent a list of objects or one object.
+
 ## Getting Help
 
  - For further in-depth details please check out [the wiki](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki).
