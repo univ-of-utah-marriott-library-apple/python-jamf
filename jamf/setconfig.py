@@ -136,8 +136,12 @@ def setconfig(argv):
         conf.save(config_path=config_path)
 
 
-if __name__ == '__main__':
+def main():
     check_version()
-    fmt = '%(asctime)s: %(levelname)8s: %(name)s - %(funcName)s(): %(message)s'
+    fmt = "%(asctime)s: %(levelname)8s: %(name)s - %(funcName)s(): %(message)s"
     logging.basicConfig(level=logging.INFO, format=fmt)
     setconfig(sys.argv[1:])
+
+
+if __name__ == "__main__":
+    main()

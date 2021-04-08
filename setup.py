@@ -15,7 +15,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     package_data={'': ['*.json']},
     entry_points={
-        'console_scripts': ['jamfconfig=jamf.setconfig:setconfig']
+        'console_scripts': ['jamfconfig=jamf.setconfig:main']
     },
     classifiers=[
         "Programming Language :: Python :: 3",
