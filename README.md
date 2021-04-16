@@ -17,6 +17,8 @@ Currently, the `python-jamf` supports 56 Jamf records like Buildings, Categories
 
 Each record is a Python object, but they are generic. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the data() method. Lists of records and individual records use the same object type as well. So all class names are plural, regardless if they represent a list of objects or one object.
 
+![python_jamf workflow](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/images/unversial_api_under_construction.png)
+
 ## Getting Help
 
  - For further in-depth details please check out [the wiki](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki).
