@@ -9,6 +9,8 @@ The `python-jamf` API class doesn't hide anything from you. It handles the URL r
 
 The `python-jamf` module also provides undocumented access to Jamf Admin functionality used for uploading items to Jamf Distribution Points.
 
+![python_jamf workflow](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/images/python_jamf_workflow.png)
+
 ### Supported Jamf Records
 
 Currently, the `python-jamf` supports 56 Jamf records like Buildings, Categories, Computers, OSXConfigurationProfiles, and Policies for example.
