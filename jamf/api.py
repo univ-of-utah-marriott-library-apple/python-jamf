@@ -284,11 +284,7 @@ def parse_html_error(error):
     """
     if not error:
         return []
-    try:
-        soup = BeautifulSoup(error, features="html.parser")
-    except NameError:
-        # was unable to import BeautifulSoup
-        soup = JSSErrorParser(error)
+    soup = JSSErrorParser(error)
     # e.g.: ['Unauthorized', 'The request requires user authentication',
     #        'You can get technical details here. (...)']
     # NOTE: get first two <p> tags from HTML error response

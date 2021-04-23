@@ -372,7 +372,6 @@ class Package:
         if not self._info:
             try:
                 _pkginfo = extract(self.path, 'PackageInfo', TMPDIR)
-                #print(_pkginfo)
             except subprocess.CalledProcessError:
                 raise InvalidPackageError(self.path)
             _pkg = package_information(info=_pkginfo)
