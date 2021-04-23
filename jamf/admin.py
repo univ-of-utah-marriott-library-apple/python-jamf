@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 """
-Tools for interacting with Jamf Admin
+Tools for interacting with Jamf Admin (the undocumented Jamf API)
+
+See https://apple.lib.utah.edu/reverse-engineering-jamf-admin/
 """
 
 __author__ = 'Sam Forester'

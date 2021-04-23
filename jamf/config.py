@@ -90,8 +90,18 @@ class Config:
                     fptr.close()
                     if 'JSSHostname' in prefs:
                         if 'Credentials' in prefs:
-                            print("Please delete the prefs "+config_path+" "
-                                  "and recreate them (format has changed).")
+                            cmessage = """
+ATTENTION
+To improve security with storing credentials used with the jctl tool, we have
+deprecated the use of a property list file for storing configuration
+information and have migrated to use the Python keyring library provides an
+easy way to access the system keyring service from python. It can be used with
+the macOS Keychain and Linux KWallet.
+
+Please delete the the configuration at "+config_path+" and recreate it using
+the "setconfig.py" command.
+"""
+                            print(cmessage)
                             exit(1)
                         self.hostname = prefs['JSSHostname']
                         self.username = prefs['Username']
