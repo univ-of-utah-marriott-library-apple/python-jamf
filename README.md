@@ -24,7 +24,7 @@ Each record is a Python object, but they are generic. Objects do not have member
 ### Wiki
 For further in-depth details please check out [the wiki](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki).
 
-###MacAdmin Slack Channel
+### MacAdmin Slack Channel
 If you have additional questions, or need more help getting started, post a question on the MacAdmin's Slack [jctl](https://macadmins.slack.com/archives/C01C8KVV2UD) channel.
 
 <p align="center">
