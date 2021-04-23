@@ -1,7 +1,7 @@
 # python-jamf
 _Programmatic Automation, Access & Control of Jamf Pro_
 
-![python_jamf workflow](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/images/python_jamf_logo.png)
+![python_jamf_logo](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/images/python_jamf_logo.png)
 
 ## Introduction
 
