@@ -1,29 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-#pylint: disable=no-member, missing-class-docstring, signature-differs, missing-function-docstring
 
 """
-records
+Record and Records
 
-A class for each type of record/object in Jamf
+Combination of Sam Forester's Category class and Tony Williams' Records class
+with lots of gluing, fleshing out, and other improvements by James Reynolds
+
+James Reynolds reynolds@biology.utah.edu
+Sam Forester sam.forester@utah.edu
+Tony Williams tonyw@honestpuck.com
+
+Copyright (c) 2020 University of Utah, Marriott Library
+Copyright (c) 2020 Tony Williams
 """
 
-__author__ = 'Tony Williams'
-__email__ = 'tonyw@honestpuck.com'
-__copyright__ = 'Copyright (c) 2020 Tony Williams'
+__author__ = 'James Reynolds, Sam Forester, Tony Williams'
+__email__ = 'reynolds@biology.utah.edu, sam.forester@utah.edu, tonyw@honestpuck.com'
+__copyright__ = 'Copyright (c) 2021 University of Utah, School of Biological Sciences and Copyright (c) 2020 Tony Williams'
 __license__ = 'MIT'
 __date__ = '2020-09-21'
-__version__ = "0.3.6"
+__version__ = "0.4.0"
 
 
+#pylint: disable=relative-beyond-top-level
+from .api import API
+from os import _exit
+from pprint import pprint
 import json
+import logging
+import os.path
 import re
 import sys
-from os import path, _exit
-from pprint import pprint
-#pylint: disable=relative-beyond-top-level
-from . import convert
-from .api import API
+
 __all__ = (
     'AdvancedComputerSearches',
     'AdvancedMobileDeviceSearches',
@@ -38,7 +47,7 @@ __all__ = (
     'ComputerReports',
     'Computers',
     'Departments',
-    'DirectoryBindings', # produces an error when getting by name
+    'DirectoryBindings',
     'DiskEncryptionConfigurations',
     'DistributionPoints',
     'DockItems',
@@ -46,7 +55,6 @@ __all__ = (
     'Ibeacons',
     'JSONWebTokenConfigurations',
     'LDAPServers',
-    'LicensedSoftware',
     'MacApplications',
     'ManagedPreferenceProfiles',
     'MobileDeviceApplications',
@@ -59,7 +67,7 @@ __all__ = (
     'MobileDevices',
     'NetbootServers',
     'NetworkSegments',
-    'OSXConfigurationProfiles', # produces an error when getting by name
+    'OSXConfigurationProfiles',
     'Packages',
     'PatchExternalSources',
     'PatchInternalSources',
@@ -70,7 +78,6 @@ __all__ = (
     'Policies',
     'Printers',
     'RemovableMACAddresses',
-    'RestrictedSoftware',
     'Scripts',
     'Sites',
     'SoftwareUpdateServers',
@@ -91,6 +98,7 @@ def valid_records():
     ])
     return valid
 
+
 #pylint: disable=eval-used
 def class_name(name, case_sensitive=True):
     if case_sensitive and name in valid_records():
@@ -108,203 +116,153 @@ class JamfError(Exception):
         _exit(1)
 
 
-class Record():
-    """
-    A class for an object or list of objects on Jamf Pro
+class Singleton(type):
+    """ allows us to share a single object """
+    _instances = {}
+    def __call__(cls, *a, **kw):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*a, **kw)
+        return cls._instances[cls]
 
-    NOTE: For reasons known only to itself Jamf uses 'wordstogether' for the
-    endpoint in the URL but 'underscore_between' for the XML tags in some
-    endpoints and there are cases where the endpoint and object tag are more
-    different than that.
-    This means we need to know 3 strings for each object type, the endpoint,
-    the top of the list, and the top of the object. We pass them in to __new__
-    as a dict.
-    Just in case that's not confusing enough the id tag is not always 'id'.
-    """
-    _swagger = json.load(open(path.dirname(__file__)+'/records.json', 'r'))
-    _broken_api = [
-        '/directorybindings/name/{name}',
-        '/osxconfigurationprofiles/name/{name}',
-    ]
-    def __new__(cls, args, kwargs):
-        """
-        See the class docstring for an explanation of the parameters
-        """
-        rec = super().__new__(cls)
 
-        # The treasure chest
-        rec._data = None
-        rec.session = API()
-        rec._index = -1
+class ClassicSwagger(metaclass=Singleton):
+    def __init__(self):
+        self._swagger = json.load(open(os.path.dirname(__file__)+'/records.json', 'r'))
+        self._broken_api = [
+            '/directorybindings/name/{name}',
+            '/osxconfigurationprofiles/name/{name}',
+        ]
+        self._p1 = {
+        }
+        self._p2 = {
+        }
+        self._id_text2 = {
+            'MobileDeviceCommands': 'uuid'
+        }
+        self._id_text1 = {
+            'MobileDeviceCommands': 'uuid'
+        }
+        self._p3 = {
+            'RestrictedSoftware': 'restricted_software_title'
+        }
+        self._s1 = {
+            'ComputerReports': 'computer_reports',
+            'RestrictedSoftware': 'restricted_software'
+        }
+        post_template2 = {'general':{'name':'%name%'}}
+        self._post_templates = {
+            'BYOProfile': post_template2,
+            'ComputerConfiguration': post_template2,
+            'ComputerReports': post_template2,
+            'DirectoryBinding': post_template2,
+            'Ebook': post_template2,
+            'Ibeacon': post_template2,
+            'JSONWebTokenConfiguration': post_template2,
+#            'LicensedSoftware': post_template2,
+#            'LDAPServers': post_template2,
+            'MacApplication': post_template2,
+            'ManagedPreferenceProfile': post_template2,
+            'MobileDevice': post_template2,
+            'MobileDeviceApplication': post_template2,
+            'MobileDeviceConfigurationProfile': post_template2,
+            'MobileDeviceEnrollmentProfile': post_template2,
+            'MobileDeviceProvisioningProfile': post_template2,
+            'OSXConfigurationProfile': post_template2,
+            'Package': post_template2,
+            'PatchPolicy': post_template2,
+            'Peripheral': post_template2,
+            'Policy': post_template2,
+            'SoftwareUpdateServer': post_template2,
+            'VPPAccount': post_template2,
+            'VPPAssignment': post_template2,
+            'VPPInvitation': post_template2,
+            'WebHook': post_template2,
+            'ComputerGroups': {'name':'%name%','is_smart':True},
+            'DistributionPoint': {
+                'name':'%name%',
+                'read_only_username':'read_only_username',
+                'read_write_username':'read_write_username',
+                'share_name':'files'
+            },
+            'DockItem': {
+                'name':'%name%',
+                'path':'file://localhost/Applications/Safari.app/', 'type':'App'
+            },
+            'NetbootServer': {'name':'%name%','ip_address':'10.0.0.1'},
+            'NetworkSegment': {
+                'name':'%name%',
+                'starting_address':'10.0.0.1',
+                'ending_address':'10.0.0.1'
+            },
+            'PatchExternalSource': {
+                'general':{'name':'%name%'},
+                'displayName':'%name%',
+                'remoteHostName':'%name%',
+            },
+            'PatchSoftwareTitle': {'name':'%name%', 'source_id':'1'},
+#            'RestrictedSoftware': {'general':{'name':'%name%','process_name':'%name%'}},
+            'UserGroup': {
+                'general':{'name':'%name%'},
+                'is_smart':False
+            }
+        }
 
+
+    def swagger(self, cls, value):
         # The endpoint url, e.g. "Policies" class becomes "policies" endpoint
-        if not hasattr(cls, '_swagger_path_name'):
-            rec._swagger_path_name = cls.__name__.lower()
+        if cls.__name__ in self._p1:
+            p1 = self._p1[cls.__name__]
+        else:
+            p1 = cls.__name__.lower()
 
         # Get the definition name, which almost always is the plural name
-        # exceptions: LicensedSoftware
-        if not hasattr(cls, '_swagger_def_name'):
-            rec._swagger_def_name = rec.get_schema(rec._swagger_path_name)
+        # exceptions: LicensedSoftware, RestrictedSoftware?
+        if cls.__name__ in self._p2:
+            p2 = self._p2[cls.__name__]
+        else:
+            p2 = self.get_schema(p1)
             # If there's an xml entry, use it for the definition name
-            temp2 = cls._swagger['definitions'][rec._swagger_def_name]
+            temp2 = self._swagger['definitions'][p2]
             if ('xml' in temp2 and 'name' in temp2['xml']):
-                rec._swagger_def_name = temp2['xml']['name']
+                p2 = temp2['xml']['name']
 
-        if not hasattr(cls, '_id_text'):
-            rec._id_text = "id"
-
-        if not hasattr(cls, '_id_text2'):
-            rec._id_text2 = "id"
-
-        if not hasattr(cls, '_swagger_plural_key'):
-            # Get the schema, which almost always is the singular name
-            temp1 = rec._swagger_path_name+'/'+rec._id_text+"/{"+rec._id_text2+"}"
-            rec._swagger_plural_key = rec.get_schema(temp1)
-            #getPlural and below
-
-        if not hasattr(cls, '_swagger_singular_key'):
-            rec._swagger_singular_key = rec._swagger_plural_key
-
-        if not hasattr(cls, '_list_to_dict_key'):
-            rec._list_to_dict_key = 'id'
-
-        return rec
-
-    def __init__(self, query='', python_data=None, json_file=None, json_data=None):
-        if json_data:
-            python_data = json.load(json_data)
-            self.post(python_data)
-        elif json_file is not None:
-            if path.exists(json_file):
-                python_data = json.load(open(json_file, 'r'))
-                self.post(python_data)
-            else:
-                raise JamfError(f"File does not exist: {json_file}.")
-        elif python_data is not None:
-            self.post(python_data)
+        if cls.__name__ in self._id_text1:
+            id1 = self._id_text1[cls.__name__]
         else:
-            self.get(query)
+            id1 = "id"
 
-    def get(self, record=''):
-        if record == '':
-            self.getPlural()
+        if cls.__name__ in self._id_text2:
+            id2 = self._id_text2[cls.__name__]
         else:
-            self.getSingle(record)
+            id2 = "id"
 
-    def getPlural(self):
-        lst = self.session.get(self._swagger_path_name)
-        if self._swagger_def_name in lst:
-            lst2 = lst[self._swagger_def_name]
-            if not lst2 or 'size' in lst2 and lst2['size'] == '0':
-                return {}
-            if self._swagger_plural_key in lst2:
-                if 'size' in lst2 and lst2['size'] == '1':
-                    self._data = self.list_to_dict([lst2[self._swagger_plural_key]])
-                else:
-                    self._data = self.list_to_dict(lst2[self._swagger_plural_key])
-                self.plural = True
-            else:
-                raise JamfError(f"Endpoint {self._swagger_path_name} - "
-                                f"{self._swagger_def_name} has no member named "
-                                f"{self._swagger_plural_key} (_swagger_plural_key).")
+        # Get the schema, which almost always is the singular name
+        if cls.__name__ in self._p3:
+            p3 = self._p3[cls.__name__]
         else:
-            raise JamfError(f"Endpoint {self._swagger_path_name} has no "
-                            f"member named {self._swagger_def_name}. Check "
-                            f"the swagger definition file for the name of "
-                            f"{self._swagger_path_name} and set the property "
-                            f"_swagger_def_name for class ({self._swagger_path_name}).")
+            temp1 = f"{p1}/{id1}/{{{id2}}}"
+            p3 = self.get_schema(temp1)
 
-    def getSingle(self, record, key_text=None):
-        if key_text:
-            self._key = record
-            self._key_text = key_text
+        if cls.__name__ in self._s1:
+            s1 = self._s1[cls.__name__]
         else:
-            try:
-                # This wont work if the name is actually a number...
-                self._key = int(record)
-                self._key_text = self._id_text
-            except ValueError:
-                self._key = record
-                self._key_text = 'name'
-        end = f'{self._swagger_path_name}/{self._key_text}/{self._key}'
-        if self.is_action_valid('get', self._key_text):
-            results = self.session.get(end)
-            if self._swagger_singular_key in results:
-                if results[self._swagger_singular_key]:
-                    self._data = results[self._swagger_singular_key]
-                else:
-                    self._data = {}
-                self.plural = False
-            else:
-                print("-------------------------------------"
-                      "-------------------------------------\n"
-                      "Data dump\n")
-                pprint(results)
-                raise JamfError(f"Endpoint {end} has no member named "
-                                f"{self._swagger_singular_key}"
-                                f"(_swagger_singular_key).")
-        else:
-            if self._key_text == "name":
-                # print(f'Converting {record} to id, hope for the best')
-                # Warning! Infinite regression if not careful!
-                self.getSingle(self.convert_name_to_id(record), self._id_text)
-            else:
-                raise JamfError(f'{end}[get] is an invalid action')
+            s1 = p3
 
-    def put(self, data=None, raw=False):
-        if not hasattr(self, '_key'):
-            raise JamfError('Record has no id or name.')
-        end = f'{self._swagger_path_name}/{self._key_text}/{self._key}'
-        if not self.is_action_valid('put', self._key_text):
-            raise JamfError(f'{end} is an invalid endpoint')
-        # Data
-        if data:
-            out = {self._swagger_singular_key: data}
-        else:
-            out = {self._swagger_singular_key: self._data}
-        out = convert.dict_to_xml(out)
-        return self.session.put(end, out, raw)
+#         if not hasattr(cls, '_list_to_dict_key'):
+#             cls._list_to_dict_key = 'id'
 
-    def post(self, python_data, raw=False):
-        if not self._data:
-            end = f'{self._swagger_path_name}/{self._id_text}/0'
-            if not self.is_action_valid('post', self._id_text):
-                raise JamfError(f'{end} is an invalid endpoint')
-            out = {self._swagger_singular_key: python_data}
-            out = convert.dict_to_xml(out)
-            return self.session.post(end, out, raw)
-        else:
-            raise JamfError("Can't post a record, use put")
-
-    def delete(self, raw=False):
-        if not self.plural:
-            if not hasattr(self, '_key'):
-                raise JamfError('Record has no id or name.')
-            end = f'{self._swagger_path_name}/{self._key_text}/{self._key}'
-            if not self.is_action_valid('delete', self._key_text):
-                raise JamfError(f'{end} is an invalid endpoint')
-            return self.session.delete(end, raw)
-        else:
-            raise JamfError("Can't delete a list of records (too dangerous)")
-
-    def list_to_dict(self, lst):
-        """
-        convert list returned by get() into a dict. In most cases it will
-        be keyed on the ID and only have the name but some record types
-        call them something different and some record types have more than
-        name and id. For those it is keyed on ID still but that contains
-        a further dict with the remaining keys
-        """
-        dct = {}
-        keys = list(lst[0].keys())
-        if len(keys) == 2:
-            for elem in lst:
-                dct.update({elem[self._list_to_dict_key]: elem[keys[1]]})
-        else:
-            for elem in lst:
-                keys = elem.pop(self._list_to_dict_key)
-                dct.update({keys: elem})
-        return dct
+        if value == "path_name":
+            return p1
+        if value == "def_name":
+            return p2
+        if value == "id1":
+            return id1
+        if value == "id2":
+            return id2
+        if value == "p3":
+            return p3
+        if value == "s1":
+            return s1
 
     def get_schema(self, swagger_path):
         temp1 = self._swagger['paths']['/'+swagger_path]['get']
@@ -313,459 +271,736 @@ class Record():
             schema = schema[14:]
         return schema
 
-    def is_action_valid(self, a, key_text):
-        p = f'/{self._swagger_path_name}/{key_text}/{{{key_text}}}'
+    def is_action_valid(self, cls, a):
+        p1 = self.swagger(cls, "path_name")
+        id1 = self.swagger(cls, "id1")
+        #id2 = self.swagger(self, cls, "id2")???
+        p = f'/{p1}/{id1}/{{{id1}}}'
         if p in self._broken_api:
             return False
         return p in self._swagger['paths'] and a in self._swagger['paths'][p]
 
-    def convert_name_to_id(self, record_name):
-        self.getPlural()
-        try:
-            return int(self.id(record_name))
-        except ValueError:
-            raise JamfError(f"Couldn't convert {record_name} to id")
+
+class Record:
+    """
+    A class for an object on Jamf Pro
+
+    NOTE: For reasons known only to itself Jamf uses 'wordstogether' for the
+    endpoint in the URL but 'underscore_between' for the XML tags in some
+    endpoints and there are cases where the endpoint and object tag are more
+    different than that.
+
+    This means we need to know 3 strings for each object type, the endpoint,
+    the top of the list, and the top of the object.
+
+    Just in case that's not confusing enough the id tag is not always 'id'.
+    """
+
+    def __new__(cls, jamf_id, name):
+        """
+        returns existing record if one has been instantiated
+        """
+        jamf_id = int(jamf_id)
+        if not hasattr(cls, "_instances"):
+            cls._instances = {}
+        if jamf_id not in cls._instances:
+            rec = super(Record, cls).__new__(cls)
+            rec.cls = cls
+            rec.plural = eval(cls.plural_class)
+            cls._instances[jamf_id] = rec
+
+        return cls._instances[jamf_id]
+
+    def __init__(self, jamf_id, name):
+        self.id = int(jamf_id)
+        self._data = {}
+        self.api = API()
+        self.s = ClassicSwagger()
+        self.name = name
+
+    def __eq__(self, x):
+        if isinstance(x, Record):
+            return self is x
+            # return self.name == x.name and self.id == x.id
+        elif isinstance(x, int):
+            return self.id == x
+        elif isinstance(x, str):
+            if x.isdigit() or x == '-1':
+                return self.id == int(x)
+            else:
+                return self.name == x
+        elif isinstance(x, dict):
+            jamf_id = int(x.get('id', -1))
+            return self.name == x.get('name') and self.id == jamf_id
+        else:
+            raise TypeError(f"can't test equality of {x!r}")
+
+    def __lt__(self, x):
+        if ( self.name < x.name ):
+            return True
+        return False
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.id}, {self.name!r})"
 
     def data(self):
+        if not self._data:
+            self.refresh()
         return self._data
 
-    def list(self, regexes=None, exactMatches=None, ids=None, returnIds=False):
-        results_ = []
-        if not self._data or not self.plural:
-            return results_
+    def refresh(self):
+        p1 = self.s.swagger(self.plural, "path_name")
+        id1 = self.s.swagger(self.plural, "id1")
+        s1 = self.s.swagger(self.plural, "s1")
 
-        for recordId, recordName in self._data.items():
-            append_ = False
-            if recordName:
-                # some results are id:name, some are id:{name:name}
-                if not isinstance(recordName, str) and 'name' in recordName:
-                    recordName = recordName['name']
-                if ids:
-                    for id_ in ids:
-                        if id_ and recordId == id_:
-                            append_ = True
-                if regexes:
-                    for rr in regexes:
-                        if not append_ and re.search(rr, recordName):
-                            append_ = True
-                if exactMatches:
-                    for em in exactMatches:
-                        if not append_ and recordName == em:
-                            append_ = True
-                if not regexes and not exactMatches and not ids:
-                    append_ = True
-                if append_:
-                    if returnIds:
-                        results_.append([recordName,recordId])
-                    else:
-                        results_.append(recordName)
-        return sorted(results_, key=lambda k: (k is None, k == "", k))
+        endpoint = f'{p1}/{id1}/{self.id}'
+        if self.s.is_action_valid(self.plural, 'get'):
+            results = self.api.get(endpoint)
 
-    def get_path(self, path):
-        if self._data:
-            if self.plural:
-                pass
+            if s1 in results:
+                if results[s1]:
+                    self._data = results[s1]
+                else:
+                    self._data = {}
             else:
-                temp = path.split(',')
-                placeholder = self._data
-                for jj in temp:
-                    if placeholder:
-                        if jj in placeholder:
-                            placeholder = placeholder[jj]
-                        else:
-                            return None
-                    else:
-                        return None
-                return placeholder
-
-    def set_path(self, path, value):
-        if self._data:
-            if self.plural:
-                pass
-            else:
-                temp = path.split(',')
-                key = temp.pop()
-                placeholder = self._data
-                for jj in temp:
-                    if placeholder:
-                        if jj in placeholder:
-                            placeholder = placeholder[jj]
-                        else:
-                            return False
-                    else:
-                        return False
-                placeholder[key] = value
-                return True
-
-    def records_by_name(self):
-        objs = {}
-        for ii in self._data:
-            jj = self._data[ii]
-            if isinstance(jj, str):
-                objs[jj] = ii
-            elif 'name' in self._data[ii]:
-                objs[self._data[ii]['name']] = ii
-            else:
-                pprint(self._data)
-                raise JamfError("Couldn't flip names and id's because"
-                                "name is missing.")
-        return objs
-
-    def id(self, name=None):
-        if self.plural and name is not None:
-            objs = self.records_by_name()
-            return objs[name]
+                print("-------------------------------------"
+                      "-------------------------------------\n"
+                      "Data dump\n")
+                pprint(results)
+                raise JamfError(f"Endpoint {endpoint} has no member named "
+                                f"{s1} (s1).")
         else:
-            return self._data['id']
+            raise JamfError(f'get({endpoint}) is an invalid action')
 
-    def __iter__(self):
-        if self.plural:
-            return self
-        else:
-            return None
+class RecordsIterator:
+    def __init__(self, records):
+        self._records = records
+        self._ids = records.ids()
+        self._index = 0
 
     def __next__(self):
-        if self.plural:
-            self._index+=1
-            if not self._data or self._index+1 > len(self._data):
-                raise StopIteration
-            return list(self._data.keys())[self._index]
+        if self._index < (len(self._ids)):
+            if self._index < len(self._ids):
+                id = self._ids[self._index]
+                result = self._records.recordWithId(id)
+            self._index += 1
+            return result
+        # End of Iteration
+        raise StopIteration
+
+
+class Records():
+    """
+    A class for a list of objects on Jamf Pro
+
+    NOTE: For reasons known only to itself Jamf uses 'wordstogether' for the
+    endpoint in the URL but 'underscore_between' for the XML tags in some
+    endpoints and there are cases where the endpoint and object tag are more
+    different than that.
+
+    This means we need to know 3 strings for each object type, the endpoint,
+    the top of the list, and the top of the object.
+
+    Just in case that's not confusing enough the id tag is not always 'id'.
+    """
+
+    def __new__(cls, *a, **kw):
+        rec = super().__new__(cls)
+        rec._records = {}
+        rec.cls = cls
+        rec.s = ClassicSwagger()
+        return rec
+
+    def __init__(self, api=None):
+        self.log = logging.getLogger(f"{__name__}.Records")
+        self.api = api or API()
+
+        self.data = {}
+        self._jamf_ids = {v.id: v for v in self._records.values()}
+        self._names = {v.name: v for v in self._records.values()}
+
+    def __contains__(self, x):
+        return True if self.find(x) else False
+
+    def names(self):
+        if not self.data:
+            self.refresh()
+        return [x for x in self._names.keys()]
+
+    def ids(self):
+        if not self.data:
+            self.refresh()
+        return [x for x in self._jamf_ids.keys()]
+
+    def recordWithId(self, x):
+        if not self.data:
+            self.refresh()
+        return self._jamf_ids.get(x)
+
+    def recordWithName(self, x):
+        if not self.data:
+            self.refresh()
+        return self._names.get(x)
+
+    def recordsWithRegex(self, x):
+        if not self.data:
+            self.refresh()
+        found = []
+        for name in self._names:
+            if re.search(x, name):
+                found.append(self._names[name])
+        return found
+
+
+    def refresh(self):
+
+        p1 = self.s.swagger(self.cls, "path_name")
+        p2 = self.s.swagger(self.cls, "def_name")
+        id1 = self.s.swagger(self.cls, "id1")
+        p3 = self.s.swagger(self.cls, "p3")
+
+        lst = self.api.get(p1)           # e.g. categories
+        if p2 in lst:
+            self.data = lst[p2]
+            if not self.data or not 'size' in self.data or self.data['size'] == '0':
+                self._records = {}
+                self._names = {}
+                self._jamf_ids = {}
+            elif p3 in self.data:         # e.g. category
+                if self.data['size'] == '1':
+                    records = [self.data[p3]]
+                else:
+                    records = self.data[p3]
+                for d in records:
+                    c = self.singular_class(d[id1], d['name'])# e.g. id
+                    c.plural_class = self.cls
+                    self._records.setdefault(int(d[id1]), c)# e.g. id
+                    self._names.setdefault(c.name, c)
+                    self._jamf_ids.setdefault(c.id, c)
+            else:
+                pprint(self.data)
+                raise JamfError(f"Endpoint {p1} - "
+                                f"{p2} has no member named "
+                                f"{p3} (p3).")
         else:
-            return None
+            raise JamfError(f"Endpoint {p1} has no "
+                            f"member named {p2}. Check "
+                            f"the swagger definition file for the name of "
+                            f"{p1} and set the property "
+                            f"p2 for class ({p1}).")
 
-class AdvancedComputerSearches(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+    def find(self, x):
+        if not self.data:
+            self.refresh()
+        if isinstance(x, int):
+            # check for record id
+            result = self._jamf_ids.get(x)
+        elif isinstance(x, str):
+            try:
+                result = self._jamf_ids.get(int(x))
+            except ValueError:
+                result = self._names.get(x)
+        elif isinstance(x, dict):
+            keys = ('id', 'jamf_id', 'name')
+            try:
+                key = [k for k in x.keys() if k in keys][0]
+            except IndexError:
+                result = None
+            else:
+                if key in ('id', 'jamf_id'):
+                    result = self._jamf_ids.get(int(x[key]))
+                elif key == 'name':
+                    result = self._names.get(key)
+        elif isinstance(x, Record):
+            result = x
+        else:
+            raise TypeError(f"can't look for {type(x)}")
+        return result
 
-    def members(self, record):
-        """
-        returns a list of the group members when passed a record
-        """
-        return self.list_to_dict(
-            record['computers']['computer']
-        )
+    def __iter__(self):
+        return RecordsIterator(self)
 
 
-class AdvancedMobileDeviceSearches(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class AdvancedComputerSearch(Record):
+    plural_class = "AdvancedComputerSearches"
 
 
-class AdvancedUserSearches(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class AdvancedComputerSearches(Records, metaclass=Singleton):
+    # http://localhost/computers.html
+    singular_class = AdvancedComputerSearch
 
 
-class Buildings(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class AdvancedMobileDeviceSearch(Record):
+    plural_class = "AdvancedMobileDeviceSearches"
 
 
-class BYOProfiles(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class AdvancedMobileDeviceSearches(Records, metaclass=Singleton):
+    # http://localhost/mobileDevices.html
+    singular_class = AdvancedMobileDeviceSearch
 
 
-class Categories(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class AdvancedUserSearch(Record):
+    plural_class = "AdvancedUserSearches"
 
 
-class Classes(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class AdvancedUserSearches(Records, metaclass=Singleton):
+    # http://localhost/users.html
+    singular_class = AdvancedUserSearch
 
 
-class ComputerConfigurations(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class Building(Record):
+    plural_class = "Buildings"
 
 
-class ComputerExtensionAttributes(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class Buildings(Records, metaclass=Singleton):
+    # http://localhost/view/settings/network/buildings
+    singular_class = Building
 
 
-class ComputerGroups(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class BYOProfile(Record):
+    plural_class = "BYOProfiles"
 
-    def add_computers(self, new_computers):
-        """
-        adds an array of computers in this format:
-        [
-            { 'computer': { 'id': '1' }, },
-            { 'computer': { 'name': 'xserve-01' }, },
-            { 'computer': { 'serial_number': 'C01234567890' }, },
-        ]
-        """
-        self.put( { 'computer_additions': new_computers } )
 
-    def add_computer(self, new_computer):
-        """
-        adds a computer in this format: { 'key': 'val' }
-        key can be id, name, serial_number, and maybe even more.
-        """
-        self.put( { 'computer_additions': { 'computer': new_computer } } )
+class BYOProfiles(Records, metaclass=Singleton):
+    singular_class = BYOProfile
 
-    def members(self, record):
-        """
-        returns a list of the group members when passed a record
-        """
-        return self.list_to_dict(
-            record['computers']['computer']
-        )
 
+class Category(Record):
+    plural_class = "Categories"
 
-class ComputerReports(Record):
-    _swagger_singular_key = 'computer_reports'
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Categories(Records, metaclass=Singleton):
+    # http://localhost/categories.html
+    singular_class = Category
 
-class Computers(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Class(Record):
+    plural_class = "Classes"
 
-class Departments(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Classes(Records, metaclass=Singleton):
+    # http://localhost/classes.html
+    singular_class = Class
 
-class DirectoryBindings(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Computer(Record):
+    plural_class = "Computers"
 
-class DiskEncryptionConfigurations(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Computers(Records, metaclass=Singleton):
+    singular_class = Computer
+    # http://localhost/computers.html?queryType=COMPUTERS&query=
 
-class DistributionPoints(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class ComputerConfiguration(Record):
+    plural_class = "ComputerConfigurations"
 
-class DockItems(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class ComputerConfigurations(Records, metaclass=Singleton):
+    singular_class = ComputerConfiguration
 
-class Ebooks(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class ComputerExtensionAttribute(Record):
+    plural_class = "ComputerExtensionAttributes"
 
-class Ibeacons(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class ComputerExtensionAttributes(Records, metaclass=Singleton):
+    # http://localhost/computerExtensionAttributes.html
+    singular_class = ComputerExtensionAttribute
 
-class JSONWebTokenConfigurations(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class ComputerGroup(Record):
+    plural_class = "ComputerGroups"
 
-class LDAPServers(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class ComputerGroups(Records, metaclass=Singleton):
+    # http://localhost/smartComputerGroups.html
+    # http://localhost/staticComputerGroups.html
+    singular_class = ComputerGroup
 
-class LicensedSoftware(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class ComputerReport(Record):
+    plural_class = "ComputerReports"
 
-class MacApplications(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class ComputerReports(Records, metaclass=Singleton):
+    singular_class = ComputerReport
 
-class ManagedPreferenceProfiles(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Department(Record):
+    plural_class = "Departments"
 
-class MobileDeviceApplications(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Departments(Records, metaclass=Singleton):
+    # http://localhost/departments.html
+    singular_class = Department
 
-class MobileDeviceCommands(Record):
-    _list_to_dict_key = "uuid"
-    _id_text = "uuid"
-    _id_text2 = "uuid"
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class DirectoryBinding(Record):
+    plural_class = "DirectoryBindings"
 
-class MobileDeviceConfigurationProfiles(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class DirectoryBindings(Records, metaclass=Singleton):
+    singular_class = DirectoryBinding
 
-class MobileDeviceEnrollmentProfiles(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class DiskEncryptionConfiguration(Record):
+    plural_class = "DiskEncryptionConfigurations"
 
-class MobileDeviceExtensionAttributes(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class DiskEncryptionConfigurations(Records, metaclass=Singleton):
+    # http://localhost/diskEncryptions.html
+    singular_class = DiskEncryptionConfiguration
 
-class MobileDeviceInvitations(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class DistributionPoint(Record):
+    plural_class = "DistributionPoints"
 
-class MobileDeviceProvisioningProfiles(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class DistributionPoints(Records, metaclass=Singleton):
+    singular_class = DistributionPoint
 
-class MobileDevices(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class DockItem(Record):
+    plural_class = "DockItems"
 
-class NetbootServers(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class DockItems(Records, metaclass=Singleton):
+    # http://localhost/dockItems.html
+    singular_class = DockItem
 
-class NetworkSegments(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Ebook(Record):
+    plural_class = "Ebooks"
 
-class OSXConfigurationProfiles(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Ebooks(Records, metaclass=Singleton):
+    singular_class = Ebook
 
-class Packages(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Ibeacon(Record):
+    plural_class = "Ibeacons"
 
-class PatchExternalSources(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class Ibeacons(Records, metaclass=Singleton):
+    singular_class = Ibeacon
 
-class PatchInternalSources(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class JSONWebTokenConfiguration(Record):
+    plural_class = "JSONWebTokenConfigurations"
 
-class PatchPolicies(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
-    def get_softwaretitleconfig(self, record=''):
-        """ 7 is a good example """
-        end = f'{self._swagger_path_name}softwaretitleconfig/id/{record}'
-        lst = self.session.get(end)[self._swagger_def_name][self._swagger_singular_key]
-        return self.list_to_dict(lst)
+class JSONWebTokenConfigurations(Records, metaclass=Singleton):
+    singular_class = JSONWebTokenConfiguration
 
-    def post_softwaretitleconfig(self, record, data, raw=False):
-        if isinstance(data, dict):
-            out = []
-            out[self._swagger_def_name][self._swagger_singular_key] = data
-        end = f'{self._swagger_path_name}softwaretitleconfig/id/{record}'
-        return self.session.post(end, data, raw)
 
-class PatchSoftwareTitles(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class LDAPServer(Record):
+    plural_class = "LDAPServers"
 
 
-class Peripherals(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class LDAPServers(Records, metaclass=Singleton):
+    singular_class = LDAPServer
 
 
-class PeripheralTypes(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class MacApplication(Record):
+    plural_class = "MacApplications"
 
 
-class Policies(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+class MacApplications(Records, metaclass=Singleton):
+    singular_class = MacApplication
 
-    def scope(self, record):
-        """
-        returns a dict of the scope categories to the policy when passed a record
-        """
-        return record['scope']
 
+class ManagedPreferenceProfile(Record):
+    plural_class = "ManagedPreferenceProfiles"
 
-class Printers(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class ManagedPreferenceProfiles(Records, metaclass=Singleton):
+    singular_class = ManagedPreferenceProfile
 
-class RemovableMACAddresses(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDevice(Record):
+    plural_class = "MobileDevices"
 
-class RestrictedSoftware(Record):
-    _swagger_plural_key = 'restricted_software_title'
-    _swagger_singular_key = 'restricted_software'
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDevices(Records, metaclass=Singleton):
+    # http://localhost/mobileDevices.html?queryType=MOBILE_DEVICES&query=
+    singular_class = MobileDevice
 
-class Scripts(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDeviceApplication(Record):
+    plural_class = "MobileDeviceApplications"
 
-class Sites(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDeviceApplications(Records, metaclass=Singleton):
+    singular_class = MobileDeviceApplication
 
-class SoftwareUpdateServers(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDeviceCommand(Record):
+    plural_class = "MobileDeviceCommands"
 
-class UserExtensionAttributes(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDeviceCommands(Records, metaclass=Singleton):
+    singular_class = MobileDeviceCommand
 
-class UserGroups(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDeviceConfigurationProfile(Record):
+    plural_class = "MobileDeviceConfigurationProfiles"
 
-class Users(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDeviceConfigurationProfiles(Records, metaclass=Singleton):
+    singular_class = MobileDeviceConfigurationProfile
 
-class VPPAccounts(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDeviceEnrollmentProfile(Record):
+    plural_class = "MobileDeviceEnrollmentProfiles"
 
-class VPPAssignments(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDeviceEnrollmentProfiles(Records, metaclass=Singleton):
+    singular_class = MobileDeviceEnrollmentProfile
 
-class VPPInvitations(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
 
+class MobileDeviceExtensionAttribute(Record):
+    plural_class = "MobileDeviceExtensionAttributes"
 
-class WebHooks(Record):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args, kwargs)
+
+class MobileDeviceExtensionAttributes(Records, metaclass=Singleton):
+    # http://localhost/mobileDeviceExtensionAttributes.html
+    singular_class = MobileDeviceExtensionAttribute
+
+
+class MobileDeviceInvitation(Record):
+    plural_class = "MobileDeviceInvitations"
+
+
+class MobileDeviceInvitations(Records, metaclass=Singleton):
+    singular_class = MobileDeviceInvitation
+
+
+class MobileDeviceProvisioningProfile(Record):
+    plural_class = "MobileDeviceProvisioningProfiles"
+
+
+class MobileDeviceProvisioningProfiles(Records, metaclass=Singleton):
+    singular_class = MobileDeviceProvisioningProfile
+
+
+class NetbootServer(Record):
+    plural_class = "NetbootServers"
+
+
+class NetbootServers(Records, metaclass=Singleton):
+    singular_class = NetbootServer
+
+
+class NetworkSegment(Record):
+    plural_class = "NetworkSegments"
+
+
+class NetworkSegments(Records, metaclass=Singleton):
+    singular_class = NetworkSegment
+
+
+class OSXConfigurationProfile(Record):
+    plural_class = "OSXConfigurationProfiles"
+
+
+class OSXConfigurationProfiles(Records, metaclass=Singleton):
+    singular_class = OSXConfigurationProfile
+
+
+class Package(Record):
+    plural_class = "Packages"
+
+
+class Packages(Records, metaclass=Singleton):
+    singular_class = Package
+
+
+class PatchExternalSource(Record):
+    plural_class = "PatchExternalSources"
+
+
+
+class PatchExternalSources(Records, metaclass=Singleton):
+    singular_class = PatchExternalSource
+
+
+class PatchInternalSource(Record):
+    plural_class = "PatchInternalSources"
+
+
+class PatchInternalSources(Records, metaclass=Singleton):
+    singular_class = PatchInternalSource
+
+
+class PatchPolicy(Record):
+    plural_class = "PatchPolicies"
+
+
+class PatchPolicies(Records, metaclass=Singleton):
+    singular_class = PatchPolicy
+
+
+class PatchSoftwareTitle(Record):
+    plural_class = "PatchSoftwareTitles"
+
+
+class PatchSoftwareTitles(Records, metaclass=Singleton):
+    singular_class = PatchSoftwareTitle
+
+
+class Peripheral(Record):
+    plural_class = "Peripherals"
+
+
+class Peripherals(Records, metaclass=Singleton):
+    singular_class = Peripheral
+
+
+class PeripheralType(Record):
+    plural_class = "PeripheralTypes"
+
+
+class PeripheralTypes(Records, metaclass=Singleton):
+    # I have no idea how to view this data in the web interface
+    singular_class = PeripheralType
+
+
+class Policy(Record):
+    plural_class = "Policies"
+
+
+class Policies(Records, metaclass=Singleton):
+    singular_class = Policy
+
+
+class Printer(Record):
+    plural_class = "Printers"
+
+
+class Printers(Records, metaclass=Singleton):
+    # http://localhost/printers.html
+    singular_class = Printer
+
+
+class RemovableMACAddress(Record):
+    plural_class = "RemovableMACAddresses"
+
+
+class RemovableMACAddresses(Records, metaclass=Singleton):
+    # I have no idea how to view this data in the web interface
+    singular_class = RemovableMACAddress
+
+
+class Script(Record):
+    plural_class = "Scripts"
+
+
+class Scripts(Records, metaclass=Singleton):
+    # http://localhost/view/settings/computer/scripts
+    singular_class = Script
+
+
+class Site(Record):
+    plural_class = "Sites"
+
+
+class Sites(Records, metaclass=Singleton):
+    # http://localhost/sites.html
+    singular_class = Site
+
+
+class SoftwareUpdateServer(Record):
+    plural_class = "SoftwareUpdateServers"
+
+
+class SoftwareUpdateServers(Records, metaclass=Singleton):
+    singular_class = SoftwareUpdateServer
+
+
+class User(Record):
+    plural_class = "Users"
+
+
+class Users(Records, metaclass=Singleton):
+    # http://localhost/users.html?query=
+    singular_class = User
+
+
+class UserExtensionAttribute(Record):
+    plural_class = "UserExtensionAttributes"
+
+
+class UserExtensionAttributes(Records, metaclass=Singleton):
+    # http://localhost/userExtensionAttributes.html
+    singular_class = UserExtensionAttribute
+
+
+class UserGroup(Record):
+    plural_class = "UserGroups"
+
+
+class UserGroups(Records, metaclass=Singleton):
+    singular_class = UserGroup
+
+
+class VPPAccount(Record):
+    plural_class = "VPPAccounts"
+
+
+class VPPAccounts(Records, metaclass=Singleton):
+    singular_class = VPPAccount
+
+
+class VPPAssignment(Record):
+    plural_class = "VPPAssignments"
+
+
+class VPPAssignments(Records, metaclass=Singleton):
+    singular_class = VPPAssignment
+
+
+class VPPInvitation(Record):
+    plural_class = "VPPInvitations"
+
+
+class VPPInvitations(Records, metaclass=Singleton):
+    singular_class = VPPInvitation
+
+
+class WebHook(Record):
+    plural_class = "WebHooks"
+
+
+class WebHooks(Records, metaclass=Singleton):
+    singular_class = WebHook
+
+
+def jamf_records(cls, name='', exclude=()):
+    """
+    Get Jamf Records
+
+    :param cls  <str>:       name of class
+    :param name  <str>:      name in record['name']
+    :param exclude  <iter>:  record['name'] not in exclude
+
+    :returns:  list of dicts: [{'id': jamf_id, 'name': name}, ...]
+    """
+    # exclude specified records by full name
+    included = [c for c in cls() if c.name not in exclude]
+    # NOTE: empty string ('') always in all other strings
+    return [c for c in included if name in c.name]
+
+def categories(name='', exclude=()):
+    """
+    Get Jamf Categories
+
+    :param name  <str>:      name in record['name']
+    :param exclude  <iter>:  record['name'] not in exclude
+
+    :returns:  list of dicts: [{'id': jamf_id, 'name': name}, ...]
+    """
+    return jamf_records(Categories, name, exclude)
