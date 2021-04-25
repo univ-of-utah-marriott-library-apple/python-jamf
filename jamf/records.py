@@ -346,11 +346,6 @@ class Record:
     def __repr__(self):
         return f"{self.__class__.__name__}({self.id}, {self.name!r})"
 
-    def data(self):
-        if not self._data:
-            self.refresh()
-        return self._data
-
     def refresh(self):
         p1 = self.s.swagger(self.plural, "path_name")
         id1 = self.s.swagger(self.plural, "id1")
@@ -374,6 +369,27 @@ class Record:
                                 f"{s1} (s1).")
         else:
             raise JamfError(f'get({endpoint}) is an invalid action')
+
+    def data(self):
+        if not self._data:
+            self.refresh()
+        return self._data
+
+    def get_path(self, path):
+        if not self._data:
+            self.refresh()
+        temp = path.split('/')
+        placeholder = self._data
+        for jj in temp:
+            if placeholder:
+                if jj in placeholder:
+                    placeholder = placeholder[jj]
+                else:
+                    return None
+            else:
+                return None
+        return placeholder
+
 
 class RecordsIterator:
     def __init__(self, records):
@@ -453,7 +469,6 @@ class Records():
             if re.search(x, name):
                 found.append(self._names[name])
         return found
-
 
     def refresh(self):
 
