@@ -32,7 +32,7 @@ from . import api
 from . import config
 from . import convert
 from . import package
-from . import category
+from . import records
 
 # GLOBALS
 logger = logging.getLogger(__name__)
@@ -104,7 +104,7 @@ class JamfAdmin(metaclass=Singleton):
         self.session = requests.Session()
         self.session.auth = (username, password)
         self.data = self.authenticate()
-        self.categories = category.Categories()
+        self.categories = records.Categories()
         for share in self.fileservers:
             if share['master'] == 'true':
                 self.fileshare = FileShare.fromJXML(share)
@@ -393,7 +393,7 @@ class Package(package.Package):
         self._md5 = data.get('checksum')
         self._sha512 = data.get('hashValue')
         self.jssid = int(data['id'])
-        self.category = category.Categories().find(data.get('groupid', '-1'))
+        self.category = records.Categories().find(data.get('groupid', '-1'))
         self.notes = data.get('notes', '')
         try:
             self._info = json.loads(data.get('info', '{}'))

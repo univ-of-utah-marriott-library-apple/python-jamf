@@ -8,7 +8,7 @@ __author__ = 'Sam Forester'
 __email__ = 'sam.forester@utah.edu'
 __copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
 __license__ = 'MIT'
-__version__ = "1.1.2"
+__version__ = "1.1.3"
 
 # import re
 import os
@@ -22,7 +22,7 @@ import datetime as dt
 from distutils.version import StrictVersion, LooseVersion
 from xml.etree import ElementTree as ET
 
-from .category import Categories
+from .record import Categories
 
 # GLOBALS
 TMPDIR = os.environ.get('TMPDIR', '/tmp')
