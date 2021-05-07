@@ -20,7 +20,7 @@ __email__ = 'reynolds@biology.utah.edu, sam.forester@utah.edu, tonyw@honestpuck.
 __copyright__ = 'Copyright (c) 2021 University of Utah, School of Biological Sciences and Copyright (c) 2020 Tony Williams'
 __license__ = 'MIT'
 __date__ = '2020-09-21'
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 
 #pylint: disable=relative-beyond-top-level
@@ -207,6 +207,20 @@ class ClassicSwagger(metaclass=Singleton):
             }
         }
 
+    def s1(self, className):
+        return self.swagger(className, "s1")
+
+    def record_endpoint(self, className, recid):
+        p1 = self.swagger(className, "path_name")
+        id1 = self.swagger(className, "id1")
+        s1 = self.swagger(className, "s1")
+        return f'{p1}/{id1}/{recid}'
+
+    def list_endpoint(self, className):
+        p1 = self.swagger(className, "path_name")
+        id1 = self.swagger(className, "id1")
+        s1 = self.swagger(className, "s1")
+        return f'{p1}/{id1}/{self.id}'
 
     def swagger(self, cls, value):
         # The endpoint url, e.g. "Policies" class becomes "policies" endpoint
@@ -271,10 +285,10 @@ class ClassicSwagger(metaclass=Singleton):
             schema = schema[14:]
         return schema
 
-    def is_action_valid(self, cls, a):
-        p1 = self.swagger(cls, "path_name")
-        id1 = self.swagger(cls, "id1")
-        #id2 = self.swagger(self, cls, "id2")???
+    def is_action_valid(self, className, a):
+        p1 = self.swagger(className, "path_name")
+        id1 = self.swagger(className, "id1")
+        #id2 = self.swagger(self, className, "id2")???
         p = f'/{p1}/{id1}/{{{id1}}}'
         if p in self._broken_api:
             return False
@@ -336,44 +350,83 @@ class Record:
             raise TypeError(f"can't test equality of {x!r}")
 
     def __lt__(self, x):
-        if ( self.name < x.name ):
+        if ( self.name and x.name and self.name < x.name ):
             return True
         return False
 
     def __str__(self):
-        return self.name
+        if self.name:
+            return self.name
+        else:
+            return "Empty name"
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.id}, {self.name!r})"
+
+    def refresh(self):
+        end = self.s.record_endpoint(self.plural, self.id)
+        if not self.s.is_action_valid(self.plural, 'get'):
+            raise JamfError(f'get({end}) is an invalid action for get')
+        results = self.api.get(end)
+        s1 = self.s.s1(self.plural)
+        if not s1 in results:
+            print("---------------------------------------------\nData dump\n")
+            pprint(results)
+            raise JamfError(f"Endpoint {end} has no member named {s1} (s1).")
+        if results[s1]:
+            self._data = results[s1]
+        else:
+            self._data = {}
+
+    def delete(self, raw=False):
+        end = self.s.record_endpoint(self.plural, self.id)
+        if not self.s.is_action_valid(self.plural, 'delete'):
+            raise JamfError(f'{end} is an invalid endpoint for delete')
+        return self.api.delete(end, raw)
+
+    def save(self):
+        end = self.s.record_endpoint(self.plural, self.id)
+        s1 = self.s.s1(self.plural)
+        if not self.s.is_action_valid(self.plural, 'put'):
+            raise JamfError(f'{end} is an invalid endpoint for put')
+        out = {s1: self._data}
+        return self.api.put(end, out)
 
     def data(self):
         if not self._data:
             self.refresh()
         return self._data
 
-    def refresh(self):
-        p1 = self.s.swagger(self.plural, "path_name")
-        id1 = self.s.swagger(self.plural, "id1")
-        s1 = self.s.swagger(self.plural, "s1")
-
-        endpoint = f'{p1}/{id1}/{self.id}'
-        if self.s.is_action_valid(self.plural, 'get'):
-            results = self.api.get(endpoint)
-
-            if s1 in results:
-                if results[s1]:
-                    self._data = results[s1]
+    def get_path(self, path):
+        if not self._data:
+            self.refresh()
+        temp = path.split('/')
+        placeholder = self._data
+        for jj in temp:
+            if placeholder:
+                if jj in placeholder:
+                    placeholder = placeholder[jj]
                 else:
-                    self._data = {}
+                    return None
             else:
-                print("-------------------------------------"
-                      "-------------------------------------\n"
-                      "Data dump\n")
-                pprint(results)
-                raise JamfError(f"Endpoint {endpoint} has no member named "
-                                f"{s1} (s1).")
+                return None
+        return placeholder
+
+    def set_path(self, path, value):
+        temp1 = path.split('/')
+        endpoint = temp1.pop()
+        temp2 = "/".join(temp1)
+        print("set_path")
+        print(temp2)
+        print(value)
+        placeholder = self.get_path(temp2)
+
+        if placeholder and endpoint in placeholder:
+            placeholder[endpoint] = value
+            return True
         else:
-            raise JamfError(f'get({endpoint}) is an invalid action')
+            return False
+
 
 class RecordsIterator:
     def __init__(self, records):
@@ -454,16 +507,13 @@ class Records():
                 found.append(self._names[name])
         return found
 
-
     def refresh(self):
-
         p1 = self.s.swagger(self.cls, "path_name")
-        p2 = self.s.swagger(self.cls, "def_name")
-        id1 = self.s.swagger(self.cls, "id1")
-        p3 = self.s.swagger(self.cls, "p3")
-
         lst = self.api.get(p1)           # e.g. categories
+        p2 = self.s.swagger(self.cls, "def_name")
         if p2 in lst:
+            id1 = self.s.swagger(self.cls, "id1")
+            p3 = self.s.swagger(self.cls, "p3")
             self.data = lst[p2]
             if not self.data or not 'size' in self.data or self.data['size'] == '0':
                 self._records = {}
