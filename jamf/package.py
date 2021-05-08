@@ -22,7 +22,7 @@ import datetime as dt
 from distutils.version import StrictVersion, LooseVersion
 from xml.etree import ElementTree as ET
 
-from .record import Categories
+from .records import Categories
 
 # GLOBALS
 TMPDIR = os.environ.get('TMPDIR', '/tmp')
