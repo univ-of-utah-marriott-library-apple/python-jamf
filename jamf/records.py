@@ -416,11 +416,7 @@ class Record:
         temp1 = path.split('/')
         endpoint = temp1.pop()
         temp2 = "/".join(temp1)
-        print("set_path")
-        print(temp2)
-        print(value)
         placeholder = self.get_path(temp2)
-
         if placeholder and endpoint in placeholder:
             placeholder[endpoint] = value
             return True
