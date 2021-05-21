@@ -20,12 +20,11 @@ __email__ = 'reynolds@biology.utah.edu, sam.forester@utah.edu, tonyw@honestpuck.
 __copyright__ = 'Copyright (c) 2021 University of Utah, School of Biological Sciences and Copyright (c) 2020 Tony Williams'
 __license__ = 'MIT'
 __date__ = '2020-09-21'
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 
 
 #pylint: disable=relative-beyond-top-level
 from .api import API
-from os import _exit
 from pprint import pprint
 import json
 import logging
@@ -113,8 +112,11 @@ def class_name(name, case_sensitive=True):
 class JamfError(Exception):
     def __init__(self, message):
         print(f"jctl: error: {message}", file=sys.stderr)
-        _exit(1)
+        exit(1)
 
+#pylint: disable=super-init-not-called
+class NotFound(Exception):
+    pass
 
 class Singleton(type):
     """ allows us to share a single object """
@@ -397,20 +399,43 @@ class Record:
             self.refresh()
         return self._data
 
+    def get_path2(self, path, placeholder, index=0):
+        current = path[index]
+        if type(placeholder) is dict:
+            if current in placeholder:
+                if index+1 >= len(path):
+                    return placeholder[current]
+                placeholder = self.get_path2(path, placeholder[current], index+1)
+            else:
+                return None
+        elif type(placeholder) is list:
+            # I'm not sure this is the best way to handle arrays...
+            result = []
+            for item in placeholder:
+                if current in item:
+                    if index+1 < len(path):
+                        result.append(self.get_path2(path, item[current], index+1))
+                    else:
+                        result.append(item[current])
+            placeholder = result
+        elif placeholder == None:
+            return None
+        else:
+            print("Something went wrong in get_path2")
+            exit()
+        return placeholder
+
     def get_path(self, path):
         if not self._data:
             self.refresh()
-        temp = path.split('/')
-        placeholder = self._data
-        for jj in temp:
-            if placeholder:
-                if jj in placeholder:
-                    placeholder = placeholder[jj]
-                else:
-                    return None
-            else:
-                return None
-        return placeholder
+        try:
+            result = self.get_path2(path.split('/'), self._data)
+        except NotFound as error:
+            print("Not Found")
+            result = []
+        if type(result) is list or result == None:
+            return result
+        return [result]
 
     def set_path(self, path, value):
         temp1 = path.split('/')
@@ -863,7 +888,83 @@ class Package(Record):
 
 class Packages(Records, metaclass=Singleton):
     singular_class = Package
+    sub_commands = {
+        'view_included': {
+            'makes_a_change': False,
+            'required_args': 0,
+            'when_to_run': 'print',
+        },
+    }
 
+    def view_included(self):
+        if not hasattr(self.__class__, 'related'):
+            self.__class__.related = {
+                'policies':{},
+                'groups':{},
+                'patchsoftwaretitles':{},
+                'patchpolicies':{},
+            }
+            patchsoftwaretitles = jamf_records(PatchSoftwareTitles)
+            patchsoftwaretitles_ids = {}
+            for title in patchsoftwaretitles:
+                pkgs = title.get_path("versions/version/package/name")
+                versions = title.get_path("versions/version/software_version")
+                if pkgs:
+                    for ii, pkg in enumerate(pkgs):
+                        if pkg == None:
+                            continue
+                        if not str(title.id) in patchsoftwaretitles_ids:
+                            patchsoftwaretitles_ids[str(title.id)] = {}
+                        patchsoftwaretitles_ids[str(title.id)][versions[ii]] = pkg
+                        if not pkg in self.__class__.related['patchsoftwaretitles']:
+                            self.__class__.related['patchsoftwaretitles'][pkg] = []
+                        self.__class__.related['patchsoftwaretitles'][pkg].append(title.name+" - "+versions[ii])
+            patchpolicies = jamf_records(PatchPolicies)
+            for policy in patchpolicies:
+                parent_id = policy.get_path("software_title_configuration_id")[0]
+                parent_version = policy.get_path("general/target_version")[0]
+                if str(parent_id) in patchsoftwaretitles_ids:
+                    ppp = patchsoftwaretitles_ids[str(parent_id)]
+                    if parent_version in ppp:
+                        pkg = ppp[parent_version]
+                        if not pkg in self.__class__.related['patchpolicies']:
+                            self.__class__.related['patchpolicies'][pkg] = []
+                        self.__class__.related['patchpolicies'][pkg].append(policy.name)
+            policies = jamf_records(Policies)
+            for policy in policies:
+                pkgs = policy.get_path("package_configuration/packages/package/name")
+                if pkgs:
+                    for pkg in pkgs:
+                        if not pkg in self.__class__.related['policies']:
+                            self.__class__.related['policies'][pkg] = []
+                        self.__class__.related['policies'][pkg].append(policy.name)
+            groups = jamf_records(ComputerGroups)
+            for group in groups:
+                pkgs = group.get_path("criteria/criterion/value")
+                if pkgs:
+                    for pkg in pkgs:
+                        if not pkg in self.__class__.related['groups']:
+                            self.__class__.related['groups'][pkg] = []
+                        self.__class__.related['groups'][pkg].append(group.name)
+#             pprint(self.__class__.related)
+        print(self.name)
+        if self.name in self.__class__.related['policies']:
+            print("  Policies")
+            for x in self.__class__.related['policies'][self.name]:
+                print("    "+x)
+        if self.name in self.__class__.related['groups']:
+            print("  ComputerGroups")
+            for x in self.__class__.related['groups'][self.name]:
+                print("    "+x)
+        if self.name in self.__class__.related['patchsoftwaretitles']:
+            print("  PatchSoftwareTitles")
+            for x in self.__class__.related['patchsoftwaretitles'][self.name]:
+                print("    "+x)
+        if self.name in self.__class__.related['patchpolicies']:
+            print("  PatchPolicies")
+            for x in self.__class__.related['patchpolicies'][self.name]:
+                print("    "+x)
+        print()
 
 class PatchExternalSource(Record):
     plural_class = "PatchExternalSources"
@@ -948,7 +1049,16 @@ class Script(Record):
 class Scripts(Records, metaclass=Singleton):
     # http://localhost/view/settings/computer/scripts
     singular_class = Script
-
+    sub_commands = {
+        'script_contents': {
+            'makes_a_change': False,
+            'required_args': 0,
+            'when_to_run': 'print',
+        },
+    }
+    def script_contents(self):
+        printme = self.get_path("script_contents")
+        print(printme[0])
 
 class Site(Record):
     plural_class = "Sites"
