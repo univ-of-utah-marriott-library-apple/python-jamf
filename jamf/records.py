@@ -20,7 +20,7 @@ __email__ = 'reynolds@biology.utah.edu, sam.forester@utah.edu, tonyw@honestpuck.
 __copyright__ = 'Copyright (c) 2021 University of Utah, School of Biological Sciences and Copyright (c) 2020 Tony Williams'
 __license__ = 'MIT'
 __date__ = '2020-09-21'
-__version__ = "0.4.2"
+__version__ = "0.4.3"
 
 
 #pylint: disable=relative-beyond-top-level
@@ -131,154 +131,182 @@ class ClassicSwagger(metaclass=Singleton):
     def __init__(self):
         self._swagger = json.load(open(os.path.dirname(__file__)+'/records.json', 'r'))
         self._broken_api = [
-            '/directorybindings/name/{name}',
-            '/osxconfigurationprofiles/name/{name}',
         ]
-        self._p1 = {
-        }
-        self._p2 = {
-        }
-        self._id_text2 = {
-            'MobileDeviceCommands': 'uuid'
-        }
-        self._id_text1 = {
-            'MobileDeviceCommands': 'uuid'
-        }
-        self._p3 = {
-            'RestrictedSoftware': 'restricted_software_title'
-        }
-        self._s1 = {
-            'ComputerReports': 'computer_reports',
-            'RestrictedSoftware': 'restricted_software'
-        }
         post_template2 = {'general':{'name':'%name%'}}
         self._post_templates = {
-            'BYOProfile': post_template2,
-            'ComputerConfiguration': post_template2,
+            'BYOProfiles': post_template2,
+            'ComputerConfigurations': post_template2,
             'ComputerReports': post_template2,
-            'DirectoryBinding': post_template2,
-            'Ebook': post_template2,
-            'Ibeacon': post_template2,
-            'JSONWebTokenConfiguration': post_template2,
+            'DirectoryBindings': post_template2,
+            'Ebooks': post_template2,
+            'JSONWebTokenConfigurations': post_template2,
 #            'LicensedSoftware': post_template2,
 #            'LDAPServers': post_template2,
-            'MacApplication': post_template2,
-            'ManagedPreferenceProfile': post_template2,
-            'MobileDevice': post_template2,
-            'MobileDeviceApplication': post_template2,
-            'MobileDeviceConfigurationProfile': post_template2,
-            'MobileDeviceEnrollmentProfile': post_template2,
-            'MobileDeviceProvisioningProfile': post_template2,
-            'OSXConfigurationProfile': post_template2,
-            'Package': post_template2,
-            'PatchPolicy': post_template2,
-            'Peripheral': post_template2,
-            'Policy': post_template2,
-            'SoftwareUpdateServer': post_template2,
-            'VPPAccount': post_template2,
-            'VPPAssignment': post_template2,
-            'VPPInvitation': post_template2,
-            'WebHook': post_template2,
+            'MacApplications': post_template2,
+            'ManagedPreferenceProfiles': post_template2,
+            'MobileDevices': post_template2,
+            'MobileDeviceApplications': post_template2,
+            'MobileDeviceConfigurationProfiles': post_template2,
+            'MobileDeviceEnrollmentProfiles': post_template2,
+            'MobileDeviceProvisioningProfiles': post_template2,
+            'OSXConfigurationProfiles': post_template2,
+            'PatchPolicies': post_template2,
+            'Peripherals': post_template2,
+            'Policies': post_template2,
+            'SoftwareUpdateServers': post_template2,
+            'VPPAccounts': post_template2,
+            'VPPAssignments': post_template2,
+            'VPPInvitations': post_template2,
+
             'ComputerGroups': {'name':'%name%','is_smart':True},
-            'DistributionPoint': {
+            'DistributionPoints': {
                 'name':'%name%',
                 'read_only_username':'read_only_username',
                 'read_write_username':'read_write_username',
                 'share_name':'files'
             },
-            'DockItem': {
+            'DockItems': {
                 'name':'%name%',
                 'path':'file://localhost/Applications/Safari.app/', 'type':'App'
             },
-            'NetbootServer': {'name':'%name%','ip_address':'10.0.0.1'},
-            'NetworkSegment': {
+            'Ibeacons': {
+                'name':'%name%',
+                'uuid': '7710B6A4-FD29-4647-B2F4-B3FA645146A8' # I don't have iBeacons, I don't know the purpose of this value, I got it with `uuidgen` (https://support.twocanoes.com/hc/en-us/articles/203081205-Managing-Printers-with-iBeacons)
+            },
+            'NetbootServers': {'name':'%name%','ip_address':'10.0.0.1'},
+            'NetworkSegments': {
                 'name':'%name%',
                 'starting_address':'10.0.0.1',
                 'ending_address':'10.0.0.1'
             },
-            'PatchExternalSource': {
-                'general':{'name':'%name%'},
-                'displayName':'%name%',
-                'remoteHostName':'%name%',
+            'Packages': {
+                'name':'%name%',
+                'filename': 'filename.pkg',
             },
-            'PatchSoftwareTitle': {'name':'%name%', 'source_id':'1'},
+            'PatchExternalSources': {
+                'name':'%name%',
+                'host_name':'example.com',
+            },
+            'PatchSoftwareTitles': {'name':'%name%', 'source_id':'1'},
 #            'RestrictedSoftware': {'general':{'name':'%name%','process_name':'%name%'}},
-            'UserGroup': {
+            'UserGroups': {
                 'general':{'name':'%name%'},
                 'is_smart':False
-            }
+            },
+            'WebHooks': {
+                'event': 'ComputerAdded',
+                'name':'%name%',
+                'url': 'http:/example.com',
+            },
+        }
+        self._swagger_fixes = {
+            'ComputerConfigurations':{
+                's2':'configuration',
+            },
+            'ComputerReports': {
+                's1':'computer_reports',
+            },
+            'MobileDeviceCommands': {
+                'id_text1':'uuid',
+                'id_text2':'uuid',
+            },
+            'RestrictedSoftware': {
+                'p3':'restricted_software_title',
+                's1':'restricted_software'
+            },
         }
 
-    def s1(self, className):
-        return self.swagger(className, "s1")
+    def post_template(self, className, name):
+        if className in self._post_templates:
+            template = self._post_templates[className]
+            if 'name' in template:
+                template['name'] = name
+            elif 'general' in template and 'name' in template['general']:
+                template['general']['name'] = name
+        else:
+            template = {'name':name}
+        return template
 
-    def record_endpoint(self, className, recid):
-        p1 = self.swagger(className, "path_name")
-        id1 = self.swagger(className, "id1")
-        s1 = self.swagger(className, "s1")
-        return f'{p1}/{id1}/{recid}'
+    def swagger(self, cls, kk):
+        fixes = {}
+        if cls.__name__ in self._swagger_fixes:
+            fixes = self._swagger_fixes[cls.__name__]
 
-    def list_endpoint(self, className):
-        p1 = self.swagger(className, "path_name")
-        id1 = self.swagger(className, "id1")
-        s1 = self.swagger(className, "s1")
-        return f'{p1}/{id1}/{self.id}'
-
-    def swagger(self, cls, value):
         # The endpoint url, e.g. "Policies" class becomes "policies" endpoint
-        if cls.__name__ in self._p1:
-            p1 = self._p1[cls.__name__]
+        if 'p1' in fixes:
+            p1 = fixes['p1']
         else:
             p1 = cls.__name__.lower()
+        if kk == 'path_name':
+            return p1
 
         # Get the definition name, which almost always is the plural name
         # exceptions: LicensedSoftware, RestrictedSoftware?
-        if cls.__name__ in self._p2:
-            p2 = self._p2[cls.__name__]
+        if 'p2' in fixes:
+            p2 = fixes['p2']
         else:
             p2 = self.get_schema(p1)
             # If there's an xml entry, use it for the definition name
             temp2 = self._swagger['definitions'][p2]
             if ('xml' in temp2 and 'name' in temp2['xml']):
                 p2 = temp2['xml']['name']
+        if kk == 'def_name':
+            return p2
 
-        if cls.__name__ in self._id_text1:
-            id1 = self._id_text1[cls.__name__]
+        if 'id_text1' in fixes:
+            id1 = fixes['id_text1']
         else:
-            id1 = "id"
+            id1 = 'id'
+        if kk == 'id1':
+            return id1
 
-        if cls.__name__ in self._id_text2:
-            id2 = self._id_text2[cls.__name__]
+        if kk == 'p1, id1':
+            return p1, id1
+
+        if kk == 'end':
+            return f'{p1}/{id1}/'
+
+        if 'id_text2' in fixes:
+            id2 = fixes['id_text2']
         else:
-            id2 = "id"
+            id2 = 'id'
+        if kk == 'id2':
+            return id2
 
         # Get the schema, which almost always is the singular name
-        if cls.__name__ in self._p3:
-            p3 = self._p3[cls.__name__]
+        if 'p3' in fixes:
+            p3 = fixes['p3']
         else:
             temp1 = f"{p1}/{id1}/{{{id2}}}"
             p3 = self.get_schema(temp1)
+        if kk == 'p3':
+            return p3
 
-        if cls.__name__ in self._s1:
-            s1 = self._s1[cls.__name__]
+        if kk == 'p1, p2, id1, p3':
+            return p1, p2, id1, p3
+
+        # Singular, which almost always is the p3
+        if 's1' in fixes:
+            s1 = fixes['s1']
         else:
             s1 = p3
-
-#         if not hasattr(cls, '_list_to_dict_key'):
-#             cls._list_to_dict_key = 'id'
-
-        if value == "path_name":
-            return p1
-        if value == "def_name":
-            return p2
-        if value == "id1":
-            return id1
-        if value == "id2":
-            return id2
-        if value == "p3":
-            return p3
-        if value == "s1":
+        if kk == 's1':
             return s1
+
+        # This is the name of the endpoint when it's returned from a post
+        # e.g. ComputerConfigurations: {'configuration': {'general': {'name': 'rfwlkzis'}}}
+        if 's2' in fixes:
+            s2 = fixes['s2']
+        else:
+            s2 = s1
+        if kk == 's2':
+            return s2
+
+        if kk == 's1, end':
+            return s1, f'{p1}/{id1}/'
+
+        if kk == 's1, s2, end':
+            return s1, s2, f'{p1}/{id1}/'
 
     def get_schema(self, swagger_path):
         temp1 = self._swagger['paths']['/'+swagger_path]['get']
@@ -287,14 +315,12 @@ class ClassicSwagger(metaclass=Singleton):
             schema = schema[14:]
         return schema
 
-    def is_action_valid(self, className, a):
-        p1 = self.swagger(className, "path_name")
-        id1 = self.swagger(className, "id1")
-        #id2 = self.swagger(self, className, "id2")???
+    def is_action_valid(self, className, action):
+        p1, id1 = self.swagger(className, 'p1, id1')
         p = f'/{p1}/{id1}/{{{id1}}}'
         if p in self._broken_api:
             return False
-        return p in self._swagger['paths'] and a in self._swagger['paths'][p]
+        return p in self._swagger['paths'] and action in self._swagger['paths'][p]
 
 
 class Record:
@@ -312,27 +338,45 @@ class Record:
     Just in case that's not confusing enough the id tag is not always 'id'.
     """
 
-    def __new__(cls, jamf_id, name):
+    def __new__(cls, *a, **kw):
         """
         returns existing record if one has been instantiated
         """
-        jamf_id = int(jamf_id)
+        jamf_id = int(a[0])
+        name = a[1]
         if not hasattr(cls, "_instances"):
             cls._instances = {}
+        swag = ClassicSwagger()
+        plural = eval(cls.plural_class)
+        api = API()
+        _data = {}
+        if jamf_id == 0:
+            if cls.plural_class == "PatchPolicies":
+                print("Use /patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
+                      " instead")
+                return None
+            s1, s2, end = swag.swagger(plural, 's1, s2, end')
+            end = f"{end}0"
+            if not swag.is_action_valid(plural, 'post'):
+                print(f"Creating a new record with an id of 0 causes a post, "
+                      f"which isn't a valid action for the {cls.plural_class} "
+                      f"record type.")
+                return None
+            out = {s1: swag.post_template(cls.plural_class, name)}
+            _data = api.post(end, out)
+            jamf_id = int(_data[s2]['id'])
         if jamf_id not in cls._instances:
             rec = super(Record, cls).__new__(cls)
             rec.cls = cls
-            rec.plural = eval(cls.plural_class)
+            rec.plural = plural
             cls._instances[jamf_id] = rec
-
-        return cls._instances[jamf_id]
-
-    def __init__(self, jamf_id, name):
-        self.id = int(jamf_id)
-        self._data = {}
-        self.api = API()
-        self.s = ClassicSwagger()
-        self.name = name
+        rec.api = api
+        rec = cls._instances[jamf_id]
+        rec.id = int(jamf_id)
+        rec._data = _data
+        rec.s = swag
+        rec.name = name
+        return rec
 
     def __eq__(self, x):
         if isinstance(x, Record):
@@ -366,11 +410,11 @@ class Record:
         return f"{self.__class__.__name__}({self.id}, {self.name!r})"
 
     def refresh(self):
-        end = self.s.record_endpoint(self.plural, self.id)
+        s1, end = self.s.swagger(self.plural, 's1, end')
+        end = f"{end}{self.id}"
         if not self.s.is_action_valid(self.plural, 'get'):
             raise JamfError(f'get({end}) is an invalid action for get')
         results = self.api.get(end)
-        s1 = self.s.s1(self.plural)
         if not s1 in results:
             print("---------------------------------------------\nData dump\n")
             pprint(results)
@@ -380,20 +424,22 @@ class Record:
         else:
             self._data = {}
 
-    def delete(self, raw=False):
-        end = self.s.record_endpoint(self.plural, self.id)
+    def delete(self):
+        end = self.s.swagger(self.plural, 'end')
+        end = f"{end}{self.id}"
         if not self.s.is_action_valid(self.plural, 'delete'):
             raise JamfError(f'{end} is an invalid endpoint for delete')
-        return self.api.delete(end, raw)
+        return self.api.delete(end)
 
     def save(self):
-        end = self.s.record_endpoint(self.plural, self.id)
-        s1 = self.s.s1(self.plural)
+        s1, end = self.s.swagger(self.plural, 's1, end')
+        end = f"{end}{self.id}"
         if not self.s.is_action_valid(self.plural, 'put'):
             raise JamfError(f'{end} is an invalid endpoint for put')
         out = {s1: self._data}
         return self.api.put(end, out)
 
+    @property
     def data(self):
         if not self._data:
             self.refresh()
@@ -433,7 +479,7 @@ class Record:
         except NotFound as error:
             print("Not Found")
             result = []
-        if type(result) is list or result == None:
+        if type(result) is list or type(result) is dict or result == None:
             return result
         return [result]
 
@@ -441,11 +487,23 @@ class Record:
         temp1 = path.split('/')
         endpoint = temp1.pop()
         temp2 = "/".join(temp1)
-        placeholder = self.get_path(temp2)
-        if placeholder and endpoint in placeholder:
-            placeholder[endpoint] = value
-            return True
+        if len(temp2) > 0:
+            placeholder = self.get_path(temp2)
         else:
+            if not self._data:
+                self.refresh()
+            placeholder = self._data
+        if placeholder:
+            if endpoint in placeholder:
+                placeholder[endpoint] = value
+                return True
+            else:
+                print(f"Error: '{endpoint}' missing from ")
+                pprint(placeholder)
+                return False
+        else:
+            print(f"Error: empty data:")
+            pprint(placeholder)
             return False
 
 
@@ -529,12 +587,9 @@ class Records():
         return found
 
     def refresh(self):
-        p1 = self.s.swagger(self.cls, "path_name")
+        p1, p2, id1, p3 = self.s.swagger(self.cls, 'p1, p2, id1, p3')
         lst = self.api.get(p1)           # e.g. categories
-        p2 = self.s.swagger(self.cls, "def_name")
         if p2 in lst:
-            id1 = self.s.swagger(self.cls, "id1")
-            p3 = self.s.swagger(self.cls, "p3")
             self.data = lst[p2]
             if not self.data or not 'size' in self.data or self.data['size'] == '0':
                 self._records = {}
@@ -562,6 +617,9 @@ class Records():
                             f"the swagger definition file for the name of "
                             f"{p1} and set the property "
                             f"p2 for class ({p1}).")
+
+    def createNewRecord(self, name):
+        return self.singular_class(0, name)
 
     def find(self, x):
         if not self.data:
@@ -970,7 +1028,6 @@ class PatchExternalSource(Record):
     plural_class = "PatchExternalSources"
 
 
-
 class PatchExternalSources(Records, metaclass=Singleton):
     singular_class = PatchExternalSource
 
@@ -989,6 +1046,33 @@ class PatchPolicy(Record):
 
 class PatchPolicies(Records, metaclass=Singleton):
     singular_class = PatchPolicy
+    sub_commands = {
+        'set_version': {
+            'makes_a_change': True,
+            'required_args': 1,
+            'when_to_run': 'update',
+        },
+    }
+
+    def set_version(self, verzen):
+        change_made = False
+        cur_ver = self.data['general']['target_version']
+
+        #######################################################################
+        # If you don't delete the self_service_icon then it will error
+        #   <Response [409]>: PUT - https://example.com:8443/JSSResource/patchpolicies/id/18:
+        #   Conflict: Error: Problem with icon
+        #   Couldn't save changed record: <Response [409]>
+        del(self.data['user_interaction']['self_service_icon'])
+        #######################################################################
+
+        if cur_ver != verzen:
+            print(f"Set version to {verzen}")
+            self.data['general']['target_version'] = verzen
+            change_made = True
+        else:
+            print(f"Version is already {verzen}")
+        return change_made
 
 
 class PatchSoftwareTitle(Record):
@@ -997,6 +1081,74 @@ class PatchSoftwareTitle(Record):
 
 class PatchSoftwareTitles(Records, metaclass=Singleton):
     singular_class = PatchSoftwareTitle
+    sub_commands = {
+        'patchpolicies': {
+            'makes_a_change': False,
+            'required_args': 0,
+            'when_to_run': 'print',
+        },
+        'packages': {
+            'makes_a_change': False,
+            'required_args': 0,
+            'when_to_run': 'print',
+        },
+        'set_package_for_version': {
+            'makes_a_change': True,
+            'required_args': 2,
+            'when_to_run': 'update',
+        },
+        'set_all_packages': {
+            'makes_a_change': True,
+            'required_args': 0,
+            'when_to_run': 'update',
+        },
+    }
+
+    def patchpolicies(self):
+        print(self.name)
+        patchpolicies = jamf_records(PatchPolicies)
+        for policy in patchpolicies:
+            parent_id = policy.get_path("software_title_configuration_id")[0]
+            if str(parent_id) != str(self.id):
+                continue
+            print(" "+str(policy))
+
+
+    def packages(self):
+        print(self.name)
+        versions = self.data['versions']['version']
+        if not type(versions) is list:
+            versions = [ versions ]
+        for version in versions:
+            if version['package'] != None:
+                print(f" {version['software_version']}: {version['package']['name']}")
+
+    def set_package_for_version(self, package, target_version):
+        change_made = False
+        versions = self.data['versions']['version']
+        if not type(versions) is list:
+            versions = [ versions ]
+        for verzen in versions:
+            if verzen['software_version'] == target_version:
+                print(f"{target_version}: {package}")
+                verzen['package'] = {'name':package}
+                change_made = True
+        return change_made
+
+    def set_all_packages(self):
+        change_made = False
+        packages = jamf_records(Packages)
+        versions = self.data['versions']['version']
+        if not type(versions) is list:
+            versions = [ versions ]
+        for verzen in versions:
+            for package in packages:
+                if not verzen['package'] and \
+                   re.search(f".*{self.name}-{verzen['software_version']}\.pkg", package.name):
+                    print(f"Matched {package.name}")
+                    verzen['package'] = {'name':package.name}
+                    change_made = True
+        return change_made
 
 
 class Peripheral(Record):
