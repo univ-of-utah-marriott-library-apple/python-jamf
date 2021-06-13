@@ -41,7 +41,6 @@ class APIError(Error):
         err = parse_html_error(rsp.text)
         self.message = ": ".join(err) or 'failed'
         print(f"{rsp}: {rsp.request.method} - {rsp.url}: \n{self.message}")
-        _exit(1)
 
 
 class Singleton(type):
