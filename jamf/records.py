@@ -132,7 +132,7 @@ class ClassicSwagger(metaclass=Singleton):
         self._swagger = json.load(open(os.path.dirname(__file__)+'/records.json', 'r'))
         self._broken_api = [
         ]
-        post_template2 = {'general':{'name':'%name%'}}
+        post_template2 = {'general':{'name':'%NAME%'}}
         self._post_templates = {
             'BYOProfiles': post_template2,
             'ComputerConfigurations': post_template2,
@@ -158,44 +158,44 @@ class ClassicSwagger(metaclass=Singleton):
             'VPPAssignments': post_template2,
             'VPPInvitations': post_template2,
 
-            'ComputerGroups': {'name':'%name%','is_smart':True},
+            'ComputerGroups': {'name':'%NAME%','is_smart':True},
             'DistributionPoints': {
-                'name':'%name%',
+                'name':'%NAME%',
                 'read_only_username':'read_only_username',
                 'read_write_username':'read_write_username',
                 'share_name':'files'
             },
             'DockItems': {
-                'name':'%name%',
+                'name':'%NAME%',
                 'path':'file://localhost/Applications/Safari.app/', 'type':'App'
             },
             'Ibeacons': {
-                'name':'%name%',
+                'name':'%NAME%',
                 'uuid': '7710B6A4-FD29-4647-B2F4-B3FA645146A8' # I don't have iBeacons, I don't know the purpose of this value, I got it with `uuidgen` (https://support.twocanoes.com/hc/en-us/articles/203081205-Managing-Printers-with-iBeacons)
             },
-            'NetbootServers': {'name':'%name%','ip_address':'10.0.0.1'},
+            'NetbootServers': {'name':'%NAME%','ip_address':'10.0.0.1'},
             'NetworkSegments': {
-                'name':'%name%',
+                'name':'%NAME%',
                 'starting_address':'10.0.0.1',
                 'ending_address':'10.0.0.1'
             },
             'Packages': {
-                'name':'%name%',
+                'name':'%NAME%',
                 'filename': 'filename.pkg',
             },
             'PatchExternalSources': {
-                'name':'%name%',
+                'name':'%NAME%',
                 'host_name':'example.com',
             },
-            'PatchSoftwareTitles': {'name':'%name%', 'source_id':'1'},
-#            'RestrictedSoftware': {'general':{'name':'%name%','process_name':'%name%'}},
+            'PatchSoftwareTitles': {'name':'%NAME%', 'source_id':'1'},
+#            'RestrictedSoftware': {'general':{'name':'%NAME%','process_name':'%NAME%'}},
             'UserGroups': {
-                'general':{'name':'%name%'},
+                'general':{'name':'%NAME%'},
                 'is_smart':False
             },
             'WebHooks': {
                 'event': 'ComputerAdded',
-                'name':'%name%',
+                'name':'%NAME%',
                 'url': 'http:/example.com',
             },
         }
@@ -220,9 +220,12 @@ class ClassicSwagger(metaclass=Singleton):
         if className in self._post_templates:
             template = self._post_templates[className]
             if 'name' in template:
-                template['name'] = name
+                template['name'] = template['name'].replace('%NAME%', name)
+            elif 'name_id' in template:
+                template['name_id'] = template['name_id'].replace('%NAME%', name)
             elif 'general' in template and 'name' in template['general']:
-                template['general']['name'] = name
+                t = template['general']['name']
+                template['general']['name'] = t.replace('%NAME%', name)
         else:
             template = {'name':name}
         return template
@@ -263,8 +266,10 @@ class ClassicSwagger(metaclass=Singleton):
         if kk == 'p1, id1':
             return p1, id1
 
+        end = f'{p1}/{id1}/'
+
         if kk == 'end':
-            return f'{p1}/{id1}/'
+            return end
 
         if 'id_text2' in fixes:
             id2 = fixes['id_text2']
@@ -303,10 +308,10 @@ class ClassicSwagger(metaclass=Singleton):
             return s2
 
         if kk == 's1, end':
-            return s1, f'{p1}/{id1}/'
+            return s1, end
 
         if kk == 's1, s2, end':
-            return s1, s2, f'{p1}/{id1}/'
+            return s1, s2, end
 
     def get_schema(self, swagger_path):
         temp1 = self._swagger['paths']['/'+swagger_path]['get']
@@ -318,6 +323,8 @@ class ClassicSwagger(metaclass=Singleton):
     def is_action_valid(self, className, action):
         p1, id1 = self.swagger(className, 'p1, id1')
         p = f'/{p1}/{id1}/{{{id1}}}'
+        if className == PatchPolicies and action == "post":
+            p = '/patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}'
         if p in self._broken_api:
             return False
         return p in self._swagger['paths'] and action in self._swagger['paths'][p]
@@ -351,17 +358,17 @@ class Record:
         api = API()
         _data = {}
         if jamf_id == 0:
-            if cls.plural_class == "PatchPolicies":
-                print("Use /patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
-                      " instead")
-                return None
-            s1, s2, end = swag.swagger(plural, 's1, s2, end')
-            end = f"{end}0"
             if not swag.is_action_valid(plural, 'post'):
                 print(f"Creating a new record with an id of 0 causes a post, "
                       f"which isn't a valid action for the {cls.plural_class} "
                       f"record type.")
                 return None
+            s1, s2, end = swag.swagger(plural, 's1, s2, end')
+            if cls.plural_class == "PatchPolicies":
+                print("Use /patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
+                      " instead")
+                return None
+            end = f"{end}0"
             out = {s1: swag.post_template(cls.plural_class, name)}
             _data = api.post(end, out)
             jamf_id = int(_data[s2]['id'])
@@ -483,6 +490,16 @@ class Record:
             return result
         return [result]
 
+    def force_array(self, parent, child_name):
+        _data = parent[child_name]
+        if 'size' in parent:
+            if int(parent['size']) > 1:
+                return _data
+        else:
+            if type(_data) is list:
+                return _data
+        return [_data]
+
     def set_path(self, path, value):
         temp1 = path.split('/')
         endpoint = temp1.pop()
@@ -554,6 +571,12 @@ class Records():
         self._jamf_ids = {v.id: v for v in self._records.values()}
         self._names = {v.name: v for v in self._records.values()}
 
+    def __iter__(self):
+        return RecordsIterator(self)
+
+    def __getitem__(self, item):
+        return self.recordWithId(self.ids()[item])
+
     def __contains__(self, x):
         return True if self.find(x) else False
 
@@ -618,8 +641,8 @@ class Records():
                             f"{p1} and set the property "
                             f"p2 for class ({p1}).")
 
-    def createNewRecord(self, name):
-        return self.singular_class(0, name)
+    def createNewRecord(self, args):
+        return self.singular_class(0, args)
 
     def find(self, x):
         if not self.data:
@@ -648,9 +671,6 @@ class Records():
         else:
             raise TypeError(f"can't look for {type(x)}")
         return result
-
-    def __iter__(self):
-        return RecordsIterator(self)
 
 
 class AdvancedComputerSearch(Record):
@@ -717,11 +737,48 @@ class Classes(Records, metaclass=Singleton):
 
 class Computer(Record):
     plural_class = "Computers"
-
+    def apps_print_during(self):
+        plural_cls = eval(self.cls.plural_class)
+        if not hasattr(plural_cls, 'app_list'):
+            plural_cls.app_list = {}
+        if not hasattr(plural_cls, 'computers'):
+            plural_cls.computers = {}
+        plural_cls.computers[self.name] = True
+        apps = self.get_path("software/applications/application/path")
+        versions = self.get_path("software/applications/application/version")
+        if apps:
+            for ii, app in enumerate(apps):
+                ver = versions[ii]
+                if not app in plural_cls.app_list:
+                    plural_cls.app_list[app] = {}
+                if not ver in plural_cls.app_list[app]:
+                    plural_cls.app_list[app][ver] = {}
+                plural_cls.app_list[app][ver][self.name] = True
 
 class Computers(Records, metaclass=Singleton):
-    singular_class = Computer
     # http://localhost/computers.html?queryType=COMPUTERS&query=
+    singular_class = Computer
+    sub_commands = {
+        'apps': {
+            'required_args': 0,
+            'args_description': ''
+        }
+    }
+    def apps_print_after(self):
+        print("application,version,", end='')
+        for computer in self.computers:
+            print(computer, ",", end='')
+        print("")
+        for app, versions in self.app_list.items():
+            for version, bla in versions.items():
+                text = f"\"{app}\",\"{version}\","
+                print(text, end='')
+                for computer in self.computers:
+                    if computer in bla:
+                        print("X,", end='')
+                    else:
+                        print(",", end='')
+                print("")
 
 
 class ComputerConfiguration(Record):
@@ -943,86 +1000,126 @@ class OSXConfigurationProfiles(Records, metaclass=Singleton):
 class Package(Record):
     plural_class = "Packages"
 
+    @property
+    def metadata(self):
+        if not hasattr(self, 'meta'):
+            self._metadata = {}
+            m = re.match("([^-]*)-(.*)\.([^\.]*)$", self.name)
+            if m:
+                self._metadata['basename'] = m[1]
+                self._metadata['version'] = m[2]
+                self._metadata['filetype'] = m[3]
+            else:
+                m = re.match("([^-]*)\.([^\.]*)$", self.name)
+                if m:
+                    self._metadata['basename'] = m[1]
+                    self._metadata['version'] = ""
+                    self._metadata['filetype'] = m[2]
+                else:
+                    self._metadata['basename'] = self.name
+                    self._metadata['version'] = ""
+                    self._metadata['filetype'] = ""
+            if not self._metadata['basename'] in self.plural.groups:
+                self.plural.groups[self._metadata['basename']] = []
+            self.plural.groups[self._metadata['basename']].append(self)
+        return self._metadata
+
+    def refresh_related(self):
+        related = {}
+        patchsoftwaretitles = jamf_records(PatchSoftwareTitles)
+        patchsoftwaretitles_ids = {}
+        for title in patchsoftwaretitles:
+            pkgs = title.get_path("versions/version/package/name")
+            versions = title.get_path("versions/version/software_version")
+            if pkgs:
+                for ii, pkg in enumerate(pkgs):
+                    if pkg == None:
+                        continue
+                    if not str(title.id) in patchsoftwaretitles_ids:
+                        patchsoftwaretitles_ids[str(title.id)] = {}
+                    patchsoftwaretitles_ids[str(title.id)][versions[ii]] = pkg
+                    if not pkg in related:
+                        related[pkg] = {'patchsoftwaretitles':[]}
+                    if not 'patchsoftwaretitles' in related[pkg]:
+                        related[pkg]['patchsoftwaretitles'] = []
+                    temp = title.name+" - "+versions[ii]
+                    related[pkg]['patchsoftwaretitles'].append(temp)
+        patchpolicies = jamf_records(PatchPolicies)
+        for policy in patchpolicies:
+            parent_id = policy.get_path("software_title_configuration_id")[0]
+            parent_version = policy.get_path("general/target_version")[0]
+            if str(parent_id) in patchsoftwaretitles_ids:
+                ppp = patchsoftwaretitles_ids[str(parent_id)]
+                if parent_version in ppp:
+                    pkg = ppp[parent_version]
+                    if not pkg in related:
+                        related[pkg] = {'patchpolicies':[]}
+                    if not 'patchpolicies' in related[pkg]:
+                        related[pkg]['patchpolicies'] = []
+                    related[pkg]['patchpolicies'].append(policy.name)
+        policies = jamf_records(Policies)
+        for policy in policies:
+            pkgs = policy.get_path("package_configuration/packages/package/name")
+            if pkgs:
+                for pkg in pkgs:
+                    if not pkg in related:
+                        related[pkg] = {'policies':[]}
+                    if not 'policies' in related[pkg]:
+                        related[pkg]['policies'] = []
+                    related[pkg]['policies'].append(policy.name)
+        groups = jamf_records(ComputerGroups)
+        for group in groups:
+            criterions = group.get_path("criteria/criterion/value")
+            if criterions:
+                for pkg in criterions:
+                    if re.search(".pkg|.zip|.dmg", pkg[-4:]):
+                        if not pkg in related:
+                            related[pkg] = {'groups':[]}
+                        if not 'groups' in related[pkg]:
+                            related[pkg]['groups'] = []
+                        related[pkg]['groups'].append(group.name)
+        self.__class__._related = related
+
+    @property
+    def related(self):
+        if not hasattr(self.__class__, '_related'):
+            self.refresh_related()
+        if self.name in self.__class__._related:
+            return self.__class__._related[self.name]
+        else:
+            return {}
+
+    def usage_print_during(self):
+        related = self.related
+        if 'patchsoftwaretitles' in related:
+            print(self.name)
+        else:
+            print(f"{self.name} [no patch defined]")
+        if 'policies' in related:
+            print("  Policies")
+            for x in related['policies']:
+                print("    "+x)
+        if 'groups' in related:
+            print("  ComputerGroups")
+            for x in related['groups']:
+                print("    "+x)
+        if 'patchpolicies' in related:
+            print("  PatchPolicies")
+            for x in related['patchpolicies']:
+                print("    "+x)
+        print()
+
 
 class Packages(Records, metaclass=Singleton):
     singular_class = Package
+    groups = {}
     sub_commands = {
-        'view_included': {
-            'makes_a_change': False,
+        'usage': {
             'required_args': 0,
-            'when_to_run': 'print',
+            'args_description': ''
         },
     }
 
-    def view_included(self):
-        if not hasattr(self.__class__, 'related'):
-            self.__class__.related = {
-                'policies':{},
-                'groups':{},
-                'patchsoftwaretitles':{},
-                'patchpolicies':{},
-            }
-            patchsoftwaretitles = jamf_records(PatchSoftwareTitles)
-            patchsoftwaretitles_ids = {}
-            for title in patchsoftwaretitles:
-                pkgs = title.get_path("versions/version/package/name")
-                versions = title.get_path("versions/version/software_version")
-                if pkgs:
-                    for ii, pkg in enumerate(pkgs):
-                        if pkg == None:
-                            continue
-                        if not str(title.id) in patchsoftwaretitles_ids:
-                            patchsoftwaretitles_ids[str(title.id)] = {}
-                        patchsoftwaretitles_ids[str(title.id)][versions[ii]] = pkg
-                        if not pkg in self.__class__.related['patchsoftwaretitles']:
-                            self.__class__.related['patchsoftwaretitles'][pkg] = []
-                        self.__class__.related['patchsoftwaretitles'][pkg].append(title.name+" - "+versions[ii])
-            patchpolicies = jamf_records(PatchPolicies)
-            for policy in patchpolicies:
-                parent_id = policy.get_path("software_title_configuration_id")[0]
-                parent_version = policy.get_path("general/target_version")[0]
-                if str(parent_id) in patchsoftwaretitles_ids:
-                    ppp = patchsoftwaretitles_ids[str(parent_id)]
-                    if parent_version in ppp:
-                        pkg = ppp[parent_version]
-                        if not pkg in self.__class__.related['patchpolicies']:
-                            self.__class__.related['patchpolicies'][pkg] = []
-                        self.__class__.related['patchpolicies'][pkg].append(policy.name)
-            policies = jamf_records(Policies)
-            for policy in policies:
-                pkgs = policy.get_path("package_configuration/packages/package/name")
-                if pkgs:
-                    for pkg in pkgs:
-                        if not pkg in self.__class__.related['policies']:
-                            self.__class__.related['policies'][pkg] = []
-                        self.__class__.related['policies'][pkg].append(policy.name)
-            groups = jamf_records(ComputerGroups)
-            for group in groups:
-                pkgs = group.get_path("criteria/criterion/value")
-                if pkgs:
-                    for pkg in pkgs:
-                        if not pkg in self.__class__.related['groups']:
-                            self.__class__.related['groups'][pkg] = []
-                        self.__class__.related['groups'][pkg].append(group.name)
-#             pprint(self.__class__.related)
-        print(self.name)
-        if self.name in self.__class__.related['policies']:
-            print("  Policies")
-            for x in self.__class__.related['policies'][self.name]:
-                print("    "+x)
-        if self.name in self.__class__.related['groups']:
-            print("  ComputerGroups")
-            for x in self.__class__.related['groups'][self.name]:
-                print("    "+x)
-        if self.name in self.__class__.related['patchsoftwaretitles']:
-            print("  PatchSoftwareTitles")
-            for x in self.__class__.related['patchsoftwaretitles'][self.name]:
-                print("    "+x)
-        if self.name in self.__class__.related['patchpolicies']:
-            print("  PatchPolicies")
-            for x in self.__class__.related['patchpolicies'][self.name]:
-                print("    "+x)
-        print()
 
 class PatchExternalSource(Record):
     plural_class = "PatchExternalSources"
@@ -1043,18 +1140,7 @@ class PatchInternalSources(Records, metaclass=Singleton):
 class PatchPolicy(Record):
     plural_class = "PatchPolicies"
 
-
-class PatchPolicies(Records, metaclass=Singleton):
-    singular_class = PatchPolicy
-    sub_commands = {
-        'set_version': {
-            'makes_a_change': True,
-            'required_args': 1,
-            'when_to_run': 'update',
-        },
-    }
-
-    def set_version(self, verzen):
+    def set_version_update_during(self, pkg_version):
         change_made = False
         cur_ver = self.data['general']['target_version']
 
@@ -1066,55 +1152,29 @@ class PatchPolicies(Records, metaclass=Singleton):
         del(self.data['user_interaction']['self_service_icon'])
         #######################################################################
 
-        if cur_ver != verzen:
-            print(f"Set version to {verzen}")
-            self.data['general']['target_version'] = verzen
+        if cur_ver != pkg_version:
+            print(f"Set version to {pkg_version}")
+            self.data['general']['target_version'] = pkg_version
             change_made = True
         else:
-            print(f"Version is already {verzen}")
+            print(f"Version is already {pkg_version}")
         return change_made
+
+
+class PatchPolicies(Records, metaclass=Singleton):
+    singular_class = PatchPolicy
+    sub_commands = {
+        'set_version': {
+            'required_args': 1,
+            'args_description': ''
+        },
+    }
 
 
 class PatchSoftwareTitle(Record):
     plural_class = "PatchSoftwareTitles"
 
-
-class PatchSoftwareTitles(Records, metaclass=Singleton):
-    singular_class = PatchSoftwareTitle
-    sub_commands = {
-        'patchpolicies': {
-            'makes_a_change': False,
-            'required_args': 0,
-            'when_to_run': 'print',
-        },
-        'packages': {
-            'makes_a_change': False,
-            'required_args': 0,
-            'when_to_run': 'print',
-        },
-        'set_package_for_version': {
-            'makes_a_change': True,
-            'required_args': 2,
-            'when_to_run': 'update',
-        },
-        'set_all_packages': {
-            'makes_a_change': True,
-            'required_args': 0,
-            'when_to_run': 'update',
-        },
-    }
-
-    def patchpolicies(self):
-        print(self.name)
-        patchpolicies = jamf_records(PatchPolicies)
-        for policy in patchpolicies:
-            parent_id = policy.get_path("software_title_configuration_id")[0]
-            if str(parent_id) != str(self.id):
-                continue
-            print(" "+str(policy))
-
-
-    def packages(self):
+    def packages_print_during(self):
         print(self.name)
         versions = self.data['versions']['version']
         if not type(versions) is list:
@@ -1123,32 +1183,93 @@ class PatchSoftwareTitles(Records, metaclass=Singleton):
             if version['package'] != None:
                 print(f" {version['software_version']}: {version['package']['name']}")
 
-    def set_package_for_version(self, package, target_version):
-        change_made = False
-        versions = self.data['versions']['version']
-        if not type(versions) is list:
-            versions = [ versions ]
-        for verzen in versions:
-            if verzen['software_version'] == target_version:
-                print(f"{target_version}: {package}")
-                verzen['package'] = {'name':package}
-                change_made = True
-        return change_made
+    def patchpolicies_print_during(self):
+        print(self.name)
+        patchpolicies = jamf_records(PatchPolicies)
+        for policy in patchpolicies:
+            parent_id = policy.get_path("software_title_configuration_id")[0]
+            if str(parent_id) != str(self.id):
+                continue
+            print(" "+str(policy))
 
-    def set_all_packages(self):
+    def set_all_packages_update_during(self):
+        policy_regex = {
+            '1Password 7': '^1Password-%VERSION%\.pkg',
+            'Apple GarageBand 10': '^GarageBand-%VERSION%\.pkg',
+            'Apple Keynote': '^Keynote-%VERSION%\.pkg',
+            'Apple Numbers': '^Numbers-%VERSION%\.pkg',
+            'Apple Pages': '^Pages-%VERSION%\.pkg',
+            'Apple Xcode': '^Xcode-%VERSION%\.pkg',
+            'Apple iMovie': '^iMovie-%VERSION%\.pkg',
+            'Arduino IDE': '^Arduino-%VERSION%\.pkg',
+            'Bare Bones BBEdit':'BBEdit-%VERSION%\.pkg',
+            'BusyCal 3': '^BusyCal-%VERSION%\.pkg',
+            'Microsoft Remote Desktop 10': '^Microsoft Remote Desktop-%VERSION%\.pkg',
+            'Microsoft Visual Studio Code': '^Visual Studio Code-%VERSION%\.pkg',
+            'Microsoft Teams': '^Microsoft_Teams_%VERSION%\.pkg',
+            'Mozilla Firefox': '^Firefox-%VERSION%\.pkg',
+            'R for Statistical Computing': '^R-%VERSION%\.pkg',
+            'RStudio Desktop': 'RStudio-%VERSION%\.dmg',
+            'Sublime Text 3': 'Sublime Text-%VERSION%\.pkg',
+            'VLC media player': 'VLC-%VERSION%\.pkg',
+            'VMware Fusion 12': 'VMware Fusion-%VERSION%\.pkg',
+            'VMware Horizon 8 Client': 'VMwareHorizonClient-%VERSION%.pkg',
+            'Zoom Client for Meetings': 'Zoom-%VERSION%.pkg',
+        }
         change_made = False
         packages = jamf_records(Packages)
         versions = self.data['versions']['version']
         if not type(versions) is list:
             versions = [ versions ]
-        for verzen in versions:
+        for pkg_version in versions:
             for package in packages:
-                if not verzen['package'] and \
-                   re.search(f".*{self.name}-{verzen['software_version']}\.pkg", package.name):
-                    print(f"Matched {package.name}")
-                    verzen['package'] = {'name':package.name}
-                    change_made = True
+                if not pkg_version['package']:
+                    if self.name in policy_regex:
+                        regex = policy_regex[self.name]
+                        regex = regex.replace("%VERSION%",pkg_version['software_version'])
+                    else:
+                        regex = f".*{self.name}.*{pkg_version['software_version']}\.pkg"
+                    regex = regex.replace("(", "\\(")
+                    regex = regex.replace(")", "\\)")
+                    if re.search(regex, package.name):
+                        print(f"Matched {package.name}")
+                        pkg_version['package'] = {'name':package.name}
+                        change_made = True
         return change_made
+
+    def set_package_for_version_update_during(self, package, target_version):
+        change_made = False
+        versions = self.data['versions']['version']
+        if not type(versions) is list:
+            versions = [ versions ]
+        for pkg_version in versions:
+            if pkg_version['software_version'] == target_version:
+                print(f"{target_version}: {package}")
+                pkg_version['package'] = {'name':package}
+                change_made = True
+        return change_made
+
+
+class PatchSoftwareTitles(Records, metaclass=Singleton):
+    singular_class = PatchSoftwareTitle
+    sub_commands = {
+        'patchpolicies': {
+            'required_args': 0,
+            'args_description': ''
+        },
+        'packages': {
+            'required_args': 0,
+            'args_description': ''
+        },
+        'set_package_for_version': {
+            'required_args': 2,
+            'args_description': ''
+        },
+        'set_all_packages': {
+            'required_args': 0,
+            'args_description': ''
+        },
+    }
 
 
 class Peripheral(Record):
@@ -1171,10 +1292,177 @@ class PeripheralTypes(Records, metaclass=Singleton):
 class Policy(Record):
     plural_class = "Policies"
 
+    def spreadsheet_print_during(self):
+        print(self.spreadsheet())
+
+    def spreadsheet(self):
+
+        # Name
+        _text = f"{self.name}\t"
+        # Category
+        _text += f"{self.data['general']['category']['name']}\t"
+        # Frequency
+        _text += f"{self.data['general']['frequency']}\t"
+
+        # Trigger
+        _trigger = []
+        if self.data['general']['trigger_other']:
+            _trigger.append(f"{self.data['general']['trigger_other']}")
+        if self.data['general']['trigger_enrollment_complete'] == "true":
+            _trigger.append("Enrollment")
+        if self.data['general']['trigger_startup'] == "true":
+            _trigger.append("Startup")
+        if self.data['general']['trigger_login'] == "true":
+            _trigger.append("Login")
+        if self.data['general']['trigger_logout'] == "true":
+            _trigger.append("Logout")
+        if self.data['general']['trigger_network_state_changed'] == "true":
+            _trigger.append("Network")
+        if self.data['general']['trigger_checkin'] == "true":
+            _trigger.append("Checkin")
+        _text += ", ".join(_trigger)
+        _text += "\t"
+
+        # Scope
+        _scope = []
+        if self.data['scope']['all_computers'] == 'true':
+            _scope.append("all_computers")
+        if self.data['scope']['buildings']:
+            for a in self.force_array(self.data['scope']['buildings'], 'building'):
+                _scope.append(a['name'])
+        if self.data['scope']['computer_groups']:
+            for a in self.force_array(self.data['scope']['computer_groups'], 'computer_group'):
+                _scope.append(a['name'])
+        if self.data['scope']['computers']:
+            for a in self.force_array(self.data['scope']['computers'], 'computer'):
+                _scope.append(a['name'])
+        if self.data['scope']['departments']:
+            for a in self.force_array(self.data['scope']['departments'], 'department'):
+                _scope.append(a['name'])
+        if self.data['scope']['limit_to_users']['user_groups']:
+            _scope.append("limit_to_users")
+        _text += ", ".join(_scope)
+        _text += "\t"
+
+        # Packages
+        if self.data['package_configuration']['packages']['size'] != '0':
+            for a in self.force_array(self.data['package_configuration']['packages'], 'package'):
+                _text +=  a['name']
+        _text += "\t"
+
+        # Printers
+        if self.data['printers']['size'] != '0':
+            for a in self.force_array(self.data['printers'], 'printer'):
+                _text +=  a['name']
+
+            _text += self.data['printers']['size']
+        _text += "\t"
+
+        # Scripts
+        if self.data['scripts']['size'] != '0':
+            for a in self.force_array(self.data['scripts'], 'script'):
+                _text +=  a['name']
+        _text += "\t"
+
+        # Self Service
+        _self_service = []
+        if self.data['self_service']['use_for_self_service'] != 'false':
+            _self_service.append('Yes')
+        if len(_self_service) > 0:
+            _text += ", ".join(_self_service)
+        _text += "\t"
+
+        ###############
+
+        # Account Maintenance
+        if self.data['account_maintenance']['accounts']['size'] != '0':
+            for a in self.force_array(self.data['account_maintenance']['accounts'], 'account'):
+                _text +=  a['username']
+        _text += "\t"
+
+        # Disk Encryption
+        if self.data['disk_encryption']['action'] != 'none':
+            _text += self.data['disk_encryption']['action']
+        _text += "\t"
+
+        # Dock Items
+        if self.data['dock_items']['size'] != '0':
+            _text += self.data['dock_items']['size']
+        _text += "\t"
+
+        return _text
+
+    def promote_update_during(self):
+        if not 'package' in self.data['package_configuration']['packages']:
+            print(f"{self.name} has no package to update.")
+            return True
+        if int(self.data['package_configuration']['packages']['size']) > 1:
+            my_packages = self.data['package_configuration']['packages']['package']
+        else:
+            my_packages = [self.data['package_configuration']['packages']['package']]
+
+        all_packages = jamf_records(Packages)
+        print(self.name)
+        made_change = False
+        for my_package in my_packages:
+            similar_packages = []
+            search_str = re.sub('-.*', '', my_package['name'])
+            for package in all_packages:
+                if package.name.find(search_str) == 0:
+                    similar_packages.append(package.name)
+            if len(similar_packages) > 1:
+                index = 1
+                for similar_package in reversed(similar_packages):
+                    if similar_package == my_package['name']:
+                        print(f"  {index}. {similar_package} [Current]")
+                    else:
+                        print(f"  {index}. {similar_package}")
+                    index += 1
+                answer = "0"
+                choices = list(map(str, range(1, index)))
+                choices.append('')
+                while answer not in choices:
+                    answer = input("Choose a package [return skips]: ")
+                if answer == '':
+                    return True
+                answer = len(similar_packages)-int(answer)
+                my_package['name'] = similar_packages[answer]
+                del my_package['id']
+                made_change = True
+        if made_change:
+            pprint(self.data['package_configuration']['packages'])
+            self.save()
+
 
 class Policies(Records, metaclass=Singleton):
     singular_class = Policy
+    sub_commands = {
+        'promote': {
+            'required_args': 0,
+            'args_description': ''
+        },
+        'spreadsheet': {
+            'required_args': 0,
+            'args_description': ''
+        },
+    }
 
+    def spreadsheet_print_before(self):
+        header = [
+            'Name',
+            'Category',
+            'Frequency',
+            'Trigger',
+            'Scope',
+            'Packages',
+            'Printers',
+            'Scripts',
+            'Self Service',
+            'Account Maintenance',
+            'Disk Encryption',
+            'Dock Items',
+        ]
+        print("\t".join(header))
 
 class Printer(Record):
     plural_class = "Printers"
@@ -1197,20 +1485,21 @@ class RemovableMACAddresses(Records, metaclass=Singleton):
 class Script(Record):
     plural_class = "Scripts"
 
+    def script_contents_print_during(self):
+        printme = self.get_path("script_contents")
+        print(printme[0])
+
 
 class Scripts(Records, metaclass=Singleton):
     # http://localhost/view/settings/computer/scripts
     singular_class = Script
     sub_commands = {
         'script_contents': {
-            'makes_a_change': False,
             'required_args': 0,
-            'when_to_run': 'print',
+            'args_description': ''
         },
     }
-    def script_contents(self):
-        printme = self.get_path("script_contents")
-        print(printme[0])
+
 
 class Site(Record):
     plural_class = "Sites"
