@@ -90,7 +90,7 @@ class Config:
                     fptr.close()
                     if 'JSSHostname' in prefs:
                         if 'Credentials' in prefs:
-                            cmessage = """
+                            cmessage = f"""
 ATTENTION
 To improve security with storing credentials used with the jctl tool, we have
 deprecated the use of a property list file for storing configuration
@@ -98,8 +98,8 @@ information and have migrated to use the Python keyring library provides an
 easy way to access the system keyring service from python. It can be used with
 the macOS Keychain and Linux KWallet.
 
-Please delete the the configuration at "+config_path+" and recreate it using
-the "setconfig.py" command.
+Please delete the the configuration at {config_path} and recreate it using
+the "./jamf/setconfig.py" script.
 """
                             print(cmessage)
                             exit(1)
