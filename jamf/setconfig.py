@@ -107,6 +107,11 @@ def setconfig(argv):
         if args.path:
             config_path = args.path
         else:
+            myplatform = platform.system()
+            if myplatform == "Darwin":
+                default_pref = jamf.config.MACOS_PREFS_TILDA
+            elif myplatform == "Linux":
+                default_pref = jamf.config.LINUX_PREFS_TILDA
             config_path = default_pref
 
         if config_path[0] == '~':
