@@ -107,7 +107,7 @@ def setconfig(argv):
         if args.path:
             config_path = args.path
         else:
-            config_path = self.default_pref
+            config_path = default_pref
 
         if config_path[0] == '~':
             config_path = path.expanduser(config_path)

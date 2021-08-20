@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+im# -*- coding: utf-8 -*-
 
 """
 JAMF Packages
@@ -23,6 +23,7 @@ from distutils.version import StrictVersion, LooseVersion
 from xml.etree import ElementTree as ET
 
 from .records import Categories
+from . import config
 
 # GLOBALS
 TMPDIR = os.environ.get('TMPDIR', '/tmp')
@@ -58,8 +59,8 @@ class Manager:
         :returns Package:
         """
         raise NotImplementedError()
-        if not name and not jssid and not path:
-            raise ValueError("must specify name, path, or ID")
+        #if not name and not jssid and not path:
+        #    raise ValueError("must specify name, path, or ID")
 
     def _find(self, key, value):
         """
@@ -617,44 +618,44 @@ def install_package(pkg, target='/'):
     """
     logger = logging.getLogger(__name__)
     path = pkg.path.absolute() if isinstance(pkg, Package) else pkg
-    self.log.info(f"installing package: {path}")
+    logger.info(f"installing package: {path}")
     cmd = ['/usr/sbin/installer', '-pkg', path, '-target', target]
     logger.debug(f"> sudo -n installer -pkg {path!r} -target {target!r}")
     subprocess.check_call(['/usr/bin/sudo', '-n'] + cmd)
 
 
-def jss_package_details(api, name=None):
-    """
-    :returns: detailed list of all packages in the JSS
-    """
-    # Each dict has the following keys:
-    # ['allow_uninstalled',              # <bool> likely the index value (would be cool if it could be indexed via modification)
-    #  'boot_volume_required',           # <bool> ? (universally: False)
-    #  'category',                       # <str>  name of category
-    #  'filename',                       # <str>  name of pkg file
-    #  'fill_existing_users',            # <bool> ? (universally: False)
-    #  'fill_user_template',             # <bool> ? (universally: False)
-    #  'id',                             # <int>  JSS id
-    #  'info',                           # <str>  contents of "Info" field
-    #  'install_if_reported_available',  # <str>  ? (universally: 'false')
-    #  'name',                           # <str>  name of package (typically same as filename)
-    #  'notes',                          # <str>  contents of "Notes" field
-    #  'os_requirements',                # <str>  os requirements? (universally: '')
-    #  'priority',                       # <int>  installation priority? (universally: 10)
-    #  'reboot_required',                # <bool> package requires reboot
-    #  'reinstall_option',               # <str>  ? (universally: "Do Not Reinstall")
-    #  'required_processor',             # <str>  processor limitation? (universally: 'None')
-    #  'send_notification',              # <bool> ? (universally: False)
-    #  'switch_with_package',            # <str>  ? (universally: 'Do Not Install')
-    #  'triggering_files']               # <dict> ? (universally: {})
-
-    # detailed list of every package (takes a long time)
-    pkgs = []
-    # isolating packages by name is handled by packages()
-    for pkg in packages(api, name):
-        details = api.get(f"packages/id/{pkg['id']}")
-        pkgs.append(details['package'])
-    return pkgs
+# def jss_package_details(api, name=None):
+#     """
+#     :returns: detailed list of all packages in the JSS
+#     """
+#     # Each dict has the following keys:
+#     # ['allow_uninstalled',              # <bool> likely the index value (would be cool if it could be indexed via modification)
+#     #  'boot_volume_required',           # <bool> ? (universally: False)
+#     #  'category',                       # <str>  name of category
+#     #  'filename',                       # <str>  name of pkg file
+#     #  'fill_existing_users',            # <bool> ? (universally: False)
+#     #  'fill_user_template',             # <bool> ? (universally: False)
+#     #  'id',                             # <int>  JSS id
+#     #  'info',                           # <str>  contents of "Info" field
+#     #  'install_if_reported_available',  # <str>  ? (universally: 'false')
+#     #  'name',                           # <str>  name of package (typically same as filename)
+#     #  'notes',                          # <str>  contents of "Notes" field
+#     #  'os_requirements',                # <str>  os requirements? (universally: '')
+#     #  'priority',                       # <int>  installation priority? (universally: 10)
+#     #  'reboot_required',                # <bool> package requires reboot
+#     #  'reinstall_option',               # <str>  ? (universally: "Do Not Reinstall")
+#     #  'required_processor',             # <str>  processor limitation? (universally: 'None')
+#     #  'send_notification',              # <bool> ? (universally: False)
+#     #  'switch_with_package',            # <str>  ? (universally: 'Do Not Install')
+#     #  'triggering_files']               # <dict> ? (universally: {})
+#
+#     # detailed list of every package (takes a long time)
+#     pkgs = []
+#     # isolating packages by name is handled by packages()
+#     for pkg in jamf_records(Packages, name):
+#         details = api.get(f"packages/id/{pkg['id']}")
+#         pkgs.append(details['package'])
+#     return pkgs
 
 
 def jss_packages(jss, name=None):
@@ -696,7 +697,6 @@ def installer_packages():
             b_info = plistlib.load(f)
         info[name] = {'pkgs': pkgs, 'folder': folder,
                       'build': b_info, 'name': name}
-    pprint.pprint(info)
 
 
 def pkgutil(*args):
