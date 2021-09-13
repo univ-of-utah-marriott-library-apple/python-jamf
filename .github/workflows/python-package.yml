@@ -1,15 +1,12 @@
-name: Build python-jamf and publish to PyPI
+name: Build and publish python-jamf to Github and PyPI
 on:
-  release:
-    types: [ published ]
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-10.15, macos-11]
-    python-version: [ '3.7', '3.8', '3.9', 'pypy-3.7' ]
+  push:
+    tags:
+      - '*'
 jobs:
   build:
-    name: Build on ${{ matrix.os }} using ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
+    name: Build
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -40,8 +37,25 @@ jobs:
           python-version: 3.7
       - name: Build binary wheel and a source tarball
         run: python setup.py sdist
-      - name: Publish distribution to Test PyPI
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@master
         with:
-          password: ${{ secrets.test_pypi_password }}
+          password: ${{ secrets.TEST_PYPI_PASSWORD }}
           repository_url: https://test.pypi.org/legacy/
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: true
+          prerelease: false
+      - name: Publish to GitHub
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "dist/*"
+          release_id: ${{ steps.create_release.outputs.id }}
