@@ -10,5 +10,4 @@ from .admin import JamfAdmin as Admin
 from . import package
 from . import convert
 from .records import *
-from .setconfig import setconfig
-__version__ = "0.6.5"
+from . import version

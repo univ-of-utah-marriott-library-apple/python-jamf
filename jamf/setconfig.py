@@ -71,20 +71,9 @@ class Parser:
         return self.parser.parse_args(argv)
 
 def check_version():
-
-    try:
-        jamf_first, jamf_second, jamf_third = jamf.__version__.split(".")
-        min_first, min_second, min_third = min_jamf_version.split(".")
-
-        if ( int(jamf_first) <= int(min_first) and
-             int(jamf_second) <= int(min_second) and
-             int(jamf_third) < int(min_third)):
-             print(f"Your Version is: {jamf.__version__}, you need at least version {min_jamf_version} to run jctl.")
-             sys.exit()
-
-    except AttributeError:
-             print(f"Your Version is below 0.4.2, you need at least version {min_jamf_version} to run jctl.")
-             sys.exit()
+	if not jamf.version.check_version(min_jamf_version):
+		print(f"setconfig requires python-jamf {min_jamf_version} or newer.")
+		sys.exit()
 
 def setconfig(argv):
     logger = logging.getLogger(__name__)
