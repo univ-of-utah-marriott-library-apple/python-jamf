@@ -41,7 +41,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@master
         with:
           password: ${{ secrets.PYPI_PASSWORD }}
-          repository_url: https://pypi.org/legacy/
+          repository_url: https://upload.pypi.org/legacy/
       - name: Create GitHub Release
         uses: actions/create-release@v1
         id: create_release
