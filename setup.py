@@ -1,11 +1,24 @@
 import setuptools
+import subprocess
+import os
 
-with open("README.md", "r") as fh:
+jctl_version = (
+    subprocess.run(["git", "describe", "--tags"], stdout=subprocess.PIPE)
+    .stdout.decode("utf-8")
+    .strip()
+)
+assert "." in jctl_version
+
+assert os.path.isfile("jamf/version.py")
+with open("jamf/VERSION", "w", encoding="utf-8") as fh:
+    fh.write(f"{jctl_version}\n")
+
+with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="python-jamf",
-    version="0.6.5",
+    version=jctl_version,
     author="The University of Utah",
     author_email="mlib-its-mac@lists.utah.edu",
     description="Python wrapper for Jamf Pro API",
@@ -13,7 +26,8 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/univ-of-utah-marriott-library-apple/python-jamf",
     packages=setuptools.find_packages(),
-    package_data={'': ['*.json']},
+    package_data={'jamf': ['*.json', 'VERSION']},
+    include_package_data=True,
     entry_points={
         'console_scripts': ['jamfconfig=jamf.setconfig:main']
     },

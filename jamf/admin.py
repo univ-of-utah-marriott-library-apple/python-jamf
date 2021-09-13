@@ -690,7 +690,7 @@ def package_index(path, cleanup=True):
     # process all boms included in package
     boms = [x for x in boms.splitlines() if x]
     if not boms:
-        raise RuntimeError(f"no bill of materials found: {pkg}")
+        raise RuntimeError(f"no bill of materials found: {path}")
     # see `man lsbom` for formatting
     logger.debug(f"> lsbom -p fMguTsc '%s'", "', '".join(boms))
     cmd = ['/usr/bin/lsbom', '-p', 'fMguTsc'] + boms
@@ -702,7 +702,7 @@ def package_index(path, cleanup=True):
 
     if cleanup:
         # cleanup all bom files created in /tmp by `pkgutil`
-        for path in glob.glob(f"/tmp/{pkg}.boms*"):
+        for path in glob.glob(f"/tmp/{path}.boms*"):
             shutil.rmtree(path)
 
     form = []
