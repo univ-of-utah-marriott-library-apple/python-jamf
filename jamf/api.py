@@ -37,10 +37,20 @@ class Error(Exception):
 class APIError(Error):
     """ Error in our call """
     def __init__(self, response):
-        rsp = response
-        err = parse_html_error(rsp.text)
+        self.response = response
+        err = parse_html_error(response.text)
         self.message = ": ".join(err) or 'failed'
-        print(f"{rsp}: {rsp.request.method} - {rsp.url}: \n{self.message}")
+        print(f"{response}: {response.request.method} - {response.url}: \n{self.message}")
+
+    def __getattr__(self, attr):
+        """
+        missing attributes fallback on response
+        """
+        return getattr(self.response, attr)
+
+    def __str__(self):
+        rsp = self.response
+        return f"{rsp}: {rsp.request.method} - {rsp.url}: {self.message}"
 
 
 class Singleton(type):
