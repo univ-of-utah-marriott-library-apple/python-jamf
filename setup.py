@@ -7,7 +7,7 @@ jctl_version = (
     .stdout.decode("utf-8")
     .strip()
 )
-assert "." in jctl_version
+#assert "." in jctl_version
 
 assert os.path.isfile("jamf/version.py")
 with open("jamf/VERSION", "w", encoding="utf-8") as fh:
