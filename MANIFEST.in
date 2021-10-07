@@ -1,0 +1,2 @@
+include jamf/records.json
+include jamf/VERSION
