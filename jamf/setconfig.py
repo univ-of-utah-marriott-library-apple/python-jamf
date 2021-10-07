@@ -71,8 +71,10 @@ class Parser:
         return self.parser.parse_args(argv)
 
 def check_version():
-	if not jamf.version.check_version(min_jamf_version):
-		print(f"setconfig requires python-jamf {min_jamf_version} or newer.")
+	python_jamf_version = jamf.version.jamf_version_up_to(min_jamf_version)
+	if python_jamf_version != min_jamf_version:
+		print(f"setconfig requires python-jamf {min_jamf_version} or newer. "
+		      f"You have {python_jamf_version}.")
 		sys.exit()
 
 def setconfig(argv):

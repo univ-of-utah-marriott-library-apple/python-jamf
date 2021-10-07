@@ -2,23 +2,23 @@ import setuptools
 import subprocess
 import os
 
-jctl_version = (
+jamf_version = (
     subprocess.run(["git", "describe", "--tags"], stdout=subprocess.PIPE)
     .stdout.decode("utf-8")
     .strip()
 )
-#assert "." in jctl_version
+#assert "." in jamf_version
 
 assert os.path.isfile("jamf/version.py")
 with open("jamf/VERSION", "w", encoding="utf-8") as fh:
-    fh.write(f"{jctl_version}\n")
+    fh.write(f"{jamf_version}\n")
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="python-jamf",
-    version=jctl_version,
+    version=jamf_version,
     author="The University of Utah",
     author_email="mlib-its-mac@lists.utah.edu",
     description="Python wrapper for Jamf Pro API",

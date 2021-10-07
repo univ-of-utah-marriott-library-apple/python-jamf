@@ -8,7 +8,7 @@ import os
 
 __all__ = (
 	'string',
-	'check_version'
+	'jamf_version_up_to'
 )
 
 def string():
@@ -19,17 +19,18 @@ def string():
 				return version
 	except:
 		pass
-	return "unknown (git checkout)"
+	return "0.0.0"
 
 
-def check_version(min_version):
+def jamf_version_up_to(min_version):
+	current_version = string()
 	try:
-		jamf_1, jamf_2, jamf_3 = string().split(".")
+		jamf_1, jamf_2, jamf_3 = current_version.split(".")
 		min_1, min_2, min_3 = min_version.split(".")
 		if ( int(jamf_1) <= int(min_1) and
 			 int(jamf_2) <= int(min_2) and
 			 int(jamf_3) < int(min_3)):
-			return False
+			return current_version
 	except AttributeError:
-		return False
-	return True
+		return current_version
+	return min_version
