@@ -22,6 +22,7 @@ setuptools.setup(
     author="The University of Utah",
     author_email="mlib-its-mac@lists.utah.edu",
     description="Python wrapper for Jamf Pro API",
+    license='MIT',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/univ-of-utah-marriott-library-apple/python-jamf",
@@ -29,7 +30,7 @@ setuptools.setup(
     package_data={'jamf': ['*.json', 'VERSION']},
     include_package_data=True,
     entry_points={
-        'console_scripts': ['jamfconfig=jamf.setconfig:main']
+        'console_scripts': ['conf-python-jamf=jamf.setconfig:main']
     },
     classifiers=[
         "Programming Language :: Python :: 3",

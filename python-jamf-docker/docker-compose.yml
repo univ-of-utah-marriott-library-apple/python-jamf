@@ -1,0 +1,21 @@
+version: "3"
+services:
+  python-jamf-dev:
+    build:
+      dockerfile: python-jamf-docker/python-jamf-dev/Dockerfile
+      context: ../
+    networks:
+      - jamfpro_jamfnet
+    volumes:
+      - ../:/python-jamf
+  python-jamf-github:
+    build: ./python-jamf-github
+    networks:
+      - jamfpro_jamfnet
+  python3:
+    build: ./python3
+    networks:
+      - jamfpro_jamfnet
+networks:
+  jamfpro_jamfnet:
+    external: true
