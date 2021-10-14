@@ -11,8 +11,6 @@ __copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
 __license__ = 'MIT'
 __version__ = "1.0.4"
 
-min_jamf_version = "0.4.7"
-
 
 import argparse
 import getpass
@@ -24,14 +22,12 @@ import sys
 from os import path
 
 class Parser:
-
     def __init__(self):
         myplatform = platform.system()
         if myplatform == "Darwin":
             default_pref = jamf.config.MACOS_PREFS_TILDA
         elif myplatform == "Linux":
             default_pref = jamf.config.LINUX_PREFS_TILDA
-
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument(
             '-H',
@@ -70,22 +66,14 @@ class Parser:
         """
         return self.parser.parse_args(argv)
 
-def check_version():
-	python_jamf_version = jamf.version.jamf_version_up_to(min_jamf_version)
-	if python_jamf_version != min_jamf_version:
-		print(f"setconfig requires python-jamf {min_jamf_version} or newer. "
-		      f"You have {python_jamf_version}.")
-		sys.exit()
 
 def setconfig(argv):
     logger = logging.getLogger(__name__)
     args = Parser().parse(argv)
     logger.debug(f"args: {args!r}")
-
     if args.test:
         api = jamf.API()
         pprint.pprint(api.get('accounts'))
-
     elif args.print:
         conf = jamf.config.Config(prompt=False,explain=True)
         print(conf.hostname)
@@ -104,25 +92,20 @@ def setconfig(argv):
             elif myplatform == "Linux":
                 default_pref = jamf.config.LINUX_PREFS_TILDA
             config_path = default_pref
-
         if config_path[0] == '~':
             config_path = path.expanduser(config_path)
-
         if args.hostname:
             hostname = args.hostname
         else:
             hostname = jamf.config.prompt_hostname()
-
         if args.user:
             user = args.user
         else:
             user = input("username: ")
-
         if args.passwd:
             passwd = args.passwd
         else:
             passwd = getpass.getpass()
-
         conf = jamf.config.Config(
             hostname=hostname,
             username=user,
@@ -133,7 +116,6 @@ def setconfig(argv):
 
 
 def main():
-    check_version()
     fmt = "%(asctime)s: %(levelname)8s: %(name)s - %(funcName)s(): %(message)s"
     logging.basicConfig(level=logging.INFO, format=fmt)
     setconfig(sys.argv[1:])
