@@ -42,7 +42,7 @@ class Parser:
             '--passwd',
             help='specify password (default: prompt)')
         self.parser.add_argument(
-            '-c',
+            '-C',
             '--config',
             dest='path',
             metavar='PATH',
@@ -71,11 +71,22 @@ def setconfig(argv):
     logger = logging.getLogger(__name__)
     args = Parser().parse(argv)
     logger.debug(f"args: {args!r}")
+    if args.path:
+        config_path = args.path
+    else:
+        myplatform = platform.system()
+        if myplatform == "Darwin":
+            default_pref = jamf.config.MACOS_PREFS_TILDA
+        elif myplatform == "Linux":
+            default_pref = jamf.config.LINUX_PREFS_TILDA
+        config_path = default_pref
+    if config_path[0] == '~':
+        config_path = path.expanduser(config_path)
     if args.test:
-        api = jamf.API()
+        api = jamf.API(config_path=config_path)
         pprint.pprint(api.get('accounts'))
     elif args.print:
-        conf = jamf.config.Config(prompt=False,explain=True)
+        conf = jamf.config.Config(prompt=False,explain=True,config_path=config_path)
         print(conf.hostname)
         print(conf.username)
         if conf.password:
@@ -83,17 +94,6 @@ def setconfig(argv):
         else:
             print("Password is not set")
     else:
-        if args.path:
-            config_path = args.path
-        else:
-            myplatform = platform.system()
-            if myplatform == "Darwin":
-                default_pref = jamf.config.MACOS_PREFS_TILDA
-            elif myplatform == "Linux":
-                default_pref = jamf.config.LINUX_PREFS_TILDA
-            config_path = default_pref
-        if config_path[0] == '~':
-            config_path = path.expanduser(config_path)
         if args.hostname:
             hostname = args.hostname
         else:

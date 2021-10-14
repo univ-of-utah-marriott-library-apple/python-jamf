@@ -28,9 +28,9 @@ def jamf_version_up_to(min_version):
     try:
         m = re.match(r"^([0-9]+)\.([0-9]+)\.([0-9]+)", full_version)
         min1, min2, min3 = min_version.split(".")
-        if ( int(m.group(0)) >= int(min1) and
-             int(m.group(1)) >= int(min2) and
-             int(m.group(2)) >= int(min3)):
+        if ( int(m.group(1)) >= int(min1) and
+             int(m.group(2)) >= int(min2) and
+             int(m.group(3)) >= int(min3)):
             return min_version # Pass
     except AttributeError:
         return full_version # Fail
