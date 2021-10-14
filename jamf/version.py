@@ -5,6 +5,7 @@
 """
 
 import os
+import re
 
 __all__ = (
     'string',
