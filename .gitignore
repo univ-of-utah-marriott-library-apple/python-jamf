@@ -17,3 +17,7 @@ dist
 build
 archive
 /jamf/VERSION
+
+pref-*.plist
+jctl
+pkgctl

@@ -15,9 +15,11 @@ The `python-jamf` module also provides undocumented access to Jamf Admin functio
 
 ### Supported Jamf Records
 
-Currently, the `python-jamf` supports 56 Jamf records like Buildings, Categories, Computers, OSXConfigurationProfiles, and Policies for example.
+Currently, the `python-jamf` supports about 50 Jamf records like Buildings, Categories, Computers, OSXConfigurationProfiles, and Policies for example.
 
-Each record is a Python object, but they are generic. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the data() method. Lists of records and individual records use the same object type as well. So all class names are plural, regardless if they represent a list of objects or one object.
+Each record is a singleton Python object, but they are generic and most functionality comes from the parent Record class. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the data() method. All lists of records are singleton subclasses of the Records class.
+
+By being singleton classes, you perform one fetch to the server for each list or record. This prevents multiple fetches for the same object. All changes you make are local until you save or refresh the object.
 
 ## Getting Help
 
@@ -35,7 +37,7 @@ If you have additional questions, or need more help getting started, post a ques
 
 ### Virtual JNUC 2021 Presentation
 
-We will be presenting on `python-jamf` and `jctl` at the upcoming Virtual JNUC 2021 on on Thursday, Oct 21 at 1:00 PM - 1:30 PM MDT on [Turn 1000 clicks into 1 with python-jamf and jctl](https://reg.jamf.com/flow/jamf/jnuc2021/sessioncatalog/page/sessioncatalog/session/1620431676367001smXi)
+We will be presenting on `python-jamf` and `jctl` at the upcoming Virtual JNUC 2021 on Thursday, Oct 21 at 1:00 PM - 1:30 PM MDT, titled [Turn 1000 clicks into 1 with python-jamf and jctl](https://reg.jamf.com/flow/jamf/jnuc2021/sessioncatalog/page/sessioncatalog/session/1620431676367001smXi).
 
 Since 2010, Apple IT, users, and InfoSec leaders from around the world have rallied at the Jamf Nation User Conference (JNUC) for community presentations, deep-dive education sessions, and expert product insights. Focusing on new and better ways to connect, manage and protect Apple devices that simplify workflows for IT and InfoSec and keep users productive. The Virtual JNUC 2021 experience will be October 19 - October 21, 2021, and there will be no cost to attend the online keynote and sessions.
 
@@ -49,3 +51,8 @@ The second project, `jctl`,  is a command-line tool that uses the `python-jamf`
 
 Our presentation will cover how it works internally as a simple alternative to the usual cURL usage; usage example of workflows comparing using Jamf Pro web interface vs `jctl`; and lastly advanced usage and package management including example os subcommands for specific object types, filtering making interacting with the API simple & easy.
 
+#### Latest status
+
+Since we recorded our session over a month ago, some of the information in our presentation is out of date already. We have spent the time between when we recorded the presentation and now (October 14, 2021) getting github actions working so that it will test and publish to pypi. It took longer to get this working then we thought. So that's about where we are. But it works now. We also added some Docker containers that you can run locally to try out python-jamf and jctl. There are also some minor differences in pkgctl then what is shown in the presentation.
+
+I should also mention, one of us also had an issue where pkgctl start crashing their production Jamf Pro server. Increasing the amount of RAM and CPU's for that server stopped the crashing.
