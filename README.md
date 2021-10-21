@@ -21,6 +21,10 @@ Each record is a singleton Python object, but they are generic and most function
 
 By being singleton classes, you perform one fetch to the server for each list or record. This prevents multiple fetches for the same object. All changes you make are local until you save or refresh the object.
 
+### jctl
+
+`jctl` is a command line based tool to make using `python-jamf` easier to use. Please check out the [jctl github page](https://github.com/univ-of-utah-marriott-library-apple/jctl) for more information.
+
 ## Getting Help
 
 ### Wiki
