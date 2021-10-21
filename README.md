@@ -55,6 +55,4 @@ Our presentation will cover how it works internally as a simple alternative to t
 
 Since we recorded our session over a month ago, some of the information in our presentation is out of date already. We have spent the time between when we recorded the presentation and now (October 14, 2021) getting github actions working so that it will test and publish to pypi. It took longer to get this working then we thought. So that's about where we are. But it works now. We also added some Docker containers that you can run locally to try out python-jamf and jctl. There are also some minor differences in pkgctl then what is shown in the presentation.
 
-The biggest concern we should mention is that the pkgctl tool causes my Jamf Pro server to crash. Fixing this will be our next biggest priority. I am guessing that Java's garbage collection can't keep up with jctl and it runs out of memory too fast.
-
-So when we say this is Alpha software, it is 100% ALPHA. Until we know that python-jamf doesn't crash Jamf Pro, we can't move this to Beta or onward.
+I should also mention, one of us also had an issue where pkgctl start crashing their production Jamf Pro server. Increasing the amount of RAM and CPU's for that server stopped the crashing.
