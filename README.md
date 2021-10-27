@@ -29,9 +29,10 @@ By being singleton classes, you perform one fetch to the server for each list or
 
 ### Wiki
 
+#### More Documentation
 For further in-depth details please check out [the wiki](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki).
 
-### Searching the wiki
+#### Searching the wiki
 
 To search this wiki use the "Search" field in the GitHub navigation bar above. Then on the search results page select the "Wiki" option or [click here](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/search?q=&type=Wikis&utf8=✓) and search.
 
