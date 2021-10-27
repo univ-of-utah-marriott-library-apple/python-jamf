@@ -41,7 +41,7 @@ If you have additional questions, or need more help getting started, post a ques
 
 ### Virtual JNUC 2021 Presentation
 
-We presented on `python-jamf` and `jctl` at the the Virtual JNUC 2021 on Thursday, Oct 21 at 1:00 PM - 1:30 PM MDT, titled [Turn 1000 clicks into 1 with python-jamf and jctl](https://reg.jamf.com/flow/jamf/jnuc2021/sessioncatalog/page/sessioncatalog/session/1620431676367001smXi). The presentation [video](https://reg.jamf.com/flow/jamf/jnuc2021/sessioncatalog/page/sessioncatalog/session/1620431676367001smXi) & [slides](wiki/images/virtual_jnuc_2021-turn_1000_clicks_into_1_with_python-jamf_and_jctl.pdf) are available.
+We presented on `python-jamf` and `jctl` at the the Virtual JNUC 2021 on Thursday, Oct 21 at 1:00 PM - 1:30 PM MDT, titled [Turn 1000 clicks into 1 with python-jamf and jctl](https://reg.jamf.com/flow/jamf/jnuc2021/sessioncatalog/page/sessioncatalog/session/1620431676367001smXi). The presentation [video](https://reg.jamf.com/flow/jamf/jnuc2021/sessioncatalog/page/sessioncatalog/session/1620431676367001smXi) & [slides](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/images/virtual_jnuc_2021-turn_1000_clicks_into_1_with_python-jamf_and_jctl.pdf) are available.
 
 Since 2010, Apple IT, users, and InfoSec leaders from around the world have rallied at the Jamf Nation User Conference (JNUC) for community presentations, deep-dive education sessions, and expert product insights. Focusing on new and better ways to connect, manage and protect Apple devices that simplify workflows for IT and InfoSec and keep users productive. The Virtual JNUC 2021 experience will be October 19 - October 21, 2021, and there will be no cost to attend the online keynote and sessions.
 
@@ -59,4 +59,4 @@ Our presentation will cover how it works internally as a simple alternative to t
 
 Since we recorded our session over a month ago, some of the information in our presentation is out of date already. We have spent the time between when we recorded the presentation and now (October 14, 2021) getting GitHub actions working so that it will test and publish to `pypi`. It took longer to get this working than we thought. So that's about where we are. But it works now. We also added some Docker containers that you can run locally to try out `python-jamf` and `jctl`. There are also some minor differences in `pkgctl` than what is shown in the presentation.
 
-I should also mention, one of us also had an issue where we assumed that `pkgctl` was crashing our production Jamf Pro server. But, increasing the amount of RAM and CPU's for that server stopped the crashing.
+I should also mention, one of us also had an issue where we assumed that `pkgctl` was crashing our production Jamf Pro server. But, increasing the amount of RAM and CPU's for that server fixed this issue.
