@@ -55,8 +55,8 @@ The second project, `jctl`,  is a command-line tool that uses the `python-jamf`
 
 Our presentation will cover how it works internally as a simple alternative to the usual cURL usage; usage example of workflows comparing using Jamf Pro web interface vs `jctl`; and lastly advanced usage and package management including example os subcommands for specific object types, filtering making interacting with the API simple & easy.
 
-#### Latest status
+#### Latest Status
 
-Since we recorded our session over a month ago, some of the information in our presentation is out of date already. We have spent the time between when we recorded the presentation and now (October 14, 2021) getting github actions working so that it will test and publish to pypi. It took longer to get this working then we thought. So that's about where we are. But it works now. We also added some Docker containers that you can run locally to try out python-jamf and jctl. There are also some minor differences in pkgctl then what is shown in the presentation.
+Since we recorded our session over a month ago, some of the information in our presentation is out of date already. We have spent the time between when we recorded the presentation and now (October 14, 2021) getting GitHub actions working so that it will test and publish to `pypi`. It took longer to get this working than we thought. So that's about where we are. But it works now. We also added some Docker containers that you can run locally to try out `python-jamf` and `jctl`. There are also some minor differences in `pkgctl` than what is shown in the presentation.
 
-I should also mention, one of us also had an issue where pkgctl start crashing their production Jamf Pro server. Increasing the amount of RAM and CPU's for that server stopped the crashing.
+I should also mention, one of us also had an issue where we assumed that `pkgctl` was crashing our production Jamf Pro server. But, increasing the amount of RAM and CPU's for that server stopped the crashing.
