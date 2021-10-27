@@ -31,6 +31,10 @@ By being singleton classes, you perform one fetch to the server for each list or
 
 For further in-depth details please check out [the wiki](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki).
 
+### Searching the wiki
+
+To search this wiki use the "Search" field in the GitHub navigation bar above. Then on the search results page select the "Wiki" option or [click here](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/search?q=&type=Wikis&utf8=✓) and search.
+
 ### MacAdmin Slack Channel
 
 If you have additional questions, or need more help getting started, post a question on the MacAdmin's Slack [jctl](https://macadmins.slack.com/archives/C01C8KVV2UD) channel.
@@ -38,12 +42,6 @@ If you have additional questions, or need more help getting started, post a ques
 <p align="center">
 <img src="https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/images/MacAdmins_Slack_logo.png" alt="MacAdmin's Slack Logo">
 </p>
-
-### Wiki
-
-### Searching the wiki
-
-To search this wiki use the "Search" field in the GitHub navigation bar above. Then on the search results page select the "Wiki" option or [click here](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/search?q=&type=Wikis&utf8=✓) and search.
 
 ### Virtual JNUC 2021 Presentation
 
