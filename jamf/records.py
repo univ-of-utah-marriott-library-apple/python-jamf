@@ -1072,7 +1072,7 @@ class Package(Record):
             criterions = group.get_path("criteria/criterion/value")
             if criterions:
                 for pkg in criterions:
-                    if re.search(".pkg|.zip|.dmg", pkg[-4:]):
+                    if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
                         if not pkg in related:
                             related[pkg] = {'groups':[]}
                         if not 'groups' in related[pkg]:

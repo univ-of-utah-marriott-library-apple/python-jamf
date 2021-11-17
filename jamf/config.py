@@ -10,31 +10,16 @@ __copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
 __license__ = 'MIT'
 __version__ = "1.2.4"
 
-import copy
 import getpass
 import logging
 import plistlib
-import itertools
 import keyring
 from os import path, remove
 LINUX_PREFS_TILDA = '~/.edu.utah.mlib.jamfutil.plist'
 MACOS_PREFS_TILDA = '~/Library/Preferences/edu.utah.mlib.jamfutil.plist'
 AUTOPKG_PREFS_TILDA = '~/Library/Preferences/com.github.autopkg.plist'
 JAMF_PREFS = '/Library/Preferences/com.jamfsoftware.jamf.plist'
-MAGIC = (125, 137, 82, 35, 210, 188, 221, 234, 163, 185, 31)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
-
-
-class Error(Exception):
-    pass
-
-
-class CorruptedConfigError(Error):
-    pass
-
-
-class ValidationError(Error):
-    pass
 
 
 class Config:
@@ -51,25 +36,25 @@ class Config:
         self.username = username
         self.password = password
         if not self.hostname and not self.username and not self.password:
-            macos_prefs = path.expanduser(MACOS_PREFS_TILDA)
             if not config_path:
+                macos_prefs = path.expanduser(MACOS_PREFS_TILDA)
                 linux_prefs = path.expanduser(LINUX_PREFS_TILDA)
                 autopkg_prefs = path.expanduser(AUTOPKG_PREFS_TILDA)
                 if path.exists(macos_prefs):
                     if explain:
-                        print("Using "+macos_prefs)
+                        print("Using macos: "+macos_prefs)
                     config_path = macos_prefs
                 elif path.exists(linux_prefs):
                     if explain:
-                        print("Using "+linux_prefs)
+                        print("Using linux: "+linux_prefs)
                     config_path = linux_prefs
                 elif path.exists(autopkg_prefs):
                     if explain:
-                        print("Using "+autopkg_prefs)
+                        print("Using autopkg: "+autopkg_prefs)
                     config_path = autopkg_prefs
                 elif path.exists(JAMF_PREFS):
                     if explain:
-                        print("Using "+JAMF_PREFS)
+                        print("Using jamf: "+JAMF_PREFS)
                     config_path = JAMF_PREFS
                 else:
                     if explain:
@@ -101,8 +86,7 @@ the macOS Keychain and Linux KWallet.
 Please delete the the configuration at {config_path} and recreate it using
 the "./jamf/setconfig.py" script.
 """
-                            print(cmessage)
-                            exit(1)
+                            raise Exception(cmessage)
                         self.hostname = prefs['JSSHostname']
                         self.username = prefs['Username']
                         self.password = keyring.get_password(self.hostname,
@@ -117,6 +101,8 @@ the "./jamf/setconfig.py" script.
                 else:
                     self.log.debug(f"file not found: {config_path}")
 
+        self.config_path = config_path
+
         # Prompt for any missing prefs
         if self.prompt:
             if not self.hostname:
@@ -126,8 +112,7 @@ the "./jamf/setconfig.py" script.
             if not self.password:
                 self.password = getpass.getpass()
         elif not self.hostname and not self.username and not self.password:
-            print("No jamf config file could be found and prompt is off.")
-            exit(1)
+            raise Exception('No jamf config file could be found and prompt is off.')
 
     def save(self, config_path=None):
         keyring.set_password(self.hostname, self.username, self.password)

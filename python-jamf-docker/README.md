@@ -6,9 +6,9 @@ These images are for development and testing. The keyring inside of the docker i
 
 ### python-jamf-dev
 
-Will bind mount ../ to python-jamf. I use this for most of the active development because the files can be edited on the host. I also use it for testing before I commit/push to github.
+I use this for most of the active development because the files can be edited on the host. I also use it for testing before I commit/push to github. It bind mounts ../ to python-jamf.
 
-	cd docker
+	cd python-jamf-docker
 	docker-compose run --rm python-jamf-dev
 
 You will have an interactive shell. The cwd is /python-jamf.
@@ -17,7 +17,11 @@ If you downloaded and installed python-jamf using git, you probably wont have ja
 
 	git describe --tags > jamf/VERSION
 
-This will rebuild the image.
+After you create it, check it. If you cloned the repository from a fork that does not have the tags, you will have the wrong version. You can manually just put in the correct version like this.
+
+	echo 0.6.9 > jamf/VERSION
+
+The following will rebuild the image.
 
 	docker-compose build python-jamf-dev
 
@@ -27,9 +31,11 @@ To install python-jamf (which really means put conf-python-jamf in /usr/local/bi
 
 ### python-jamf-github
 
-Downloads the files from github into the container. By editing the Dockerfile for this container, you can change the version you want to test by altering the "git checkout main" line (and then rebuild the image). Because there is no volume mounted on the host you can't edit these files from the host. So I mostly use this container to test the github repo is working correctly.
+I mostly use this container to test the github repo is working correctly.
 
-	cd docker
+It downloads the files from github into the container. By editing the Dockerfile for this container, you can change the version you want to test by altering the "git checkout main" line (and then rebuild the image). Because there is no volume mounted on the host you can't edit these files from the host.
+
+	cd python-jamf-docker
 	docker-compose run --rm python-jamf-github
 
 You will have an interactive shell. The cwd is /python-jamf.
@@ -42,18 +48,22 @@ This will rebuild the image.
 
 A blank python3 container with keyrings.alt installed. I use this to test `pip install python-jamf`.
 
-	cd docker
+	cd python-jamf-docker
 	docker-compose run --rm python3
 
 You will have an interactive shell. The cwd is /.
 
-This will install the [pypi python-jamf package](https://pypi.org/project/python-jamf/).
+Install the [pypi python-jamf package](https://pypi.org/project/python-jamf/).
 
 	pip install python-jamf
 
 This will rebuild the image.
 
 	docker-compose build python3
+
+## Testing python-jamf
+
+Please see the [wiki](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/Requirements#test-your-install) for instructions on how to test.
 
 ## Configuring your host
 
@@ -79,9 +89,9 @@ Be sure that your hostname has the correct settings for http/https and port. If 
 
 ### Containerized Jamf Pro
 
-These containers were tested with on-prem, jamfcloud, and [containerized Jamf Pro](https://github.com/magnusviri/dockerfiles/tree/main/jamfpro) servers. To use these containers with the containerized Jamf Pro server, use the following setting.
+TLDR: __http://jamfpro:8080__
 
-__http://jamfpro:8080__
+These containers were tested with on-prem, jamfcloud, and [containerized Jamf Pro](https://github.com/magnusviri/dockerfiles/tree/main/jamfpro) servers. To use these containers with the containerized Jamf Pro server, use the following setting.
 
 Because these containers are connecting to the jamfpro_jamfnet network, the same network used by the Jamf Pro container, you need to connect to the port within the container, not the port exposed on the host. So, for example, this is part of my jamfpro definition.
 
@@ -92,10 +102,6 @@ Because these containers are connecting to the jamfpro_jamfnet network, the same
 		- "80:8080"
 
 The python-jamf containers connect to "http://jamfpro:8080" to talk to the jamfpro container. Outside of the container (on the host), you'd connect to "http://localhost:80".
-
-Also, you can get the IP of the jamfpro container with this command (run on the host).
-
-	docker inspect jamfpro_jamfpro_1 | grep IPA
 
 ## Doing stuff
 
