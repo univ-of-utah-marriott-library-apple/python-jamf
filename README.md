@@ -19,6 +19,8 @@ Originally, it was a "patch" project that was focused on patch management includ
 
 The second project, `jctl`,  is a command-line tool that uses the `python-jamf` library to select objects to create, delete, print and update. It allows performing Jamf Pro repetitive tasks quickly and provides options not available in the web GUI. It is similar to SQL statements, but far less complex. And recently added [PyPi](https://pypi.org/project/https://pypi.org/project/jctl//) to support pip installation.
 
+Please check out the [jctl github page](https://github.com/univ-of-utah-marriott-library-apple/jctl) for more information
+
 ## Quick Start
 
 ### Installing
@@ -47,10 +49,6 @@ Currently, the `python-jamf` supports about 50 Jamf records like Buildings, Cate
 Each record is a singleton Python object, but they are generic and most functionality comes from the parent Record class. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the data() method. All lists of records are singleton subclasses of the Records class.
 
 By being singleton classes, you perform one fetch to the server for each list or record. This prevents multiple fetches for the same object. All changes you make are local until you save or refresh the object.
-
-### jctl
-
-`jctl` is a command line based tool to make using `python-jamf` easier to use. Please check out the [jctl github page](https://github.com/univ-of-utah-marriott-library-apple/jctl) for more information.
 
 ## Getting Help
 
