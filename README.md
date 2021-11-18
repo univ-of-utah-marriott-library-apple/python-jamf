@@ -21,6 +21,14 @@ The second project, `jctl`,  is a command-line tool that uses the `python-jamf`
 
 Please check out the [jctl github page](https://github.com/univ-of-utah-marriott-library-apple/jctl) for more information
 
+### Supported Jamf Records
+
+Currently, the `python-jamf` supports about 50 Jamf records like Buildings, Categories, Computers, OSXConfigurationProfiles, and Policies for example.
+
+Each record is a singleton Python object, but they are generic and most functionality comes from the parent Record class. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the data() method. All lists of records are singleton subclasses of the Records class.
+
+By being singleton classes, you perform one fetch to the server for each list or record. This prevents multiple fetches for the same object. All changes you make are local until you save or refresh the object.
+
 ## Quick Start
 
 ### Installing
@@ -41,14 +49,6 @@ To uninstall `python-jamf` run the following command:
 ```bash
 sudo pip3 uninstall python-jamf
 ```
-
-### Supported Jamf Records
-
-Currently, the `python-jamf` supports about 50 Jamf records like Buildings, Categories, Computers, OSXConfigurationProfiles, and Policies for example.
-
-Each record is a singleton Python object, but they are generic and most functionality comes from the parent Record class. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the data() method. All lists of records are singleton subclasses of the Records class.
-
-By being singleton classes, you perform one fetch to the server for each list or record. This prevents multiple fetches for the same object. All changes you make are local until you save or refresh the object.
 
 ## Getting Help
 
