@@ -26,11 +26,10 @@ def string():
 def jamf_version_up_to(min_version):
     full_version = string()
     try:
-        m = re.match(r"^([0-9]+)\.([0-9]+)\.([0-9]+)", full_version)
-        min1, min2, min3 = min_version.split(".")
-        if ( int(m.group(1)) >= int(min1) and
-             int(m.group(2)) >= int(min2) and
-             int(m.group(3)) >= int(min3)):
+        m = re.match(r"^([0-9]+\.[0-9]+\.[0-9]+)", full_version)
+        min1 = tuple(map(int, (min_version.split("."))))
+        cur = tuple(map(int, (m.group(1).split("."))))
+        if (min1 <= cur):
             return min_version # Pass
     except AttributeError:
         return full_version # Fail
