@@ -57,3 +57,10 @@ jobs:
           release_name: ${{ github.ref }}
           draft: true
           prerelease: false
+      - name: Publish to GitHub
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "dist/*"
+          release_id: ${{ steps.create_release.outputs.id }}
