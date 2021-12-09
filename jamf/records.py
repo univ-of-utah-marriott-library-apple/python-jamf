@@ -87,12 +87,12 @@ __all__ = (
     'VPPAssignments',
     'VPPInvitations',
     'WebHooks',
-    # Add all non-Jamf Record classes to valid_records below
+    # Add all non-Jamf Record classes to the exclude list in valid_records below
     'JamfError')
 
 def valid_records():
     valid = tuple(x for x in __all__ if not x in [
-        # Add all non-Jamf Record classes here
+        # Exclude list, add all non-Jamf Record classes here
         'JamfError'
     ])
     return valid
@@ -102,17 +102,17 @@ def valid_records():
 def class_name(name, case_sensitive=True):
     if case_sensitive and name in valid_records():
         return eval(name)
-    for temp in valid_records():
-        if name.lower() == temp.lower():
-            return eval(temp)
+    if not case_sensitive:
+        for temp in valid_records():
+            if name.lower() == temp.lower():
+                return eval(temp)
     raise JamfError(f"{name} is not a valid record.")
 
 
 #pylint: disable=super-init-not-called
 class JamfError(Exception):
     def __init__(self, message):
-        print(f"jctl: error: {message}", file=sys.stderr)
-        exit(1)
+        self.message = message
 
 #pylint: disable=super-init-not-called
 class NotFound(Exception):
