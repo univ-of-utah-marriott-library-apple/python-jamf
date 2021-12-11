@@ -4,10 +4,10 @@
 JAMF Packages
 """
 
-__author__ = 'Sam Forester'
-__email__ = 'sam.forester@utah.edu'
-__copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
-__license__ = 'MIT'
+__author__ = "Sam Forester"
+__email__ = "sam.forester@utah.edu"
+__copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
+__license__ = "MIT"
 __version__ = "1.1.3"
 
 # import re
@@ -26,9 +26,9 @@ from .records import Categories
 from . import config
 
 # GLOBALS
-TMPDIR = os.environ.get('TMPDIR', '/tmp')
-TMPDIR = pathlib.Path(TMPDIR).resolve() / 'edu.utah.mlib.packages'
-VERSIONKEY = 'edu.utah.mlib.jctl:LSMinimumSystemVersion'
+TMPDIR = os.environ.get("TMPDIR", "/tmp")
+TMPDIR = pathlib.Path(TMPDIR).resolve() / "edu.utah.mlib.packages"
+VERSIONKEY = "edu.utah.mlib.jctl:LSMinimumSystemVersion"
 # RECEIPTS = pathlib.Path('/var/db/receipts').resolve()
 # logger = logging.getLogger(__name__)
 
@@ -45,12 +45,13 @@ class Manager:
     """
     Package Manager
     """
+
     def __init__(self, api, admin):
         self.log = logging.getLogger(f"{__name__}.Manager")
         self.admin = admin
         # self.repos = repos
         self.api = api
-        self._packages = {'jss': []}
+        self._packages = {"jss": []}
         # self._uploaded = {}
 
     def find_name(self, name):
@@ -59,7 +60,7 @@ class Manager:
         :returns Package:
         """
         raise NotImplementedError()
-        #if not name and not jssid and not path:
+        # if not name and not jssid and not path:
         #    raise ValueError("must specify name, path, or ID")
 
     def _find(self, key, value):
@@ -75,17 +76,17 @@ class Manager:
         :param repo <Repo>:  package.Repo object
         :returns <list>:     list of new packages
         """
-        names = [r['name'] for r in self.jss_packages(**kwargs)]
+        names = [r["name"] for r in self.jss_packages(**kwargs)]
         return [pkg for pkg in repo.packages if pkg.name not in names]
 
     def jss_packages(self, refresh=False):
         """
         get all packages from JSS
         """
-        if refresh or not self._packages['jss']:
-            pkgs = self.api.get('packages')['packages']['package']
-            self._packages['jss'] = pkgs
-        return self._packages['jss']
+        if refresh or not self._packages["jss"]:
+            pkgs = self.api.get("packages")["packages"]["package"]
+            self._packages["jss"] = pkgs
+        return self._packages["jss"]
 
     def archive(self, pkg, path=None):
         """
@@ -119,26 +120,25 @@ class Manager:
 
 
 class BasePackage:
-
     def __init__(self, name):
         self.name = name
-        self.info = {'pkginfo': {'install-location': None,
-                                 'identifier': None,
-                                 'version': None},
-                     'name': name,
-                     'path': None,
-                     'contents': []}
+        self.info = {
+            "pkginfo": {"install-location": None, "identifier": None, "version": None},
+            "name": name,
+            "path": None,
+            "contents": [],
+        }
 
     @property
     def identifier(self):
-        _id = self.info['pkginfo']['identifier']
+        _id = self.info["pkginfo"]["identifier"]
         if not _id:
             raise ValueError("unable to determine identifier")
         return _id
 
     @property
     def version(self):
-        _version = self.info['pkginfo']['version']
+        _version = self.info["pkginfo"]["version"]
         if not _version:
             # attempt to figure out the version from the name?
             raise ValueError("unable to determine version")
@@ -161,8 +161,11 @@ class BasePackage:
             if not self.identifier == x.identifier:
                 raise ValueError(f"{self.identifer} != {x.identifier}")
             # if versions are identical, check the name
-            return (self.version < x.version
-                   if not self.version == x.version else self.name < x.name)
+            return (
+                self.version < x.version
+                if not self.version == x.version
+                else self.name < x.name
+            )
         else:
             raise TypeError(f"unable to compare {x!r}: {type(x)}")
 
@@ -174,8 +177,11 @@ class BasePackage:
             if not self.identifier == x.identifier:
                 raise ValueError(f"{self.identifer} != {x.identifier}")
             # if versions are identical, check the name
-            return (self.version > x.version
-                   if not self.version == x.version else self.name > x.name)
+            return (
+                self.version > x.version
+                if not self.version == x.version
+                else self.name > x.name
+            )
         else:
             raise TypeError(f"unable to compare {x!r}: {type(x)}")
 
@@ -196,26 +202,24 @@ class BasePackage:
 
 
 class App:
-
     def __init__(self, data):
-        self.identifier = data['CFBundleIdentifier']
-        self.version = data['CFBundleShortVersionString']
-        self.bundle_version = data['CFBundleVersion']
-        self.minimum_os = data.get('LSMinimumSystemVersion')
+        self.identifier = data["CFBundleIdentifier"]
+        self.version = data["CFBundleShortVersionString"]
+        self.bundle_version = data["CFBundleVersion"]
+        self.minimum_os = data.get("LSMinimumSystemVersion")
 
     def values(self):
-        keys = ('identifier', 'version', 'bundle_version', 'minimum_os')
+        keys = ("identifier", "version", "bundle_version", "minimum_os")
         return tuple(getattr(self, k) for k in keys)
 
     def items(self):
-        return {k:v for k, v in self.__dict__.items() if not k.startswith('_')}
+        return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
     def __iter__(self):
         yield self.values()
 
 
 class Package:
-
     def __init__(self, path):
         self.log = logging.getLogger(f"{__name__}.Package")
         self.path = pathlib.Path(path)
@@ -272,7 +276,7 @@ class Package:
         :returns: package version
         """
         if not self._version:
-            v = self.info['pkginfo']['version']
+            v = self.info["pkginfo"]["version"]
             if v:
                 try:
                     # NOTE: StrictVersion(None) and StrictVersion('')
@@ -290,14 +294,14 @@ class Package:
         """
         :returns: package bundle identifier
         """
-        return self.info['pkginfo']['identifier']
+        return self.info["pkginfo"]["identifier"]
 
     @property
     def location(self):
         """
         :returns: package install-location
         """
-        return self.info['pkginfo']['install-location']
+        return self.info["pkginfo"]["install-location"]
 
     @property
     def apps(self):
@@ -305,9 +309,9 @@ class Package:
         :returns: list of apps that will be installed by the package
         """
         if not self._apps:
-            for bundle in self.info['contents']:
-                if bundle['name'].endswith('.app'):
-                    os = {'LSMinimumSystemVersion': str(self.minimum_os)}
+            for bundle in self.info["contents"]:
+                if bundle["name"].endswith(".app"):
+                    os = {"LSMinimumSystemVersion": str(self.minimum_os)}
                     bundle.update(os)
                     self._apps.append(bundle)
         return self._apps
@@ -320,7 +324,7 @@ class Package:
         if not self._min_os_ver:
             # check for our metadata flag
             try:
-                _version = xattr('-p', VERSIONKEY, self.path)
+                _version = xattr("-p", VERSIONKEY, self.path)
             except subprocess.CalledProcessError:
                 pass
             else:
@@ -329,30 +333,30 @@ class Package:
                     self._min_os_ver = StrictVersion(_version)
                 else:
                     # remove empty metadata key
-                    xattr('-d', VERSIONKEY, self.path)
+                    xattr("-d", VERSIONKEY, self.path)
         # if there's no metadata, we have to check the plist in the payload
         if not self._min_os_ver:
             # missing metadata key
             expanded = self.expand()
-            _pkg = package_information(path=expanded/'PackageInfo')
+            _pkg = package_information(path=expanded / "PackageInfo")
             versions = []
-            for bundle in _pkg['bundles']:
-                payload = expanded / 'Payload'
+            for bundle in _pkg["bundles"]:
+                payload = expanded / "Payload"
                 # very expensive for large packages (especially over network)
                 try:
-                    plist = extract_info_plist(payload, bundle['path'])
+                    plist = extract_info_plist(payload, bundle["path"])
                 except subprocess.CalledProcessError:
                     pass
                 else:
                     # default LSMinimumSystemVersion == 10.0.0 (Apple Developer)
-                    v = plist.get('LSMinimumSystemVersion', '10.0')
+                    v = plist.get("LSMinimumSystemVersion", "10.0")
                     # some developers are dumb...
-                    v.replace(' ', '')
+                    v.replace(" ", "")
                     try:
                         versions.append(StrictVersion(v))
                     except ValueError as e:
                         self.log.error(f"invalid version: {v!r} (using default)")
-                        versions.append(StrictVersion('10.0'))
+                        versions.append(StrictVersion("10.0"))
             # minimum version is the HIGHEST version of all bundles
             # NOTE: if one component requires 10.14.6, but another requires
             #       10.2.0, then the lowest OS the app run on is 10.14.6
@@ -360,10 +364,10 @@ class Package:
             try:
                 self._min_os_ver = sorted(versions)[-1]
             except IndexError:
-                self._min_os_ver = StrictVersion('10.0')
+                self._min_os_ver = StrictVersion("10.0")
             # save the metadata for future use
             try:
-                xattr('-w', VERSIONKEY, self._min_os_ver, self.path)
+                xattr("-w", VERSIONKEY, self._min_os_ver, self.path)
             except subprocess.CalledProcessError:
                 self.log.error(f"xattr failed")
         return self._min_os_ver
@@ -372,24 +376,30 @@ class Package:
     def info(self):
         if not self._info:
             try:
-                _pkginfo = extract(self.path, 'PackageInfo', TMPDIR)
+                _pkginfo = extract(self.path, "PackageInfo", TMPDIR)
             except subprocess.CalledProcessError:
                 raise InvalidPackageError(self.path)
             _pkg = package_information(info=_pkginfo)
-            self._info = {'name': self.path.name,
-                          'path': str(self.path.absolute()),
-                          'pkginfo': _pkg['pkginfo']}
-            location = pathlib.Path(_pkg['pkginfo']['install-location'])
-            info_keys = ('CFBundleShortVersionString', 'CFBundleVersion')
+            self._info = {
+                "name": self.path.name,
+                "path": str(self.path.absolute()),
+                "pkginfo": _pkg["pkginfo"],
+            }
+            location = pathlib.Path(_pkg["pkginfo"]["install-location"])
+            info_keys = ("CFBundleShortVersionString", "CFBundleVersion")
             contents = []
-            for bundle in _pkg['bundles']:
+            for bundle in _pkg["bundles"]:
                 _info = {k: v for k, v in bundle.items() if k in info_keys}
-                path = location / bundle['path']
-                _info.update({'CFBundleIdentifier': bundle['id'],
-                              'name': path.name,
-                              'path': str(path)})
+                path = location / bundle["path"]
+                _info.update(
+                    {
+                        "CFBundleIdentifier": bundle["id"],
+                        "name": path.name,
+                        "path": str(path),
+                    }
+                )
                 contents.append(_info)
-            self._info['contents'] = contents
+            self._info["contents"] = contents
         return self._info
 
     @property
@@ -418,13 +428,14 @@ class Package:
             e = TMPDIR / self.path.stem
             if e.exists():
                 # check to see if the information matches
-                _extracted = extract(self.path, 'PackageInfo', e)
+                _extracted = extract(self.path, "PackageInfo", e)
                 _pkg = package_information(info=_extracted)
-                _exists = package_information(path=e/'PackageInfo')
+                _exists = package_information(path=e / "PackageInfo")
                 # continue with expansion if different, or use existing
                 # TO-DO: should probably test for empty directory
-                self.expanded = (expand_package(self.path, path=e, ov=True)
-                                 if _exists != _pkg else e)
+                self.expanded = (
+                    expand_package(self.path, path=e, ov=True) if _exists != _pkg else e
+                )
             else:
                 # no existing path was found
                 self.expanded = expand_package(self.path, path=e)
@@ -438,7 +449,7 @@ class Package:
         _checksums = calculate_checksums(self.path, hashes)
         self._md5, self._sha512 = [h.hexdigest() for h in _checksums]
 
-    def install(self, target='/'):
+    def install(self, target="/"):
         """
         convenience function to install this package
         """
@@ -510,11 +521,12 @@ class Repo:
     """
     Package Repository
     """
-    def __init__(self, path, pattern='*pkg'):
+
+    def __init__(self, path, pattern="*pkg"):
         self.log = logging.getLogger(f"{__name__}.Repo")
         self._config = None
         self.path = pathlib.Path(path).absolute()
-        self.archive = self.path / 'archive'
+        self.archive = self.path / "archive"
         # "*pkg" should match [*.mpkg, '*.pkg']
         self.pattern = pattern
         self._packages = None
@@ -528,19 +540,19 @@ class Repo:
             self._packages = []
             for path in self.path.glob(self.pattern):
                 # exclude hidden files
-                if not path.name.startswith('.'):
+                if not path.name.startswith("."):
                     self._packages.append(Package(path))
         return self._packages
 
     @property
     def category(self):
-        return self.config.get('category', 'No category assigned')
+        return self.config.get("category", "No category assigned")
 
     @property
     def config(self):
         # TO-DO: this should be handled by config.Config()
         if not self._config:
-            path = self.path / 'edu.utah.mlib.jctl.plist'
+            path = self.path / "edu.utah.mlib.jctl.plist"
             self._config = config.Config(path=path)
             if not self._config.load():
                 # TO-DO: need to create a template
@@ -609,7 +621,7 @@ class Repo:
 #     raise NotImplementedError()
 
 
-def install_package(pkg, target='/'):
+def install_package(pkg, target="/"):
     """
     Install a package
 
@@ -619,9 +631,9 @@ def install_package(pkg, target='/'):
     logger = logging.getLogger(__name__)
     path = pkg.path.absolute() if isinstance(pkg, Package) else pkg
     logger.info(f"installing package: {path}")
-    cmd = ['/usr/sbin/installer', '-pkg', path, '-target', target]
+    cmd = ["/usr/sbin/installer", "-pkg", path, "-target", target]
     logger.debug(f"> sudo -n installer -pkg {path!r} -target {target!r}")
-    subprocess.check_call(['/usr/bin/sudo', '-n'] + cmd)
+    subprocess.check_call(["/usr/bin/sudo", "-n"] + cmd)
 
 
 # def jss_package_details(api, name=None):
@@ -671,8 +683,8 @@ def jss_packages(jss, name=None):
     name = name.lower()
     pkgs = []
     # for pkg in jss.get('packages', xml=True)['packages']['package']:
-    for pkg in jss.get('packages')['packages']:
-        if not name or name in pkg['name'].lower():
+    for pkg in jss.get("packages")["packages"]:
+        if not name or name in pkg["name"].lower():
             pkgs.append(pkg)
     return pkgs
 
@@ -681,22 +693,22 @@ def installer_packages():
     """
     quick and dirty dump of packages on InstallerPackages
     """
-    vol = '/Volumes/InstallerPackages/munkipkg_projects'
+    vol = "/Volumes/InstallerPackages/munkipkg_projects"
     import glob
-    g = os.path.join(vol, '*/payload/*.app')
+
+    g = os.path.join(vol, "*/payload/*.app")
     info = {}
     for path in glob.glob(g):
         name = os.path.splitext(os.path.basename(path))[0]
-        directory = path.split('/payload')[0]
+        directory = path.split("/payload")[0]
         folder = os.path.basename(directory)
         pkgs = []
-        for pkg in glob.glob(os.path.join(directory, 'build/*.pkg')):
+        for pkg in glob.glob(os.path.join(directory, "build/*.pkg")):
             pkgs.append(os.path.basename(pkg))
-        plist = os.path.join(directory, 'build-info.plist')
-        with open(plist, 'rb') as f:
+        plist = os.path.join(directory, "build-info.plist")
+        with open(plist, "rb") as f:
             b_info = plistlib.load(f)
-        info[name] = {'pkgs': pkgs, 'folder': folder,
-                      'build': b_info, 'name': name}
+        info[name] = {"pkgs": pkgs, "folder": folder, "build": b_info, "name": name}
 
 
 def pkgutil(*args):
@@ -705,7 +717,7 @@ def pkgutil(*args):
     """
     logger = logging.getLogger(__name__)
     logger.debug(f"args: {args!r}")
-    cmd = ['/usr/sbin/pkgutil'] + [str(x) for x in args]
+    cmd = ["/usr/sbin/pkgutil"] + [str(x) for x in args]
     out = subprocess.check_output(cmd, stderr=subprocess.PIPE)
     try:
         result = plistlib.loads(out)
@@ -745,7 +757,7 @@ def expand_package(pkg, path=None, full=False, ov=False):
         logger.error(f"destination already exists: {expanded}")
         raise FileExistsError(expanded)
     # https://stackoverflow.com/questions/41166805/how-to-extract-contents-from-payload-file-in-a-apple-macos-update-package
-    expand_type = '--expand-full' if full else '--expand'
+    expand_type = "--expand-full" if full else "--expand"
     # will fail if parent directory does not exist
     pkgutil(expand_type, pkg, expanded)
     return expanded
@@ -766,8 +778,8 @@ def calculate_checksums(path, hashes, copy=True, bufsize=8192):
     logger.debug(f"calculating checksums: {path}")
     # copy each hash if specified, otherwise update original hash objects
     hashes = [hash.copy() if copy else hash for hash in hashes]
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(bufsize), b''):
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(bufsize), b""):
             # update each hash with the contents of file as it's read
             for hash in hashes:
                 hash.update(chunk)
@@ -780,7 +792,7 @@ def extract_info_plist(payload, app_path):
     :param payload <str|Path>:      path to zipped pkg payload
     :param app_path <str|Path>:     path to app to extract in payload
     """
-    path = pathlib.Path(app_path) / 'Contents' / 'Info.plist'
+    path = pathlib.Path(app_path) / "Contents" / "Info.plist"
     return plistlib.loads(extract_tar(path, payload))
 
 
@@ -788,7 +800,7 @@ def extract_tar(payload, path):
     logger = logging.getLogger(__name__)
     logger.info(f"extracting using tar: '{path}'")
     logger.info(f"> tar -xOf '{payload}' '{path}'")
-    tar_output = subprocess.check_output(['/usr/bin/tar', '-xOf', path, payload])
+    tar_output = subprocess.check_output(["/usr/bin/tar", "-xOf", path, payload])
     return tar_output
 
 
@@ -798,9 +810,11 @@ def extract(path, payload, save_dir):
     if not TMPDIR.exists():
         TMPDIR.mkdir(mode=0o755)
     logger.debug(f"> xar -xf '{path}' '{payload}' -C '{save_dir}'")
-    xar_output = subprocess.check_output(['/usr/bin/xar', '-xf', path, payload, '-C', save_dir])
-    pkg_info = subprocess.check_output(['/bin/cat', save_dir / payload])
-    return (pkg_info)
+    xar_output = subprocess.check_output(
+        ["/usr/bin/xar", "-xf", path, payload, "-C", save_dir]
+    )
+    pkg_info = subprocess.check_output(["/bin/cat", save_dir / payload])
+    return pkg_info
 
 
 def find_payload(archive):
@@ -808,7 +822,7 @@ def find_payload(archive):
     locate payload inside of an archive
     """
     # https://dev.to/aarohmankad/bash-functions-a-more-powerful-alias-4p3i
-    cmd = ['/usr/bin/xar', '-tf', archive]
+    cmd = ["/usr/bin/xar", "-tf", archive]
     raise NotImplementedError()
 
 
@@ -839,26 +853,26 @@ def package_information(path=None, info=None):
         raise TypeError("must specify path or string")
 
     # verify root tag == 'pkg-info'
-    if root.tag != 'pkg-info':
+    if root.tag != "pkg-info":
         raise Error(f"unexpected xml tag: {root.tag!r} != 'pkg-info'")
     # unsure if this is necessary (I haven't seen anything other than 2)
-    fmt_ver = int(root.attrib['format-version'])
+    fmt_ver = int(root.attrib["format-version"])
     if fmt_ver != 2:
         logger.debug("unsure if this error can be ignored")
         raise Error(f"unexpected 'format-version': {fmt_ver} != 2")
     # get information about package
     _pkginfo = root.attrib.copy()
-    _pkginfo.setdefault('install-location', '/')
-    info = {'pkginfo': _pkginfo, 'bundles': []}
+    _pkginfo.setdefault("install-location", "/")
+    info = {"pkginfo": _pkginfo, "bundles": []}
 
     # get a list of bundle-ids that we care about
-    ids = [e.attrib['id'] for e in root.findall('bundle-version/bundle')]
+    ids = [e.attrib["id"] for e in root.findall("bundle-version/bundle")]
     # find all bundles that are installed and get information about each one
-    for e in root.findall('bundle'):
-        id_ = e.attrib.get('id')
+    for e in root.findall("bundle"):
+        id_ = e.attrib.get("id")
         if id_ and id_ in ids:
             # only get attributes for bundles in 'pkg-info/bundle-version'
-            info['bundles'].append(e.attrib.copy())
+            info["bundles"].append(e.attrib.copy())
     return info
 
 
@@ -868,6 +882,6 @@ def xattr(*args):
     """
     logger = logging.getLogger(__name__)
     logger.debug(f"xattr args: {args!r}")
-    cmd = ['/usr/bin/xattr'] + [str(x) for x in args]
+    cmd = ["/usr/bin/xattr"] + [str(x) for x in args]
     out = subprocess.check_output(cmd, stderr=subprocess.PIPE)
-    return out.decode('utf-8').rstrip()
+    return out.decode("utf-8").rstrip()

@@ -6,10 +6,10 @@ Tools for interacting with Jamf Admin (the undocumented Jamf API)
 See https://apple.lib.utah.edu/reverse-engineering-jamf-admin/
 """
 
-__author__ = 'Sam Forester'
-__email__ = 'sam.forester@utah.edu'
-__copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
-__license__ = 'MIT'
+__author__ = "Sam Forester"
+__email__ = "sam.forester@utah.edu"
+__copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
+__license__ = "MIT"
 __version__ = "1.3.0"
 
 import re
@@ -37,6 +37,7 @@ from . import records
 # GLOBALS
 logger = logging.getLogger(__name__)
 
+
 class Error(Exception):
     pass
 
@@ -61,7 +62,9 @@ class Singleton(type):
     """
     Use single instance of class
     """
+
     _instances = {}
+
     def __call__(cls, *a, **kw):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*a, **kw)
@@ -72,12 +75,10 @@ class JamfAdmin(metaclass=Singleton):
     """
     Class for uploading/updating packages in Jamf Admin.app
     """
-    def __init__(self,
-                 config_path=None,
-                 hostname=None,
-                 username=None,
-                 password=None,
-                 prompt=True):
+
+    def __init__(
+        self, config_path=None, hostname=None, username=None, password=None, prompt=True
+    ):
         """
         :param hostname <str>:  JSS hostname (e.g. 'your.jss.domain')
         :param auth <tuple>:    JSS authentication credentials (user, passwd)
@@ -86,11 +87,13 @@ class JamfAdmin(metaclass=Singleton):
         """
         self.log = logging.getLogger(f"{__name__}.JamfAdmin")
 
-        conf = config.Config(config_path=config_path,
-                             hostname=hostname,
-                             username=username,
-                             password=password,
-                             prompt=prompt)
+        conf = config.Config(
+            config_path=config_path,
+            hostname=hostname,
+            username=username,
+            password=password,
+            prompt=prompt,
+        )
         hostname = hostname or conf.hostname
         username = username or conf.username
         password = password or conf.password
@@ -106,11 +109,11 @@ class JamfAdmin(metaclass=Singleton):
         self.data = self.authenticate()
         self.categories = records.Categories()
         for share in self.fileservers:
-            if share['master'] == 'true':
+            if share["master"] == "true":
                 self.fileshare = FileShare.fromJXML(share)
                 break
         self._packages = None
-        self._refreshed = {'packages': False}
+        self._refreshed = {"packages": False}
 
     def __del__(self):
         for pkg in self.packages:
@@ -123,12 +126,12 @@ class JamfAdmin(metaclass=Singleton):
         """
         :returns: list of packages from Jamf Admin
         """
-        _trigger = self._refreshed['packages']
+        _trigger = self._refreshed["packages"]
         if not self._packages or _trigger:
             if not self.fileshare.mounted:
                 self.fileshare.mount()
-            self._refreshed['packages'] = False
-            _data = self.data['packages']['package']
+            self._refreshed["packages"] = False
+            _data = self.data["packages"]["package"]
             # fix xml_to_dict issues by ensuring sure it's a list
             if isinstance(_data, dict):
                 _data = [_data]
@@ -137,7 +140,7 @@ class JamfAdmin(metaclass=Singleton):
                 try:
                     pkg = Package(d, self.fileshare)
                 except FileNotFoundError:
-                    self.remove(d['id'])
+                    self.remove(d["id"])
                 else:
                     if pkg in self._packages:
                         err = f"duplicate package: {pkg.jssid}: {pkg.name}"
@@ -152,7 +155,7 @@ class JamfAdmin(metaclass=Singleton):
         """
         :returns: list of fileservers from Jamf Admin
         """
-        _data = self.data['fileservers']['fileserver']
+        _data = self.data["fileservers"]["fileserver"]
         # fix xml_to_dict issues by making sure we return a list
         return _data if isinstance(_data, list) else [_data]
 
@@ -161,7 +164,7 @@ class JamfAdmin(metaclass=Singleton):
         """
         :returns: list of groups from Jamf Admin
         """
-        _data = self.data['groups']['group']
+        _data = self.data["groups"]["group"]
         # fix xml_to_dict issues by making sure we return a list
         return _data if isinstance(_data, list) else [_data]
 
@@ -171,8 +174,12 @@ class JamfAdmin(metaclass=Singleton):
         """
         self.log.debug("authenticating session: %r", self.hostname)
         username, passwd = self.session.auth
-        form = {'username': username, 'password': passwd,
-                'casperAdminVersion': '', 'skipComputers': 'true'}
+        form = {
+            "username": username,
+            "password": passwd,
+            "casperAdminVersion": "",
+            "skipComputers": "true",
+        }
         # authenticate session (uses 'JSESSIONID' cookie for future requests)
         response = self.session.post(f"{self.hostname}//casper.jxml", data=form)
         # NOTE: failed requests will still return <Response [200]>
@@ -187,17 +194,17 @@ class JamfAdmin(metaclass=Singleton):
         # TO-DO: figure out best way to determine bad authentication
         # NOTE: failed requests will only have 'epoch' and 'response' tags
         #       successful requests will not have 'response' tag
-        failure = info['jamfServlet'].get('response')
+        failure = info["jamfServlet"].get("response")
         if failure:
             raise Error(f"{self.hostname}: authentication failed: {failure}")
-        return info['jamfServlet']
+        return info["jamfServlet"]
 
     def refresh(self):
         """
         reauthenticate and refresh data
         """
         self.data = self.authenticate()
-        self._refreshed = {k:True for k in self._refreshed.keys()}
+        self._refreshed = {k: True for k in self._refreshed.keys()}
         return self.data
 
     def index(self, pkg):
@@ -227,7 +234,7 @@ class JamfAdmin(metaclass=Singleton):
         # upload package file
         dest = self.fileshare.packages / pkg.name
         self.log.debug(f"> cp {pkg.path} {dest}")
-        subprocess.check_call(['/bin/cp', '-p', pkg.path, dest])
+        subprocess.check_call(["/bin/cp", "-p", pkg.path, dest])
         self.log.debug(f"successfully copied package: {pkg.path}")
         uploaded = package.Package(dest)
         try:
@@ -273,14 +280,15 @@ class JamfAdmin(metaclass=Singleton):
 
         # get package data form
         form = package_upload_form(pkg)
-        form.update({'username': self.session.auth[0],
-                     'password': self.session.auth[1]})
+        form.update(
+            {"username": self.session.auth[0], "password": self.session.auth[1]}
+        )
         # submit package upload form
         self.log.debug("submitting package form")
         url = f"{self.hostname}//casperAdminAddObject.jxml"
         r = self.session.post(url, data=form)
         # get the ID of the newly created package
-        jssid = convert.xml_to_dict(r.text)['jamfServlet']['new_id']
+        jssid = convert.xml_to_dict(r.text)["jamfServlet"]["new_id"]
         logger.debug(f"new package ID: {jssid}")
         added = Package.fromPackage(jssid, pkg, self.fileshare)
         self.packages.append(added)
@@ -301,13 +309,15 @@ class JamfAdmin(metaclass=Singleton):
             jssid = self.find(x.name).jssid
         elif isinstance(x, (str, int)):
             jssid = x
-        form = {'username': self.session.auth[0],
-                'allScriptsMigratedToJSS': 'true',
-                'deletedPackageID': jssid}
+        form = {
+            "username": self.session.auth[0],
+            "allScriptsMigratedToJSS": "true",
+            "deletedPackageID": jssid,
+        }
         self.session.post(f"{self.hostname}//casperAdminSave.jxml", data=form)
 
-    def update(self, pkg, notes=''):
-        if not hasattr(pkg, 'jssid'):
+    def update(self, pkg, notes=""):
+        if not hasattr(pkg, "jssid"):
             try:
                 pkg = self.find(pkg.name)
             except AttributeError:
@@ -317,11 +327,15 @@ class JamfAdmin(metaclass=Singleton):
 
         self.log.info(f"updating package: id: {pkg.jssid}: {pkg.name}")
         form = package_update_form(pkg)
-        form.update({'username': self.session.auth[0],
-                     'password': self.session.auth[1],
-                     'allScriptsMigratedToJSS': 'true'})
+        form.update(
+            {
+                "username": self.session.auth[0],
+                "password": self.session.auth[1],
+                "allScriptsMigratedToJSS": "true",
+            }
+        )
         if notes:
-            form['packageNotes'] = notes
+            form["packageNotes"] = notes
         self.session.post(f"{self.hostname}//casperAdminSave.jxml", data=form)
 
     def find(self, name):
@@ -337,7 +351,6 @@ class JamfAdmin(metaclass=Singleton):
 
 
 class PackageList(list):
-
     @property
     def names(self):
         return [p.name for p in self]
@@ -360,17 +373,21 @@ class Package(package.Package):
         except TypeError:
             fileshare.mount()
             volume = pathlib.Path(fileshare.path)
-        path = volume / 'Packages' / conf['filename']
-        keys = ('checksum', 'hashValue', 'info', 'notes', 'groupid')
-        return cls({k:conf[k] for k in keys if k in conf}, fileshare)
+        path = volume / "Packages" / conf["filename"]
+        keys = ("checksum", "hashValue", "info", "notes", "groupid")
+        return cls({k: conf[k] for k in keys if k in conf}, fileshare)
 
     @classmethod
     def fromPackage(cls, jssid, pkg, fileshare):
         """
         Create ServerPackage object from existing Package object
         """
-        data = {'id': jssid, 'filename': pkg.name,
-                'checksum': pkg.md5, 'hashValue': pkg.sha512}
+        data = {
+            "id": jssid,
+            "filename": pkg.name,
+            "checksum": pkg.md5,
+            "hashValue": pkg.sha512,
+        }
         return cls(data, fileshare)
 
     def __new__(cls, data, fileshare):
@@ -379,28 +396,28 @@ class Package(package.Package):
         """
         logger = logging.getLogger(__name__)
         # logger.debug(f'data: {data}')
-        jssid = int(data['id'])
+        jssid = int(data["id"])
         if jssid not in cls._instances:
             cls._instances[jssid] = super(Package, cls).__new__(cls)
         return cls._instances[jssid]
 
     def __init__(self, data, fileshare):
-        path =  fileshare.path / 'Packages' / data['filename']
+        path = fileshare.path / "Packages" / data["filename"]
         # if not path.exists():
         #     raise ValueError(f"unable to find package on server: {path}")
         super().__init__(path)
         self.log = logging.getLogger(f"{__name__}.Package")
-        self._md5 = data.get('checksum')
-        self._sha512 = data.get('hashValue')
-        self.jssid = int(data['id'])
-        self.category = records.Categories().find(data.get('groupid', '-1'))
-        self.notes = data.get('notes', '')
+        self._md5 = data.get("checksum")
+        self._sha512 = data.get("hashValue")
+        self.jssid = int(data["id"])
+        self.category = records.Categories().find(data.get("groupid", "-1"))
+        self.notes = data.get("notes", "")
         try:
-            self._info = json.loads(data.get('info', '{}'))
+            self._info = json.loads(data.get("info", "{}"))
         except (json.decoder.JSONDecodeError, TypeError):
             self._info = {}
         try:
-            self._min_os_ver = self._info.get('minimum_os')
+            self._min_os_ver = self._info.get("minimum_os")
         except AttributeError:
             pass
 
@@ -411,27 +428,26 @@ class Package(package.Package):
     @property
     def info(self):
         _info = super().info
-        _info.update({'minimum_os': self.minimum_os})
+        _info.update({"minimum_os": self.minimum_os})
         return _info
 
 
 class FileShare:
-
     @classmethod
     def fromJXML(cls, jxml):
         """
         Use Jamf Admin fileserver info to create new FileShare
         :returns: FileShare object
         """
-        protocol = jxml['type']
+        protocol = jxml["type"]
         # default domain (fallback to ip), raises KeyError if no fallback
         # NOTE: Jamf Admin incorrectly uses domain in 'ip'
-        host = jxml.get('domain') or jxml['ip']
-        auth = (jxml['adminUsername'], jxml['adminPassword'])
-        kwargs = {'share': jxml['share'], 'name': jxml['displayname']}
+        host = jxml.get("domain") or jxml["ip"]
+        auth = (jxml["adminUsername"], jxml["adminPassword"])
+        kwargs = {"share": jxml["share"], "name": jxml["displayname"]}
         return cls(protocol, host, auth, **kwargs)
 
-    def __init__(self, protocol, hostname, auth, name=None, share=''):
+    def __init__(self, protocol, hostname, auth, name=None, share=""):
         self.log = logging.getLogger(f"{__name__}.FileShare")
         self.log.debug(f"protocol: {protocol!r}")
         self.log.debug(f"hostname: {hostname!r}")
@@ -481,7 +497,7 @@ class FileShare:
         # verify there is actually a path to return
         if not self.path:
             raise Error(f"{self.name}: not mounted")
-        return self.path / 'Packages'
+        return self.path / "Packages"
 
     def mount(self, timeout=5):
         """
@@ -496,7 +512,7 @@ class FileShare:
         user, passwd = [urllib.parse.quote(s) for s in self.auth]
         url = f"{self.protocol}://{user}:{passwd}@{self.host}/{self.share}"
         self.log.debug(f"> open {url.replace(passwd, '******')}")
-        subprocess.check_call(['/usr/bin/open', url])
+        subprocess.check_call(["/usr/bin/open", url])
         self._wait_for_mount(timeout=timeout)
         self.log.info(f"successfully mounted: {self.name}")
         self.log.debug(f"path: {str(self.path)!r}")
@@ -510,7 +526,7 @@ class FileShare:
             self.log.warning(f"{self.name}: already unmounted")
             return
         self.log.debug(f"unmounting: {self.name}")
-        subprocess.check_call(['/sbin/umount', self.path])
+        subprocess.check_call(["/sbin/umount", self.path])
         self.path = None
         self.log.info(f"{self.name}: succesfully unmounted")
 
@@ -534,23 +550,25 @@ def package_upload_form(pkg):
     :returns: form to post for package uploads
     """
     # TO-DO: this will require .mpkg support
-    if pkg.path.suffix == '.pkg':
-        type_ = 'package'
+    if pkg.path.suffix == ".pkg":
+        type_ = "package"
     else:
         raise ValueError(f"unsupported package type: {pkg.path.suffix!r}")
     # return populated form for package
-    return {'type': type_,
-            'packageName': pkg.name,
-            'packageFileName': pkg.name,
-            'adobeInstall': 'false',
-            'osInstall': 'false',
-            'osInstallerVersion': '',
-            'parentPackageID': '-1',
-            'checksum': str(pkg.md5),
-            'hashType': '1',
-            'hashValue': str(pkg.sha512),
-            'reboot': 'false', # str(pkg.reboot).lower(),
-            'packagePriority': '10'}
+    return {
+        "type": type_,
+        "packageName": pkg.name,
+        "packageFileName": pkg.name,
+        "adobeInstall": "false",
+        "osInstall": "false",
+        "osInstallerVersion": "",
+        "parentPackageID": "-1",
+        "checksum": str(pkg.md5),
+        "hashType": "1",
+        "hashValue": str(pkg.sha512),
+        "reboot": "false",  # str(pkg.reboot).lower(),
+        "packagePriority": "10",
+    }
 
 
 def package_update_form(pkg):
@@ -558,62 +576,64 @@ def package_update_form(pkg):
     :returns: form to post for package updates
     """
     # TO-DO: this will require .mpkg support
-    if pkg.path.suffix == '.pkg':
-        format = 'Apple Package'
+    if pkg.path.suffix == ".pkg":
+        format = "Apple Package"
     else:
         raise ValueError(f"unsupported package type: {pkg.path.suffix!r}")
     try:
         _info = pkg.info
-        _info['minimum_os'] = pkg.minimum_os
+        _info["minimum_os"] = pkg.minimum_os
     except Exception as e:
-        _info = {'ERROR': f"failed to dump package info: {e}"}
+        _info = {"ERROR": f"failed to dump package info: {e}"}
 
     try:
         pkginfo = json.dumps(_info, indent=2)
     except Exception as e:
-        pkginfo = ''
+        pkginfo = ""
     try:
         notes = str(pkg.notes)
     except AttributeError:
-        notes = ''
+        notes = ""
     # return populated form template
-    return {'packageID': pkg.jssid,
-            'packageName': pkg.name,
-            'packageFileName': pkg.name,
-            'checksum': str(pkg.md5),
-            'hashType': '1',
-            'hashValue': str(pkg.sha512),
-            'packageGroupID': pkg.category.id,
-            'packagePriority': '10',
-            'packageInfo': pkginfo,
-            'packageNotes': notes,
-            'packageFormat': format,
-            'packageSize': 'n/a',
-            'packageRequirements': '',
-            'bootVolumeRequired': 'false',
-            'fut': 'false',
-            'feu': 'false',
-            'ifswu': 'false',
-            'reboot': 'false',
-            'uninstall': 'false',
-            'packageRequiredProcessor': 'None',
-            'packageSwitchWithPackageID': '-1',
-            'selfHealingAction': 'nothing',
-            'selfHealingNotify': 'false',
-            'adobeInstall': 'false',
-            'adobeInstallerImage': 'false',
-            'adobeUpdater': 'false',
-            'osInstall': 'false',
-            'osInstallerVersion': '',
-            'packageSerialNumber': '',
-            'parentPackageID': '-1',
-            'basePath': '',
-            'ignoreConflictingProcesses': 'false',
-            'suppressFromDock': 'false',
-            'suppressEULA': 'false',
-            'suppressRegistration': 'false',
-            'suppressUpdates': 'false',
-            'installLanguage': 'en_US'}
+    return {
+        "packageID": pkg.jssid,
+        "packageName": pkg.name,
+        "packageFileName": pkg.name,
+        "checksum": str(pkg.md5),
+        "hashType": "1",
+        "hashValue": str(pkg.sha512),
+        "packageGroupID": pkg.category.id,
+        "packagePriority": "10",
+        "packageInfo": pkginfo,
+        "packageNotes": notes,
+        "packageFormat": format,
+        "packageSize": "n/a",
+        "packageRequirements": "",
+        "bootVolumeRequired": "false",
+        "fut": "false",
+        "feu": "false",
+        "ifswu": "false",
+        "reboot": "false",
+        "uninstall": "false",
+        "packageRequiredProcessor": "None",
+        "packageSwitchWithPackageID": "-1",
+        "selfHealingAction": "nothing",
+        "selfHealingNotify": "false",
+        "adobeInstall": "false",
+        "adobeInstallerImage": "false",
+        "adobeUpdater": "false",
+        "osInstall": "false",
+        "osInstallerVersion": "",
+        "packageSerialNumber": "",
+        "parentPackageID": "-1",
+        "basePath": "",
+        "ignoreConflictingProcesses": "false",
+        "suppressFromDock": "false",
+        "suppressEULA": "false",
+        "suppressRegistration": "false",
+        "suppressUpdates": "false",
+        "installLanguage": "en_US",
+    }
 
 
 # def package_info(pkg):
@@ -647,9 +667,9 @@ def mounted_volumes():
     logger = logging.getLogger(__name__)
     # e.g. '/dev/disk1s1 on / (apfs, local, journaled)'
     #  -> ('/dev/disk1s1', '/', 'apfs, local, journaled')
-    r = re.compile(r'^(.+) on (.+) \((.+)\)$')
+    r = re.compile(r"^(.+) on (.+) \((.+)\)$")
     logger.debug(f"checking mounted volumes")
-    out = subprocess.check_output(['/sbin/mount']).decode()
+    out = subprocess.check_output(["/sbin/mount"]).decode()
     return [re.match(r, x).groups() for x in out.splitlines()]
 
 
@@ -665,7 +685,7 @@ def package_checksums(path, bufsize=8192):
     logger.debug("calculating checksums: %r", path)
     md5 = hashlib.md5()
     sha512 = hashlib.sha512()
-    with open(path, 'rb') as f:
+    with open(path, "rb") as f:
         while True:
             data = f.read(bufsize)
             if not data:
@@ -686,14 +706,14 @@ def package_index(path, cleanup=True):
     logger = logging.getLogger(__name__)
     # expand package boms (see `man pkgutil` for more info)
     logger.debug(f"> pkgutil --bom {path}")
-    boms = subprocess.check_output(['/usr/sbin/pkgutil', '--bom', path])
+    boms = subprocess.check_output(["/usr/sbin/pkgutil", "--bom", path])
     # process all boms included in package
     boms = [x for x in boms.splitlines() if x]
     if not boms:
         raise RuntimeError(f"no bill of materials found: {path}")
     # see `man lsbom` for formatting
     logger.debug(f"> lsbom -p fMguTsc '%s'", "', '".join(boms))
-    cmd = ['/usr/bin/lsbom', '-p', 'fMguTsc'] + boms
+    cmd = ["/usr/bin/lsbom", "-p", "fMguTsc"] + boms
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
 
@@ -706,10 +726,10 @@ def package_index(path, cleanup=True):
             shutil.rmtree(path)
 
     form = []
-    keys = ('path', 'mode', 'owner', 'group', 'date', 'size', 'checksum')
+    keys = ("path", "mode", "owner", "group", "date", "size", "checksum")
     for line in out.splitlines():
         # list of values per line (converted from byte string)
-        values = [x.decode().strip() for x in line.split(b'\t')]
+        values = [x.decode().strip() for x in line.split(b"\t")]
 
         # NOTE: Jamf Admin removes '.' from beginning of path
         # modify path to exclude leading '.'
@@ -720,6 +740,6 @@ def package_index(path, cleanup=True):
         if len(values[0]) > 1:
             # remove double space between month and single digit dates
             # (e.g. 'Sun Jun  9 01:00:00 2019' -> 'Sun Jun 9 01:00:00 2019')
-            values[4] = values[4].replace('  ', ' ')
+            values[4] = values[4].replace("  ", " ")
             form.extend([z for z in zip(keys, values)])
     return form

@@ -6,10 +6,10 @@ JSS API
 Modifications by Tony Williams (tonyw@honestpuck.com) (ARW)
 """
 
-__author__ = 'Sam Forester'
-__email__ = 'sam.forester@utah.edu'
-__copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
-__license__ = 'MIT'
+__author__ = "Sam Forester"
+__email__ = "sam.forester@utah.edu"
+__copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
+__license__ = "MIT"
 __version__ = "0.4.7"
 
 import html.parser
@@ -27,20 +27,24 @@ from . import config
 
 LOGLEVEL = logging.INFO
 
-#pylint: disable=unnecessary-pass
+# pylint: disable=unnecessary-pass
 class Error(Exception):
-    """ just passing through """
+    """just passing through"""
+
     pass
 
 
-#pylint: disable=super-init-not-called
+# pylint: disable=super-init-not-called
 class APIError(Error):
-    """ Error in our call """
+    """Error in our call"""
+
     def __init__(self, response):
         self.response = response
         err = parse_html_error(response.text)
-        self.message = ": ".join(err) or 'failed'
-        print(f"{response}: {response.request.method} - {response.url}: \n{self.message}")
+        self.message = ": ".join(err) or "failed"
+        print(
+            f"{response}: {response.request.method} - {response.url}: \n{self.message}"
+        )
 
     def __getattr__(self, attr):
         """
@@ -54,8 +58,10 @@ class APIError(Error):
 
 
 class Singleton(type):
-    """ allows us to share a single object """
+    """allows us to share a single object"""
+
     _instances = {}
+
     def __call__(cls, *a, **kw):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*a, **kw)
@@ -66,14 +72,12 @@ class API(metaclass=Singleton):
     """
     Class for making api calls to JSS
     """
+
     session = False
 
-    def __init__(self,
-                 config_path=None,
-                 hostname=None,
-                 username=None,
-                 password=None,
-                 prompt=True):
+    def __init__(
+        self, config_path=None, hostname=None, username=None, password=None, prompt=True
+    ):
         """
         Create requests.Session with JSS address and authentication
 
@@ -88,11 +92,13 @@ class API(metaclass=Singleton):
         self.log = logging.getLogger(f"{__name__}.API")
         self.log.setLevel(LOGLEVEL)
         # Load Prefs and Init session
-        conf = config.Config(config_path=config_path,
-                             hostname=hostname,
-                             username=username,
-                             password=password,
-                             prompt=prompt)
+        conf = config.Config(
+            config_path=config_path,
+            hostname=hostname,
+            username=username,
+            password=password,
+            prompt=prompt,
+        )
         hostname = hostname or conf.hostname
         username = username or conf.username
         password = password or conf.password
@@ -100,13 +106,13 @@ class API(metaclass=Singleton):
         if not hostname and not username and not password:
             print("No jamf hostname or credentials could be found.")
             exit(1)
-        if hostname[-1] == '/':
+        if hostname[-1] == "/":
             self.url = f"{hostname}JSSResource"
         else:
             self.url = f"{hostname}/JSSResource"
         self.session = requests.Session()
         self.session.auth = (username, password)
-        self.session.headers.update({'Accept': 'application/xml'})
+        self.session.headers.update({"Accept": "application/xml"})
 
     def get(self, endpoint, raw=False):
         """
@@ -229,7 +235,8 @@ class API(metaclass=Singleton):
             self.log.debug("closing session")
             self.session.close()
 
-#pylint: disable=too-few-public-methods, abstract-method
+
+# pylint: disable=too-few-public-methods, abstract-method
 class _DummyTag:
     """
     Minimal mock implementation of bs4.element.Tag (only has text attribute)
@@ -238,6 +245,7 @@ class _DummyTag:
     >>> eg.text
     'some text'
     """
+
     def __init__(self, text):
         self.text = text
 
@@ -250,6 +258,7 @@ class JSSErrorParser(html.parser.HTMLParser):
     ['Unauthorized', 'The request requires user authentication',
      'You can get technical details here. {...}']
     """
+
     def __init__(self, _html):
         super().__init__()
         self._data = {}
@@ -265,7 +274,7 @@ class JSSErrorParser(html.parser.HTMLParser):
         """
         return self._data.get(tag, [])
 
-    #pylint: disable=attribute-defined-outside-init
+    # pylint: disable=attribute-defined-outside-init
     def handle_data(self, data):
         """
         override HTMLParser().handle_data()
@@ -284,6 +293,7 @@ class JSSErrorParser(html.parser.HTMLParser):
         self._data.setdefault(tag, [])
         self._data[tag].append(self._dummytag)
 
+
 def parse_html_error(error):
     """
     Get meaningful error information from JSS Error response HTML
@@ -298,4 +308,4 @@ def parse_html_error(error):
     #        'You can get technical details here. (...)']
     # NOTE: get first two <p> tags from HTML error response
     #       3rd <p> is always 'You can get technical details here...'
-    return [t.text for t in soup.find_all('p')][0:2]
+    return [t.text for t in soup.find_all("p")][0:2]

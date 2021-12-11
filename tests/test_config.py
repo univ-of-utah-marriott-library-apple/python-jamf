@@ -4,10 +4,10 @@
 tests for jamf.config
 """
 
-__author__ = 'Sam Forester'
-__email__ = 'sam.forester@utah.edu'
-__copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
-__license__ = 'MIT'
+__author__ = "Sam Forester"
+__email__ = "sam.forester@utah.edu"
+__copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
+__license__ = "MIT"
 __version__ = "0.1.1"
 
 import copy
@@ -22,11 +22,12 @@ from jamf import config
 
 # temporary files created with tests
 LOCATION = pathlib.Path(__file__).parent
-TMPDIR = LOCATION / 'tmp' / 'config'
+TMPDIR = LOCATION / "tmp" / "config"
 # DATA = LOCATION / 'data' / 'config'
 
 DEFAULT_PREFERENCES = config.PREFERENCES
-PREFERENCES = TMPDIR / 'jamf.config.test.plist'
+PREFERENCES = TMPDIR / "jamf.config.test.plist"
+
 
 def setUpModule():
     """
@@ -46,6 +47,7 @@ class ConfigPathTests(unittest.TestCase):
     """
     config.PREFERENCES and path keyword argument tests
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -63,7 +65,7 @@ class ConfigPathTests(unittest.TestCase):
         config.PREFERENCES = cls._saved_prefs
 
     def setUp(self):
-        self.altpath = pathlib.Path('/tmp/jamf.config.test.alt.plist').resolve()
+        self.altpath = pathlib.Path("/tmp/jamf.config.test.alt.plist").resolve()
 
     def tearDown(self):
         """
@@ -123,6 +125,7 @@ class BaseTestCase(unittest.TestCase):
     """
     Generic TestCase
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -163,33 +166,31 @@ class BaseTestCase(unittest.TestCase):
 
 
 class ConfigTestCase(unittest.TestCase):
-
     def setUp(self):
-        self.path = TMPDIR / 'jamf.config.test.plist'
+        self.path = TMPDIR / "jamf.config.test.plist"
         self.config = config.Config(path=self.path)
 
     def test_load_attribute(self):
-        self.assertTrue(hasattr(self.config, 'load'))
+        self.assertTrue(hasattr(self.config, "load"))
 
     def test_save_attribute(self):
-        self.assertTrue(hasattr(self.config, 'save'))
+        self.assertTrue(hasattr(self.config, "save"))
 
     def test_get_attribute(self):
-        self.assertTrue(hasattr(self.config, 'get'))
+        self.assertTrue(hasattr(self.config, "get"))
 
     def test_set_attribute(self):
-        self.assertTrue(hasattr(self.config, 'set'))
+        self.assertTrue(hasattr(self.config, "set"))
 
     def test_remove_attribute(self):
-        self.assertTrue(hasattr(self.config, 'remove'))
+        self.assertTrue(hasattr(self.config, "remove"))
 
     def test_reset_attribute(self):
-        self.assertTrue(hasattr(self.config, 'reset'))
+        self.assertTrue(hasattr(self.config, "reset"))
 
 
 # @unittest.skip
 class TestNewConfig(BaseTestCase):
-
     @classmethod
     def setUpClass(cls):
         """
@@ -226,16 +227,16 @@ class TestNewConfig(BaseTestCase):
         """
         test modifying config does not create file
         """
-        self.config.set('test', 'value')
+        self.config.set("test", "value")
         self.assertNoFile(self.config.path)
 
     def test_set_and_get_string(self):
         """
         test set and get key/value pair as {'string': 'string'}
         """
-        expected = 'string'
-        self.config.set('string', expected)
-        result = self.config.get('string')
+        expected = "string"
+        self.config.set("string", expected)
+        result = self.config.get("string")
         self.assertEqual(expected, result)
 
     def test_set_and_get_date(self):
@@ -243,8 +244,8 @@ class TestNewConfig(BaseTestCase):
         test set and get key/value pair as {'date': dt.datetime.now()}
         """
         expected = dt.datetime.now()
-        self.config.set('date', expected)
-        result = self.config.get('date')
+        self.config.set("date", expected)
+        result = self.config.get("date")
         self.assertEqual(expected, result)
 
     def test_set_and_get_bool_true(self):
@@ -252,8 +253,8 @@ class TestNewConfig(BaseTestCase):
         test set and get key/value pair as {'true': False}
         """
         expected = True
-        self.config.set('true', expected)
-        result = self.config.get('true')
+        self.config.set("true", expected)
+        result = self.config.get("true")
         self.assertEqual(expected, result)
 
     def test_set_and_get_bool_false(self):
@@ -261,8 +262,8 @@ class TestNewConfig(BaseTestCase):
         test set and get key/value pair as {'false': False}
         """
         expected = False
-        self.config.set('false', expected)
-        result = self.config.get('false')
+        self.config.set("false", expected)
+        result = self.config.get("false")
         self.assertEqual(expected, result)
 
     def test_set_None(self):
@@ -270,36 +271,36 @@ class TestNewConfig(BaseTestCase):
         test set value as None raises ValueError
         """
         with self.assertRaises(ValueError):
-            self.config.set('test', None)
+            self.config.set("test", None)
 
     def test_get_missing(self):
         """
         test get missing key raises KeyError
         """
         with self.assertRaises(KeyError):
-            self.config.get('missing')
+            self.config.get("missing")
 
 
 class TestSaveConfig(BaseTestCase):
-
     def setUp(self):
         super().setUp()
         if self.config.path.exists():
             self.config.path.unlink()
-        self.data = {'string': 'string',
-                     'integer': 1,
-                     'true': True,
-                     'false': False,
-                     'date': dt.datetime(2020, 1, 13, 13, 13, 13),
-                     'dict': {'key': 'value', 'one': 1},
-                     'list': [1, 2, 3],
-                     'data': b'binary-data',
-                     'float': 0.01,
-                     'nesteddict': {'d1': {'key': 'value'},
-                                    'd2': {'key': 'value2'}},
-                     'nestedlist': [[1, 2, 3], [4, 5, 6]],
-                     'dictoflists': {'one': [1, 2, 3], 'two': [4, 5, 6]},
-                     'listofdicts': [{'one': 1}, {'two': 2}]}
+        self.data = {
+            "string": "string",
+            "integer": 1,
+            "true": True,
+            "false": False,
+            "date": dt.datetime(2020, 1, 13, 13, 13, 13),
+            "dict": {"key": "value", "one": 1},
+            "list": [1, 2, 3],
+            "data": b"binary-data",
+            "float": 0.01,
+            "nesteddict": {"d1": {"key": "value"}, "d2": {"key": "value2"}},
+            "nestedlist": [[1, 2, 3], [4, 5, 6]],
+            "dictoflists": {"one": [1, 2, 3], "two": [4, 5, 6]},
+            "listofdicts": [{"one": 1}, {"two": 2}],
+        }
         self.config.data = copy.deepcopy(self.data)
 
     def test_save_creates_file(self):
@@ -317,7 +318,7 @@ class TestSaveConfig(BaseTestCase):
         self.config.save()
         expected = self.data
         # read data from disk (raise FileNotFoundError if missing)
-        with open(self.config.path, 'rb') as f:
+        with open(self.config.path, "rb") as f:
             result = plistlib.load(f)
         self.assertDictEqual(expected, result)
 
@@ -329,12 +330,12 @@ class TestSaveConfig(BaseTestCase):
         # save data
         self.config.save()
         # misconfigure the data (None is not supported by plists)
-        self.config.data.update({'None': None})
+        self.config.data.update({"None": None})
         # attempt to save the misconfigured data (raises TypeError)
         with self.assertRaises(TypeError):
             self.config.save()
         # manually reload data from disk (raises expatError if corrupt)
-        with open(self.config.path, 'rb') as f:
+        with open(self.config.path, "rb") as f:
             result = plistlib.load(f)
         # verify nothing is wrong
         self.assertDictEqual(expected, result)
@@ -345,7 +346,7 @@ class TestSaveConfig(BaseTestCase):
         """
         self.assertFalse(self.config.path.exists())
         # misconfigure the data (None is not supported by plists)
-        self.config.data.update({'None': None})
+        self.config.data.update({"None": None})
         # attempt to save the misconfigured data (raises TypeError)
         with self.assertRaises(TypeError):
             self.config.save()
@@ -354,25 +355,25 @@ class TestSaveConfig(BaseTestCase):
 
 
 class TestConfigLoading(BaseTestCase):
-
     def setUp(self):
         super().setUp()
-        self.data = {'string': 'string',
-                     'integer': 1,
-                     'true': True,
-                     'false': False,
-                     'date': dt.datetime(2020, 1, 13, 13, 13, 13),
-                     'dict': {'key': 'value', 'one': 1},
-                     'list': [1, 2, 3],
-                     'data': b'binary-data',
-                     'float': 0.01,
-                     'nesteddict': {'d1': {'key': 'value'},
-                                    'd2': {'key': 'value2'}},
-                     'nestedlist': [[1, 2, 3], [4, 5, 6]],
-                     'dictoflists': {'one': [1, 2, 3], 'two': [4, 5, 6]},
-                     'listofdicts': [{'one': 1}, {'two': 2}]}
+        self.data = {
+            "string": "string",
+            "integer": 1,
+            "true": True,
+            "false": False,
+            "date": dt.datetime(2020, 1, 13, 13, 13, 13),
+            "dict": {"key": "value", "one": 1},
+            "list": [1, 2, 3],
+            "data": b"binary-data",
+            "float": 0.01,
+            "nesteddict": {"d1": {"key": "value"}, "d2": {"key": "value2"}},
+            "nestedlist": [[1, 2, 3], [4, 5, 6]],
+            "dictoflists": {"one": [1, 2, 3], "two": [4, 5, 6]},
+            "listofdicts": [{"one": 1}, {"two": 2}],
+        }
         # manually create file before each test
-        with open(self.config.path, 'wb') as f:
+        with open(self.config.path, "wb") as f:
             plistlib.dump(self.data, f)
 
     def tearDown(self):
@@ -401,10 +402,10 @@ class TestConfigLoading(BaseTestCase):
         """
         Test CorruptedConfigError raised when loading a corrupted config
         """
-        self.data.update({'None': None})
+        self.data.update({"None": None})
         # intentionally corrupt the file
         with self.assertRaises(TypeError):
-            with open(self.config.path, 'wb') as f:
+            with open(self.config.path, "wb") as f:
                 plistlib.dump(self.data, f)
         # verify
         with self.assertRaises(config.CorruptedConfigError):
@@ -421,66 +422,62 @@ class TestConfigLoading(BaseTestCase):
 
 
 class SecureConfigTestCase(ConfigTestCase):
-
     def setUp(self):
-        self.path = TMPDIR / 'jamf.config.secure.test.plist'
+        self.path = TMPDIR / "jamf.config.secure.test.plist"
         self.config = config.SecureConfig(path=self.path)
         self.transpose = config.transposition(config.MAGIC)
 
     def test_credentials_attribute(self):
-        self.assertTrue(hasattr(self.config, 'credentials'))
+        self.assertTrue(hasattr(self.config, "credentials"))
 
     def test_something(self):
-        expected = ('username', 'password')
+        expected = ("username", "password")
         if self.path.exists():
             self.path.unlink()
-        self.config.credentials('test', expected)
-        result = self.config.credentials('test')
+        self.config.credentials("test", expected)
+        result = self.config.credentials("test")
         self.assertEqual(expected, result)
 
 
 class TestSaveSecureConfig(TestSaveConfig):
-
     def setUp(self):
-        self.path = TMPDIR / 'jamf.config.secure.test.plist'
+        self.path = TMPDIR / "jamf.config.secure.test.plist"
         self.config = config.SecureConfig(path=self.path)
         super().setUp()
 
 
 class TestSecureConfigLoading(TestConfigLoading):
-
     def setUp(self):
-        self.path = TMPDIR / 'jamf.config.secure.test.plist'
+        self.path = TMPDIR / "jamf.config.secure.test.plist"
         self.config = config.SecureConfig(path=self.path)
         super().setUp()
 
 
 class CredentialsTest(unittest.TestCase):
-
     def setUp(self):
-        self.key = 'secret'
+        self.key = "secret"
         self.callback = config.transposition(self.key)
         self.credentials = config.Credentials({}, callback=self.callback)
 
     def test_retrieve_missing(self):
         with self.assertRaises(KeyError):
-            self.credentials.retrieve('missing')
+            self.credentials.retrieve("missing")
 
     def test_register_and_retrieve(self):
-        expected = 'value'
-        self.credentials.register('key', expected)
+        expected = "value"
+        self.credentials.register("key", expected)
         # print(self.credentials.data)
         # bplist = self.callback(self.credentials.data['key'])
         # print(plistlib.loads(bplist))
-        result = self.credentials.retrieve('key')
+        result = self.credentials.retrieve("key")
         self.assertEqual(expected, result)
 
     def test_register_None(self):
         # with self.assertRaises(ValueError):
         #     self.credentials.register('key', None)
         expected = None
-        self.credentials.register('key', expected)
-        result = self.credentials.retrieve('key')
+        self.credentials.register("key", expected)
+        result = self.credentials.retrieve("key")
         # print(self.credentials.data)
         # bplist = self.callback(self.credentials.data['key'])
         # print(bplist)
@@ -488,27 +485,26 @@ class CredentialsTest(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_register_Credentials(self):
-        c = config.Credentials({'test': 'value'}, callback=self.callback)
+        c = config.Credentials({"test": "value"}, callback=self.callback)
         expected = c.data
-        self.credentials.register('key', c)
-        result = self.credentials.retrieve('key')
+        self.credentials.register("key", c)
+        result = self.credentials.retrieve("key")
         # print(result)
         self.assertEqual(expected, result)
 
     def test_something(self):
-        c = config.Credentials({'test': 'value'}, callback=self.callback)
+        c = config.Credentials({"test": "value"}, callback=self.callback)
         expected = c.data
-        self.credentials.register('key', c)
-        result = self.credentials.retrieve('key')
+        self.credentials.register("key", c)
+        result = self.credentials.retrieve("key")
         # print(result)
         self.assertEqual(expected, result)
 
 
 class TranspositionTest(unittest.TestCase):
-
     def setUp(self):
-        self.key = 'test'
-        self.secret = 'secret information'
+        self.key = "test"
+        self.secret = "secret information"
 
     def assertMirroredTransposition(self, func, secret):
         """
@@ -523,13 +519,14 @@ class TranspositionTest(unittest.TestCase):
         """
         assert the same func can be used to both encrypt and decrypt the secret
         """
-        expected = (bytes(secret, encoding='utf-8')
-                    if isinstance(secret, str) else secret)
+        expected = (
+            bytes(secret, encoding="utf-8") if isinstance(secret, str) else secret
+        )
         # encrypt the secret
         encrypted = func(secret)
         # verify the encrypted secret != original secret
         self.assertNotEqual(encrypted, expected)
-        e = 'transposition returned {0!r}: bytes expected'
+        e = "transposition returned {0!r}: bytes expected"
         self.assertIsInstance(encrypted, bytes, msg=e.format(encrypted))
         # decrypt the encrypted secret using the same function
         result = func(encrypted)
@@ -541,15 +538,15 @@ class TranspositionTest(unittest.TestCase):
         """
         test transposition
         """
-        transpose = config.transposition(b'test')
-        self.assertEqual(transpose(b'test'), b'\x00\x00\x00\x00')
+        transpose = config.transposition(b"test")
+        self.assertEqual(transpose(b"test"), b"\x00\x00\x00\x00")
 
     def test_reverse_transposition(self):
         """
         test reverse transposition
         """
-        transpose = config.transposition(b'test')
-        self.assertEqual(transpose(b'\x00\x00\x00\x00'), b'test')
+        transpose = config.transposition(b"test")
+        self.assertEqual(transpose(b"\x00\x00\x00\x00"), b"test")
 
     def test_tuple_key(self):
         """
@@ -579,7 +576,7 @@ class TranspositionTest(unittest.TestCase):
         """
         test key as bytes
         """
-        key = bytes(self.key, encoding='utf-8')
+        key = bytes(self.key, encoding="utf-8")
         func = config.transposition(key)
         self.assertEncryptedTransposition(func, self.secret)
 
@@ -588,14 +585,14 @@ class TranspositionTest(unittest.TestCase):
         test iterable of different types raises ValueError
         """
         with self.assertRaises(ValueError):
-            f = config.transposition((7, 't'))
+            f = config.transposition((7, "t"))
 
     def test_default_transposition(self):
         key = self.key
         self.assertMirroredTransposition(lambda x: x, self.secret)
 
 
-if __name__ == '__main__':
-    fmt = '%(asctime)s: %(levelname)8s: %(name)s - %(funcName)s(): %(message)s'
+if __name__ == "__main__":
+    fmt = "%(asctime)s: %(levelname)8s: %(name)s - %(funcName)s(): %(message)s"
     logging.basicConfig(level=logging.FATAL, format=fmt)
     unittest.main(verbosity=1)

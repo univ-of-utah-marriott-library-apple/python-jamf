@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-#pylint: disable=relative-beyond-top-level, too-few-public-methods, unused-argument
-#pylint: disable=missing-class-docstring, missing-module-docstring, invalid-name
+# pylint: disable=relative-beyond-top-level, too-few-public-methods, unused-argument
+# pylint: disable=missing-class-docstring, missing-module-docstring, invalid-name
 
 import unittest
 from jamf import convert
 
-patchpolicies = '''<?xml version="1.0" encoding="UTF-8"?>
+patchpolicies = """<?xml version="1.0" encoding="UTF-8"?>
 <patch_available_titles>
   <size>47</size>
   <available_titles>
@@ -340,14 +340,13 @@ patchpolicies = '''<?xml version="1.0" encoding="UTF-8"?>
     </available_title>
   </available_titles>
 </patch_available_titles>
-'''
+"""
 
 
 class ConversionTest(unittest.TestCase):
-
     def setUp(self):
-        self.xml = '<nothing/>'
-        self.data = {'nothing': None}
+        self.xml = "<nothing/>"
+        self.data = {"nothing": None}
 
     def test_xml_to_dict(self):
         """
@@ -385,43 +384,50 @@ class ConversionTest(unittest.TestCase):
 
 
 class TestSimpleDict(ConversionTest):
-
     def setUp(self):
-        self.xml = '<test><key>value</key></test>'
-        self.data = {'test': {'key': 'value'}}
+        self.xml = "<test><key>value</key></test>"
+        self.data = {"test": {"key": "value"}}
 
 
 class TestSimpleList(ConversionTest):
-
     def setUp(self):
-        self.xml = ('<list>'
-                    '<item>one</item>'
-                    '<item>two</item>'
-                    '<item>three</item>'
-                    '</list>')
-        self.data = {'list': {'item': ['one', 'two', 'three']}}
+        self.xml = (
+            "<list>"
+            "<item>one</item>"
+            "<item>two</item>"
+            "<item>three</item>"
+            "</list>"
+        )
+        self.data = {"list": {"item": ["one", "two", "three"]}}
 
 
 class TestListOfDicts(ConversionTest):
-
     def setUp(self):
-        self.xml = ('<list>'
-                    '<item>'
-                    '<id>1</id>'
-                    '<name>one</name>'
-                    '</item>'
-                    '<item>'
-                    '<id>2</id>'
-                    '<name>two</name>'
-                    '</item>'
-                    '<item>'
-                    '<id>3</id>'
-                    '<name>three</name>'
-                    '</item>'
-                    '</list>')
-        self.data = {'list': {'item': [{'id': '1', 'name': 'one'},
-                                       {'id': '2', 'name': 'two'},
-                                       {'id': '3', 'name': 'three'}]}}
+        self.xml = (
+            "<list>"
+            "<item>"
+            "<id>1</id>"
+            "<name>one</name>"
+            "</item>"
+            "<item>"
+            "<id>2</id>"
+            "<name>two</name>"
+            "</item>"
+            "<item>"
+            "<id>3</id>"
+            "<name>three</name>"
+            "</item>"
+            "</list>"
+        )
+        self.data = {
+            "list": {
+                "item": [
+                    {"id": "1", "name": "one"},
+                    {"id": "2", "name": "two"},
+                    {"id": "3", "name": "three"},
+                ]
+            }
+        }
 
 
 @unittest.skip
@@ -433,108 +439,110 @@ class TestPatchSoftwareTitle(ConversionTest):
     from a dictionary to xml string, so even though the values are identical,
     string comparison fails
     """
+
     def setUp(self):
         self.maxDiff = None
-        self.xml = ('<patch_software_title>'
-                    '<id>31</id>'
-                    '<name>Mozilla Firefox</name>'
-                    '<name_id>MozillaFirefox</name_id>'
-                    '<source_id>2</source_id>'
-                    '<notifications>'
-                    '<email_notification>true</email_notification>'
-                    '<web_notification>true</web_notification>'
-                    '</notifications>'
-                    '<category>'
-                    '<id>1</id>'
-                    '<name>Apps - Web Browsers</name>'
-                    '</category>'
-                    '<site>'
-                    '<id>-1</id>'
-                    '<name>None</name>'
-                    '</site>'
-                    '<versions>'
-                    '<version>'
-                    '<software_version>69.0.1</software_version>'
-                    '<package>'
-                    '<id>284</id>'
-                    '<name>firefox_69.0.1_2019.09.18_rcg.pkg</name>'
-                    '</package>'
-                    '</version>'
-                    '<version>'
-                    '<software_version>69.0</software_version>'
-                    '<package>'
-                    '<id>253</id>'
-                    '<name>firefox_69.0_2019.09.04_rcg.pkg</name>'
-                    '</package>'
-                    '</version>'
-                    '<version>'
-                    '<software_version>68.0.2</software_version>'
-                    '<package>'
-                    '<id>182</id>'
-                    '<name>firefox_68.0.2_2019.08.20_rcg.pkg</name>'
-                    '</package>'
-                    '</version>'
-                    '<version>'
-                    '<software_version>68.0.1</software_version>'
-                    '<package>'
-                    '<id>121</id>'
-                    '<name>firefox_68.0.1_2019.07.22_rcg.pkg</name>'
-                    '</package>'
-                    '</version>'
-                    '</versions>'
-                    '</patch_software_title>')
+        self.xml = (
+            "<patch_software_title>"
+            "<id>31</id>"
+            "<name>Mozilla Firefox</name>"
+            "<name_id>MozillaFirefox</name_id>"
+            "<source_id>2</source_id>"
+            "<notifications>"
+            "<email_notification>true</email_notification>"
+            "<web_notification>true</web_notification>"
+            "</notifications>"
+            "<category>"
+            "<id>1</id>"
+            "<name>Apps - Web Browsers</name>"
+            "</category>"
+            "<site>"
+            "<id>-1</id>"
+            "<name>None</name>"
+            "</site>"
+            "<versions>"
+            "<version>"
+            "<software_version>69.0.1</software_version>"
+            "<package>"
+            "<id>284</id>"
+            "<name>firefox_69.0.1_2019.09.18_rcg.pkg</name>"
+            "</package>"
+            "</version>"
+            "<version>"
+            "<software_version>69.0</software_version>"
+            "<package>"
+            "<id>253</id>"
+            "<name>firefox_69.0_2019.09.04_rcg.pkg</name>"
+            "</package>"
+            "</version>"
+            "<version>"
+            "<software_version>68.0.2</software_version>"
+            "<package>"
+            "<id>182</id>"
+            "<name>firefox_68.0.2_2019.08.20_rcg.pkg</name>"
+            "</package>"
+            "</version>"
+            "<version>"
+            "<software_version>68.0.1</software_version>"
+            "<package>"
+            "<id>121</id>"
+            "<name>firefox_68.0.1_2019.07.22_rcg.pkg</name>"
+            "</package>"
+            "</version>"
+            "</versions>"
+            "</patch_software_title>"
+        )
         self.data = {
-            'patch_software_title': {
-                'category': {
-                    'id': '1',
-                    'name': 'Apps - Web Browsers'
+            "patch_software_title": {
+                "category": {"id": "1", "name": "Apps - Web Browsers"},
+                "id": "31",
+                "name": "Mozilla Firefox",
+                "name_id": "MozillaFirefox",
+                "notifications": {
+                    "email_notification": "true",
+                    "web_notification": "true",
                 },
-                'id': '31',
-                'name': 'Mozilla Firefox',
-                'name_id': 'MozillaFirefox',
-                'notifications': {
-                    'email_notification': 'true',
-                    'web_notification': 'true'
-                },
-                'site': {
-                    'id': '-1',
-                    'name': 'None'
-                },
-                'source_id': '2',
-                'versions': {
-                    'version': [
+                "site": {"id": "-1", "name": "None"},
+                "source_id": "2",
+                "versions": {
+                    "version": [
                         {
-                            'package': {
-                                'id': '284',
-                                'name': 'firefox_69.0.1_2019.09.18_rcg.pkg'
+                            "package": {
+                                "id": "284",
+                                "name": "firefox_69.0.1_2019.09.18_rcg.pkg",
                             },
-                            'software_version': '69.0.1'
+                            "software_version": "69.0.1",
                         },
                         {
-                            'package': {
-                                'id': '253',
-                                'name': 'firefox_69.0_2019.09.04_rcg.pkg'
+                            "package": {
+                                "id": "253",
+                                "name": "firefox_69.0_2019.09.04_rcg.pkg",
                             },
-                            'software_version': '69.0'
+                            "software_version": "69.0",
                         },
                         {
-                            'package': {
-                                'id': '182',
-                                'name': 'firefox_68.0.2_2019.08.20_rcg.pkg'
+                            "package": {
+                                "id": "182",
+                                "name": "firefox_68.0.2_2019.08.20_rcg.pkg",
                             },
-                            'software_version': '68.0.2'
+                            "software_version": "68.0.2",
                         },
                         {
-                            'package': {
-                                'id': '121',
-                                'name': 'firefox_68.0.1_2019.07.22_rcg.pkg'
+                            "package": {
+                                "id": "121",
+                                "name": "firefox_68.0.1_2019.07.22_rcg.pkg",
                             },
-                            'software_version': '68.0.1'}]}}}
+                            "software_version": "68.0.1",
+                        },
+                    ]
+                },
+            }
+        }
 
     @unittest.skip("key ordering causes incorrect failure")
     def test_dict_to_xml(self):
         pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(verbosity=1)
