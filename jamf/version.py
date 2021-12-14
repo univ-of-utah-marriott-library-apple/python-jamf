@@ -7,10 +7,8 @@
 import os
 import re
 
-__all__ = (
-    'string',
-    'jamf_version_up_to'
-)
+__all__ = ("string", "jamf_version_up_to")
+
 
 def string():
     try:
@@ -29,8 +27,8 @@ def jamf_version_up_to(min_version):
         m = re.match(r"^([0-9]+\.[0-9]+\.[0-9]+)", full_version)
         min1 = tuple(map(int, (min_version.split("."))))
         cur = tuple(map(int, (m.group(1).split("."))))
-        if (min1 <= cur):
-            return min_version # Pass
+        if min1 <= cur:
+            return min_version  # Pass
     except AttributeError:
-        return full_version # Fail
-    return full_version # Fail
+        return full_version  # Fail
+    return full_version  # Fail

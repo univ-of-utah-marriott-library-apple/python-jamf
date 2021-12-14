@@ -4,10 +4,10 @@
 XML and JSON data conversion functions
 """
 
-__author__ = 'Sam Forester'
-__email__ = 'sam.forester@utah.edu'
-__copyright__ = 'Copyright (c) 2019 University of Utah, Marriott Library'
-__license__ = 'MIT'
+__author__ = "Sam Forester"
+__email__ = "sam.forester@utah.edu"
+__copyright__ = "Copyright (c) 2019 University of Utah, Marriott Library"
+__license__ = "MIT"
 __version__ = "0.2.2"
 
 from xml.etree import cElementTree as ElementTree
@@ -16,7 +16,8 @@ from collections import defaultdict
 
 
 class Error(Exception):
-    """ just passing through """
+    """just passing through"""
+
     pass
 
 
@@ -35,7 +36,7 @@ def etree_to_dict(elem):
                 defd[key].append(val)
         result = {
             elem.tag: {
-                key:val[0] if len(val) == 1 else val for key, val in defd.items()
+                key: val[0] if len(val) == 1 else val for key, val in defd.items()
             }
         }
     elif elem.text:
@@ -49,7 +50,7 @@ def dict_to_xml(data):
     :returns:  xml string
     """
     if isinstance(data, dict):
-        xml_str = ''
+        xml_str = ""
         for key, value in data.items():
             if value is None:
                 xml_str += f"<{key}/>"

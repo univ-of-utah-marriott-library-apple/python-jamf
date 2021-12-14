@@ -5,10 +5,10 @@
 Jamf Config
 """
 
-__author__ = 'Sam Forester'
-__email__ = 'sam.forester@utah.edu'
-__copyright__ = 'Copyright (c) 2020 University of Utah, Marriott Library'
-__license__ = 'MIT'
+__author__ = "Sam Forester"
+__email__ = "sam.forester@utah.edu"
+__copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
+__license__ = "MIT"
 __version__ = "1.0.4"
 
 
@@ -21,6 +21,7 @@ import pprint
 import sys
 from os import path
 
+
 class Parser:
     def __init__(self):
         myplatform = platform.system()
@@ -30,34 +31,34 @@ class Parser:
             default_pref = jamf.config.LINUX_PREFS_TILDA
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument(
-            '-H',
-            '--hostname',
-            help='specify hostname (default: prompt)')
+            "-H", "--hostname", help="specify hostname (default: prompt)"
+        )
         self.parser.add_argument(
-            '-u',
-            '--user',
-            help='specify username (default: prompt)')
+            "-u", "--user", help="specify username (default: prompt)"
+        )
         self.parser.add_argument(
-            '-p',
-            '--passwd',
-            help='specify password (default: prompt)')
+            "-p", "--passwd", help="specify password (default: prompt)"
+        )
         self.parser.add_argument(
-            '-C',
-            '--config',
-            dest='path',
-            metavar='PATH',
+            "-C",
+            "--config",
+            dest="path",
+            metavar="PATH",
             default=default_pref,
-            help=f"specify config file (default {default_pref})")
+            help=f"specify config file (default {default_pref})",
+        )
         self.parser.add_argument(
-            '-P',
-            '--print',
-            action='store_true',
-            help='print existing config profile (except password!)')
+            "-P",
+            "--print",
+            action="store_true",
+            help="print existing config profile (except password!)",
+        )
         self.parser.add_argument(
-            '-t',
-            '--test',
-            action='store_true',
-            help='Connect to the Jamf server using the config file')
+            "-t",
+            "--test",
+            action="store_true",
+            help="Connect to the Jamf server using the config file",
+        )
 
     def parse(self, argv):
         """
@@ -80,13 +81,13 @@ def setconfig(argv):
         elif myplatform == "Linux":
             default_pref = jamf.config.LINUX_PREFS_TILDA
         config_path = default_pref
-    if config_path[0] == '~':
+    if config_path[0] == "~":
         config_path = path.expanduser(config_path)
     if args.test:
         api = jamf.API(config_path=config_path)
-        pprint.pprint(api.get('accounts'))
+        pprint.pprint(api.get("accounts"))
     elif args.print:
-        conf = jamf.config.Config(prompt=False,explain=True,config_path=config_path)
+        conf = jamf.config.Config(prompt=False, explain=True, config_path=config_path)
         print(conf.hostname)
         print(conf.username)
         if conf.password:
@@ -107,10 +108,7 @@ def setconfig(argv):
         else:
             passwd = getpass.getpass()
         conf = jamf.config.Config(
-            hostname=hostname,
-            username=user,
-            password=passwd,
-            prompt=False
+            hostname=hostname, username=user, password=passwd, prompt=False
         )
         conf.save(config_path=config_path)
 
