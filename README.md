@@ -19,7 +19,7 @@ Originally, it was a "patch" project that was focused on patch management includ
 
 The second project, `jctl`,  is a command-line tool that uses the `python-jamf` library to select objects to create, delete, print and update. It allows performing Jamf Pro repetitive tasks quickly and provides options not available in the web GUI. It is similar to SQL statements, but far less complex. And recently added [PyPi](https://pypi.org/project/https://pypi.org/project/jctl//) to support pip installation.
 
-Please check out the [jctl github page](https://github.com/univ-of-utah-marriott-library-apple/jctl) for more information
+Please check out the [jctl github page](https://github.com/univ-of-utah-marriott-library-apple/jctl) for more information.
 
 ### Supported Jamf Records
 
@@ -55,6 +55,7 @@ sudo pip3 uninstall python-jamf
 ### Wiki
 
 #### More Documentation
+
 For further in-depth details please check out [the wiki](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki).
 
 #### Searching the wiki
@@ -71,6 +72,6 @@ If you have additional questions, or need more help getting started, post a ques
 
 ## Latest Status
 
-Since we recorded our session over a month ago, some of the information in our presentation is out of date already. We have spent the time between when we recorded the presentation and now (October 14, 2021) getting GitHub actions working so that it will test and publish to `pypi`. It took longer to get this working than we thought. So that's about where we are. But it works now. We also added some Docker containers that you can run locally to try out `python-jamf` and `jctl`. There are also some minor differences in `pkgctl` than what is shown in the presentation.
+Since we recorded our session over a month ago, some of the information in our presentation is out of date already. We have spent the time between when we recorded the presentation and now (October 14, 2021) getting GitHub actions working so that it will test and publish to pypi.com. It took longer to get this working than we thought. So that's about where we are. But it works now. We also added some Docker containers that you can run locally to try out `python-jamf` and `jctl`. There are also some minor differences in `pkgctl` than what is shown in the presentation.
 
 I should also mention, one of us also had an issue where we assumed that `pkgctl` was crashing our production Jamf Pro server. But, increasing the amount of RAM and CPU's for that server fixed this issue.
