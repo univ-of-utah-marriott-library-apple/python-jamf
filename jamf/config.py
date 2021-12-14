@@ -112,7 +112,7 @@ the "./jamf/setconfig.py" script.
             if not self.hostname:
                 self.hostname = prompt_hostname()
             if not self.username:
-                self.username = input("username: ")
+                self.username = input("Username: ")
             if not self.password:
                 self.password = getpass.getpass()
         elif not self.hostname and not self.username and not self.password:
