@@ -18,6 +18,7 @@ build
 archive
 /jamf/VERSION
 
-pref-*.plist
+prefs
 jctl
 pkgctl
+patch.py

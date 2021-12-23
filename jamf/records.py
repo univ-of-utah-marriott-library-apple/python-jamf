@@ -152,8 +152,8 @@ class ClassicSwagger(metaclass=Singleton):
             "DirectoryBindings": post_template2,
             "Ebooks": post_template2,
             "JSONWebTokenConfigurations": post_template2,
-            #            'LicensedSoftware': post_template2,
-            #            'LDAPServers': post_template2,
+            #"LicensedSoftware": post_template2,
+            #"LDAPServers": post_template2,
             "MacApplications": post_template2,
             "ManagedPreferenceProfiles": post_template2,
             "MobileDevices": post_template2,
@@ -162,7 +162,6 @@ class ClassicSwagger(metaclass=Singleton):
             "MobileDeviceEnrollmentProfiles": post_template2,
             "MobileDeviceProvisioningProfiles": post_template2,
             "OSXConfigurationProfiles": post_template2,
-            "PatchPolicies": post_template2,
             "Peripherals": post_template2,
             "Policies": post_template2,
             "SoftwareUpdateServers": post_template2,
@@ -199,8 +198,11 @@ class ClassicSwagger(metaclass=Singleton):
                 "name": "%NAME%",
                 "host_name": "example.com",
             },
-            "PatchSoftwareTitles": {"name": "%NAME%", "source_id": "1"},
-            #            'RestrictedSoftware': {'general':{'name':'%NAME%','process_name':'%NAME%'}},
+            "PatchPolicies": {
+                "general": {"name": "%NAME%", "target_version": "%VERSION%"}
+            },
+            "PatchSoftwareTitles": {"name_id": "%NAME%", "source_id": "1"},
+            #"RestrictedSoftware": {"general":{"name":"%NAME%","process_name":"%NAME%"}},
             "UserGroups": {"general": {"name": "%NAME%"}, "is_smart": False},
             "WebHooks": {
                 "event": "ComputerAdded",
@@ -359,7 +361,10 @@ class Record:
         returns existing record if one has been instantiated
         """
         jamf_id = int(a[0])
-        name = a[1]
+        if type(a[1]) is str:
+            name = a[1]
+        else:
+            name = a[1][0]
         if not hasattr(cls, "_instances"):
             cls._instances = {}
         swag = ClassicSwagger()
@@ -376,11 +381,15 @@ class Record:
                 return None
             s1, s2, end = swag.swagger(plural, "s1, s2, end")
             if cls.plural_class == "PatchPolicies":
-                print(
-                    "Use /patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
-                    " instead"
+                if len(a[1]) < 3:
+                    raise Error(f"patchpolicies requires 3 args to create records")
+                softwaretitleconfigid = a[1][1]
+                end = f"patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
+                out = {s1: swag.post_template(cls.plural_class, name)}
+                t = out["patch_policy"]["general"]["target_version"]
+                out["patch_policy"]["general"]["target_version"] = t.replace(
+                    "%VERSION%", a[1][2]
                 )
-                return None
             else:
                 end = f"{end}0"
                 out = {s1: swag.post_template(cls.plural_class, name)}
@@ -1158,15 +1167,6 @@ class PatchPolicy(Record):
     def set_version_update_during(self, pkg_version):
         change_made = False
         cur_ver = self.data["general"]["target_version"]
-
-        #######################################################################
-        # If you don't delete the self_service_icon then it will error
-        #   <Response [409]>: PUT - https://example.com:8443/JSSResource/patchpolicies/id/18:
-        #   Conflict: Error: Problem with icon
-        #   Couldn't save changed record: <Response [409]>
-        del self.data["user_interaction"]["self_service_icon"]
-        #######################################################################
-
         if cur_ver != pkg_version:
             print(f"Set version to {pkg_version}")
             self.data["general"]["target_version"] = pkg_version
@@ -1174,6 +1174,15 @@ class PatchPolicy(Record):
         else:
             print(f"Version is already {pkg_version}")
         return change_made
+
+    def save(self):
+        # If you don't delete the self_service_icon then it will error
+        #   <Response [409]>: PUT - https://example.com:8443/JSSResource/patchpolicies/id/18:
+        #   Conflict: Error: Problem with icon
+        #   Couldn't save changed record: <Response [409]>
+        if "self_service_icon" in self.data["user_interaction"]:
+            del self.data["user_interaction"]["self_service_icon"]
+        return super().save()
 
 
 class PatchPolicies(Records, metaclass=Singleton):
@@ -1263,6 +1272,17 @@ class PatchSoftwareTitle(Record):
                 change_made = True
         return change_made
 
+    def versions_print_during(self):
+        print(self.name)
+        versions = self.data["versions"]["version"]
+        if not type(versions) is list:
+            versions = [versions]
+        for version in versions:
+            if version["package"] != None:
+                print(f" {version['software_version']}: {version['package']['name']}")
+            else:
+                print(f" {version['software_version']}: -")
+
 
 class PatchSoftwareTitles(Records, metaclass=Singleton):
     singular_class = PatchSoftwareTitle
@@ -1271,6 +1291,7 @@ class PatchSoftwareTitles(Records, metaclass=Singleton):
         "packages": {"required_args": 0, "args_description": ""},
         "set_package_for_version": {"required_args": 2, "args_description": ""},
         "set_all_packages": {"required_args": 0, "args_description": ""},
+        "versions": {"required_args": 0, "args_description": ""},
     }
 
 
