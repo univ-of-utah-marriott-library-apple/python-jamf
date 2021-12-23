@@ -381,8 +381,9 @@ class Record:
                     " instead"
                 )
                 return None
-            end = f"{end}0"
-            out = {s1: swag.post_template(cls.plural_class, name)}
+            else:
+                end = f"{end}0"
+                out = {s1: swag.post_template(cls.plural_class, name)}
             _data = api.post(end, out)
             jamf_id = int(_data[s2]["id"])
         if jamf_id not in cls._instances:
@@ -637,9 +638,9 @@ class Records:
                 else:
                     records = self.data[p3]
                 for d in records:
-                    c = self.singular_class(d[id1], d["name"])  # e.g. id
+                    c = self.singular_class(d[id1], d["name"])  # e.g. id1 = "id"
                     c.plural_class = self.cls
-                    self._records.setdefault(int(d[id1]), c)  # e.g. id
+                    self._records.setdefault(int(d[id1]), c)  # e.g. id1 = "id"
                     self._names.setdefault(c.name, c)
                     self._jamf_ids.setdefault(c.id, c)
             else:
@@ -1010,31 +1011,35 @@ class OSXConfigurationProfiles(Records, metaclass=Singleton):
     singular_class = OSXConfigurationProfile
 
 
+def parse_package_name(name):
+    m = re.match("([^-]*)-(.*)\.([^\.]*)$", name)
+    if m:
+        return m[1], m[2], m[3]
+    else:
+        m = re.match("([^-]*)\.([^\.]*)$", name)
+        if m:
+            return m[1], "", m[2]
+        else:
+            return name, "", ""
+
+
 class Package(Record):
     plural_class = "Packages"
 
     @property
     def metadata(self):
         if not hasattr(self, "meta"):
-            self._metadata = {}
-            m = re.match("([^-]*)-(.*)\.([^\.]*)$", self.name)
-            if m:
-                self._metadata["basename"] = m[1]
-                self._metadata["version"] = m[2]
-                self._metadata["filetype"] = m[3]
-            else:
-                m = re.match("([^-]*)\.([^\.]*)$", self.name)
-                if m:
-                    self._metadata["basename"] = m[1]
-                    self._metadata["version"] = ""
-                    self._metadata["filetype"] = m[2]
-                else:
-                    self._metadata["basename"] = self.name
-                    self._metadata["version"] = ""
-                    self._metadata["filetype"] = ""
+            basename, version, filetype = parse_package_name(self.name)
+            self._metadata = {
+                "basename": basename,
+                "version": version,
+                "filetype": filetype,
+            }
             if not self._metadata["basename"] in self.plural.groups:
                 self.plural.groups[self._metadata["basename"]] = []
-            self.plural.groups[self._metadata["basename"]].append(self)
+            if not self in self.plural.groups[self._metadata["basename"]]:
+                self.plural.groups[self._metadata["basename"]].append(self)
+
         return self._metadata
 
     def refresh_related(self):
@@ -1052,11 +1057,11 @@ class Package(Record):
                         patchsoftwaretitles_ids[str(title.id)] = {}
                     patchsoftwaretitles_ids[str(title.id)][versions[ii]] = pkg
                     if not pkg in related:
-                        related[pkg] = {"patchsoftwaretitles": []}
-                    if not "patchsoftwaretitles" in related[pkg]:
-                        related[pkg]["patchsoftwaretitles"] = []
+                        related[pkg] = {"PatchSoftwareTitles": []}
+                    if not "PatchSoftwareTitles" in related[pkg]:
+                        related[pkg]["PatchSoftwareTitles"] = []
                     temp = title.name + " - " + versions[ii]
-                    related[pkg]["patchsoftwaretitles"].append(temp)
+                    related[pkg]["PatchSoftwareTitles"].append(temp)
         patchpolicies = jamf_records(PatchPolicies)
         for policy in patchpolicies:
             parent_id = policy.get_path("software_title_configuration_id")[0]
@@ -1066,20 +1071,20 @@ class Package(Record):
                 if parent_version in ppp:
                     pkg = ppp[parent_version]
                     if not pkg in related:
-                        related[pkg] = {"patchpolicies": []}
-                    if not "patchpolicies" in related[pkg]:
-                        related[pkg]["patchpolicies"] = []
-                    related[pkg]["patchpolicies"].append(policy.name)
+                        related[pkg] = {"PatchPolicies": []}
+                    if not "PatchPolicies" in related[pkg]:
+                        related[pkg]["PatchPolicies"] = []
+                    related[pkg]["PatchPolicies"].append(policy.name)
         policies = jamf_records(Policies)
         for policy in policies:
             pkgs = policy.get_path("package_configuration/packages/package/name")
             if pkgs:
                 for pkg in pkgs:
                     if not pkg in related:
-                        related[pkg] = {"policies": []}
-                    if not "policies" in related[pkg]:
-                        related[pkg]["policies"] = []
-                    related[pkg]["policies"].append(policy.name)
+                        related[pkg] = {"Policies": []}
+                    if not "Policies" in related[pkg]:
+                        related[pkg]["Policies"] = []
+                    related[pkg]["Policies"].append(policy.name)
         groups = jamf_records(ComputerGroups)
         for group in groups:
             criterions = group.get_path("criteria/criterion/value")
@@ -1087,10 +1092,10 @@ class Package(Record):
                 for pkg in criterions:
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
                         if not pkg in related:
-                            related[pkg] = {"groups": []}
-                        if not "groups" in related[pkg]:
-                            related[pkg]["groups"] = []
-                        related[pkg]["groups"].append(group.name)
+                            related[pkg] = {"ComputerGroups": []}
+                        if not "ComputerGroups" in related[pkg]:
+                            related[pkg]["ComputerGroups"] = []
+                        related[pkg]["ComputerGroups"].append(group.name)
         self.__class__._related = related
 
     @property
@@ -1104,21 +1109,21 @@ class Package(Record):
 
     def usage_print_during(self):
         related = self.related
-        if "patchsoftwaretitles" in related:
+        if "PatchSoftwareTitles" in related:
             print(self.name)
         else:
             print(f"{self.name} [no patch defined]")
-        if "policies" in related:
+        if "Policies" in related:
             print("  Policies")
-            for x in related["policies"]:
+            for x in related["Policies"]:
                 print("    " + x)
-        if "groups" in related:
+        if "ComputerGroups" in related:
             print("  ComputerGroups")
-            for x in related["groups"]:
+            for x in related["ComputerGroups"]:
                 print("    " + x)
-        if "patchpolicies" in related:
+        if "PatchPolicies" in related:
             print("  PatchPolicies")
-            for x in related["patchpolicies"]:
+            for x in related["PatchPolicies"]:
                 print("    " + x)
         print()
 
@@ -1197,7 +1202,7 @@ class PatchSoftwareTitle(Record):
             parent_id = policy.get_path("software_title_configuration_id")[0]
             if str(parent_id) != str(self.id):
                 continue
-            print(" " + str(policy))
+            print(f" {policy.data['general']['target_version']}: {str(policy)}")
 
     def set_all_packages_update_during(self):
         policy_regex = {
