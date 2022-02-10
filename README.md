@@ -50,7 +50,7 @@ To uninstall `python-jamf` run the following command:
 sudo pip3 uninstall python-jamf
 ```
 
-## Upgrading
+### Upgrading
 
 Upgrading `python-jamf` is easy if you installed it via `pip`. `pip` is the **P**ackage **I**nstaller for **P**ython.
 
