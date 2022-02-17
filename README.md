@@ -29,6 +29,14 @@ Each record is a singleton Python object, but they are generic and most function
 
 By being singleton classes, you perform one fetch to the server for each list or record. This prevents multiple fetches for the same object. All changes you make are local until you save or refresh the object.
 
+### Quick Example
+
+This is just a quick example of the power and ease-of-use of python-jamf. The following code will print the last_contact_time from all computer records.
+
+	import jamf
+	for computer in jamf.Computers():
+		print(computer.data["general"]["last_contact_time"])
+
 ## Quick Start
 
 ### Installing
