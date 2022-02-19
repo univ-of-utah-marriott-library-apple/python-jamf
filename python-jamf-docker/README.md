@@ -1,19 +1,19 @@
 # python-jamf Docker Containers
 
-These images are for development and testing. The keyring inside of the docker image depends on keyrings.alt, and I'm not sure if that is securely encrypted. So don't use this for production.
+These images are for development and testing. The keyring inside of the Docker image depends on `keyrings.alt`, and I'm not sure if that is securely encrypted. So don't use this for production.
 
 ## The 3 Containers
 
 ### python-jamf-dev
 
-I use this for most of the active development because the files can be edited on the host. I also use it for testing before I commit/push to github. It bind mounts ../ to python-jamf.
+I use this for most of the active development because the files can be edited on the host. I also use it for testing before I commit/push to github. It bind mounts `../` to python-jamf.
 
 	cd python-jamf-docker
 	docker-compose run --rm python-jamf-dev
 
-You will have an interactive shell. The cwd is /python-jamf.
+You will have an interactive shell. The `cwd` is `/python-jamf`.
 
-If you downloaded and installed python-jamf using git, you probably wont have jamf/VERSION. You need to create that first.
+If you downloaded and installed `python-jamf` using git, you probably wont have `jamf/VERSION`. You need to create that first.
 
 	git describe --tags > jamf/VERSION
 
@@ -31,14 +31,14 @@ To install python-jamf (which really means put conf-python-jamf in /usr/local/bi
 
 ### python-jamf-github
 
-I mostly use this container to test the github repo is working correctly.
+I mostly use this container to test the GitHub repo is working correctly.
 
-It downloads the files from github into the container. By editing the Dockerfile for this container, you can change the version you want to test by altering the "git checkout main" line (and then rebuild the image). Because there is no volume mounted on the host you can't edit these files from the host.
+It downloads the files from GitHub into the container. By editing the Dockerfile for this container, you can change the version you want to test by altering the "git checkout main" line (and then rebuild the image). Because there is no volume mounted on the host you can't edit these files from the host.
 
 	cd python-jamf-docker
 	docker-compose run --rm python-jamf-github
 
-You will have an interactive shell. The cwd is /python-jamf.
+You will have an interactive shell. The `cwd` is `/python-jamf`.
 
 This will rebuild the image.
 
@@ -46,12 +46,12 @@ This will rebuild the image.
 
 ### python3
 
-A blank python3 container with keyrings.alt installed. I use this to test `pip install python-jamf`.
+A blank `python3` container with `keyrings.alt` installed. I use this to test `pip install python-jamf`.
 
 	cd python-jamf-docker
 	docker-compose run --rm python3
 
-You will have an interactive shell. The cwd is /.
+You will have an interactive shell. The `cwd` is `/`.
 
 Install the [pypi python-jamf package](https://pypi.org/project/python-jamf/).
 
@@ -67,11 +67,11 @@ Please see the [wiki](https://github.com/univ-of-utah-marriott-library-apple/pyt
 
 ## Configuring your host
 
-Run this command to configure python-jamf.
+Run this command to configure `python-jamf`.
 
 	conf-python-jamf
 
-Enter the url of your jamf server, your username, and your password.
+Enter the URL of your Jamf server, your username, and your password.
 
 To test the connection, use this.
 
@@ -91,9 +91,9 @@ Be sure that your hostname has the correct settings for http/https and port. If 
 
 TLDR: __http://jamfpro:8080__
 
-These containers were tested with on-prem, jamfcloud, and [containerized Jamf Pro](https://github.com/magnusviri/dockerfiles/tree/main/jamfpro) servers. To use these containers with the containerized Jamf Pro server, use the following setting.
+These containers were tested with on-prem, Jamf Cloud, and [containerized Jamf Pro](https://github.com/magnusviri/dockerfiles/tree/main/jamfpro) servers. To use these containers with the containerized Jamf Pro server, use the following setting.
 
-Because these containers are connecting to the jamfpro_jamfnet network, the same network used by the Jamf Pro container, you need to connect to the port within the container, not the port exposed on the host. So, for example, this is part of my jamfpro definition.
+Because these containers are connecting to the `jamfpro_jamfnet` network, the same network used by the Jamf Pro container, you need to connect to the port within the container, not the port exposed on the host. So, for example, this is part of my jamfpro definition.
 
 	jamfpro:
 	  networks:
@@ -101,7 +101,7 @@ Because these containers are connecting to the jamfpro_jamfnet network, the same
 	  ports:
 		- "80:8080"
 
-The python-jamf containers connect to "http://jamfpro:8080" to talk to the jamfpro container. Outside of the container (on the host), you'd connect to "http://localhost:80".
+The `python-jamf` containers connect to "http://jamfpro:8080" to talk to the jamfpro container. Outside of the container (on the host), you'd connect to "http://localhost:80".
 
 ## Doing stuff
 
