@@ -13,12 +13,9 @@ __license__ = "MIT"
 __version__ = "1.3.0"
 
 import re
-import os
-import sys
 import glob
 import json
 import time
-import pprint
 import shutil
 import urllib
 import hashlib
@@ -26,9 +23,7 @@ import logging
 import pathlib
 import requests
 import subprocess
-from xml.etree import ElementTree as et
 
-from . import api
 from . import config
 from . import convert
 from . import package
