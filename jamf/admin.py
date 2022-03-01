@@ -503,7 +503,7 @@ class FileShare:
     def _linux_mount(self, user, passwd):
         if self.protocol != "smb":
             raise NotImplementedError(f"File upload protocol {self.protocol} not supported on linux machines")
-        args = f"-t cifs -o username={user},password={passwd} //{self.host}/{self.share} /mnt"
+        args = f"-t cifs -o username={user},password={passwd} //{self.host}/{self.share} /mnt/"
         self.log.debug(f"> mount {args.replace(passwd, '******')}")
         subprocess.check_call(["/bin/mount", args])
 
