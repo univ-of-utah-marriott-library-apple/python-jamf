@@ -21,7 +21,9 @@ import plistlib
 import subprocess
 import requests
 from sys import exit
-
+import keyring
+from datetime import datetime
+import json
 from . import convert
 from . import config
 
@@ -100,19 +102,82 @@ class API(metaclass=Singleton):
             prompt=prompt,
         )
         hostname = hostname or conf.hostname
-        username = username or conf.username
-        password = password or conf.password
+        self.username = username or conf.username
+        self.password = password or conf.password
+        if conf.password:
+            self.save_token_in_keyring = True
+        else:
+            self.save_token_in_keyring = False
 
-        if not hostname and not username and not password:
+        if not hostname and not self.username and not self.password:
             print("No jamf hostname or credentials could be found.")
             exit(1)
         if hostname[-1] == "/":
             self.url = f"{hostname}JSSResource"
+            self.hostname = hostname[:-1]
         else:
             self.url = f"{hostname}/JSSResource"
+            self.hostname = hostname
         self.session = requests.Session()
-        self.session.auth = (username, password)
         self.session.headers.update({"Accept": "application/xml"})
+
+    def get_token(self, old_token=None):
+        session = requests.Session()
+        if old_token:
+            session.headers.update({"Authorization": f"Bearer {old_token}"})
+            url = f"{self.hostname}/api/v1/auth/keep-alive"
+        else:
+            session.auth = ( self.username, self.password )
+            url = f"{self.hostname}/api/v1/auth/token"
+        response = session.post(url)
+        if response.status_code != 200:
+            print("Server did not return a bearer token")
+            return(None)
+        try:
+            json_data = json.loads(response.text)
+        except Exception as e:
+            print("Couldn't parse bearer token json")
+            return(None)
+        if self.save_token_in_keyring:
+            keyring.set_password(self.hostname, "api-token", json_data['token'])
+            keyring.set_password(self.hostname, "api-expires", json_data['expires'])
+        return(json_data['token'])
+
+    def set_session_auth(self):
+        """set the session Jamf Pro API token or basic auth"""
+        token = None
+        # Check for old token and renew it if found
+        if self.save_token_in_keyring:
+            saved_token = keyring.get_password(self.hostname, "api-token")
+            expires = keyring.get_password(self.hostname, "api-expires")
+            if saved_token:
+                expire_time = datetime.strptime(expires[:-5], '%Y-%m-%dT%H:%M:%S')
+                if expire_time > datetime.utcnow():
+                    token = self.get_token(old_token=saved_token)
+        # Get a new token
+        if not token:
+            token = self.get_token()
+        # Only use token if jamf version is >= 10.35.0
+        use_token = False
+        if token:
+            session = requests.Session()
+            url = f"{self.hostname}/api/v1/jamf-pro-version"
+            session.headers.update({"Authorization": f"Bearer {token}"})
+            response = session.get(url)
+            if response.status_code == 200:
+                try:
+                    json_data = json.loads(response.text)
+                    version = json_data['version'].split("-")[0]
+                    v1 = tuple(map(int, (version.split("."))))
+                    v2 = tuple(map(int, (10, 35, 0)))
+                    if v1 >= v2:
+                        use_token = True
+                except Exception as e:
+                    print("Couldn't parse jamf version json")
+        if use_token:
+            self.session.headers.update({"Authorization": f"Bearer {token}"})
+        else:
+            self.session.auth = (self.username, self.password)
 
     def get(self, endpoint, raw=False):
         """
@@ -125,6 +190,7 @@ class API(metaclass=Singleton):
         """
         url = f"{self.url}/{endpoint}"
         self.log.debug("getting: %s", endpoint)
+        self.set_session_auth()
         try:
             response = self.session.get(url)
         except requests.exceptions.ConnectionError as error:
@@ -154,6 +220,7 @@ class API(metaclass=Singleton):
         self.log.debug("creating: %s", endpoint)
         if isinstance(data, dict):
             data = convert.dict_to_xml(data)
+        self.set_session_auth()
         try:
             response = self.session.post(url, data=data)
         except requests.exceptions.ConnectionError as error:
@@ -185,6 +252,7 @@ class API(metaclass=Singleton):
         self.log.debug("updating: %s", endpoint)
         if isinstance(data, dict):
             data = convert.dict_to_xml(data)
+        self.set_session_auth()
         try:
             response = self.session.put(url, data=data)
         except requests.exceptions.ConnectionError as error:
@@ -213,6 +281,7 @@ class API(metaclass=Singleton):
         """
         url = f"{self.url}/{endpoint}"
         self.log.debug("getting: %s", endpoint)
+        self.set_session_auth()
         try:
             response = self.session.delete(url)
         except requests.exceptions.ConnectionError as error:
