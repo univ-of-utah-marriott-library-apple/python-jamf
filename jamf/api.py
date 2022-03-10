@@ -151,8 +151,8 @@ class API(metaclass=Singleton):
             saved_token = keyring.get_password(self.hostname, "api-token")
             expires = keyring.get_password(self.hostname, "api-expires")
             if saved_token:
-                expire_time = datetime.strptime(expires[:-5], '%Y-%m-%dT%H:%M:%S')
-                if expire_time > datetime.utcnow():
+                deadline = datetime.strptime(expires.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+                if deadline > datetime.utcnow():
                     token = self.get_token(old_token=saved_token)
         # Get a new token
         if not token:
