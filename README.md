@@ -29,13 +29,36 @@ Each record is a singleton Python object, but they are generic and most function
 
 By being singleton classes, you perform one fetch to the server for each list or record. This prevents multiple fetches for the same object. All changes you make are local until you save or refresh the object.
 
+Note, python-jamf can work with unsupported Jamf records, it just isn't as easy as the next section shows.
+
 ### Quick Example
 
-This is just a quick example of the power and ease-of-use of python-jamf. The following code will print the last_contact_time from all computer records.
+This is just a quick example of the power and ease-of-use of python-jamf. The following code prints the last_contact_time from all computer records, from a computer record with the ID of 1, a computer record named "Jimmy's Mac", and computer records that match a regex. Lastly, it searches for a computer by name and if it exists then it changes the name.
 
 	import jamf
-	for computer in jamf.Computers():
+	for computer in jamf.Computers(): # Retreive the data from the server
 		print(computer.data["general"]["last_contact_time"])
+
+	computers = jamf.Computers()      # Use the data retrieved above, don't re-download
+	computers.refresh()               # Re-download the records from the server
+
+	if "1" in computers:
+	    print(computers.recordWithId(580).data['general']['last_contact_time'])
+
+	if "Jimmy's Mac" in computers:
+	    print(computers.recordWithName("Jimmy's Mac").data['general']['last_contact_time'])
+
+
+	for computer in computers.recordsWithRegex("J[ia]m[myes]{2}'s? Mac"): # Matches Jimmy's, James', and James's
+		print(computer.data["general"]["last_contact_time"])
+
+	computer = computers.recordWithName("James's Mac)
+	if computer:
+		computer.refresh()            # Re-download the record from the server
+		computer.data['general']['name'] = "James' Mac"
+		computer.save()
+
+A few notes. You can replace `jamf.Computers()` with `jamf.Policies()` or any supported record type.
 
 ## Quick Start
 
