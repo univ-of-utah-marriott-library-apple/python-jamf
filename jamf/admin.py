@@ -13,12 +13,10 @@ __license__ = "MIT"
 __version__ = "1.3.1"
 
 import re
-import os
-import sys
 import glob
 import json
+import sys
 import time
-import pprint
 import shutil
 import urllib
 import hashlib
@@ -26,9 +24,7 @@ import logging
 import pathlib
 import requests
 import subprocess
-from xml.etree import ElementTree as et
 
-from . import api
 from . import config
 from . import convert
 from . import package
@@ -499,6 +495,18 @@ class FileShare:
             raise Error(f"{self.name}: not mounted")
         return self.path / "Packages"
 
+    def _osx_mount(self, user, passwd):
+        url = f"{self.protocol}://{user}:{passwd}@{self.host}/{self.share}"
+        self.log.debug(f"> open {url.replace(passwd, '******')}")
+        subprocess.check_call(["/usr/bin/open", url])
+
+    def _linux_mount(self, user, passwd):
+        if self.protocol != "smb":
+            raise NotImplementedError(f"File upload protocol {self.protocol} not supported on linux machines")
+        args = f"-t cifs -o username={user},password={passwd} //{self.host}/{self.share} /mnt/"
+        self.log.debug(f"> mount {args.replace(passwd, '******')}")
+        subprocess.check_call(["/bin/mount", args])
+
     def mount(self, timeout=5):
         """
         Mount the fileshare
@@ -510,9 +518,12 @@ class FileShare:
 
         self.log.debug(f"mounting: {self.name}", self.name)
         user, passwd = [urllib.parse.quote(s) for s in self.auth]
-        url = f"{self.protocol}://{user}:{passwd}@{self.host}/{self.share}"
-        self.log.debug(f"> open {url.replace(passwd, '******')}")
-        subprocess.check_call(["/usr/bin/open", url])
+        if sys.platform == "linux" or sys.platform == "linux2":
+            self._linux_mount(user, passwd)
+        elif sys.platform == "darwin":
+            self._osx_mount(user, passwd)
+        else:
+            raise NotImplementedError(f"FileShare.mount not implemented for {sys.platform}")
         self._wait_for_mount(timeout=timeout)
         self.log.info(f"successfully mounted: {self.name}")
         self.log.debug(f"path: {str(self.path)!r}")
