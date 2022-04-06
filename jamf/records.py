@@ -26,6 +26,7 @@ __version__ = "0.4.3"
 # pylint: disable=relative-beyond-top-level
 from .api import API
 from pprint import pprint
+import copy
 import json
 import logging
 import os.path
@@ -149,6 +150,7 @@ class ClassicSwagger(metaclass=Singleton):
             "BYOProfiles": post_template2,
             "ComputerConfigurations": post_template2,
             "ComputerReports": post_template2,
+            "Computers": post_template2,
             "DirectoryBindings": post_template2,
             "Ebooks": post_template2,
             "JSONWebTokenConfigurations": post_template2,
@@ -229,7 +231,7 @@ class ClassicSwagger(metaclass=Singleton):
 
     def post_template(self, className, name):
         if className in self._post_templates:
-            template = self._post_templates[className]
+            template = copy.deepcopy(self._post_templates[className])
             if "name" in template:
                 template["name"] = template["name"].replace("%NAME%", name)
             elif "name_id" in template:
