@@ -33,7 +33,7 @@ Note, python-jamf can work with unsupported Jamf records, it just isn't as easy 
 
 ### Quick Example
 
-This is just a quick example of the power and ease-of-use of python-jamf. The following code prints the last_contact_time from all computer records, from a computer record with the ID of 1, a computer record named "Jimmy's Mac", and computer records that match a regex. Lastly, it searches for a computer by name and if it exists then it changes the name.
+This is just a quick example of the power and ease-of-use of python-jamf. The following code prints the last_contact_time from all computer records, from a computer record with the ID of 1, a computer record named "Jimmy's Mac", and computer records that match a regex. Then, it searches for a computer by name and if it exists then it changes the name. Lastly, it shows how to delete and create records.
 
 	import jamf
 	for computer in jamf.Computers(): # Retreive the data from the server
@@ -43,11 +43,10 @@ This is just a quick example of the power and ease-of-use of python-jamf. The fo
 	computers.refresh()               # Re-download the records from the server
 
 	if "1" in computers:
-	    print(computers.recordWithId(580).data['general']['last_contact_time'])
+	    print(computers.recordWithId(1).data['general']['last_contact_time'])
 
 	if "Jimmy's Mac" in computers:
 	    print(computers.recordWithName("Jimmy's Mac").data['general']['last_contact_time'])
-
 
 	for computer in computers.recordsWithRegex("J[ia]m[myes]{2}'s? Mac"): # Matches Jimmy's, James', and James's
 		print(computer.data["general"]["last_contact_time"])
