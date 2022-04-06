@@ -18,7 +18,4 @@ build
 archive
 /jamf/VERSION
 
-prefs
 jctl
-pkgctl
-patch.py
