@@ -10,8 +10,9 @@ jamf_version = (
 # assert "." in jamf_version
 
 assert os.path.isfile("jamf/version.py")
-with open("jamf/VERSION", "w", encoding="utf-8") as fh:
-    fh.write(f"{jamf_version}\n")
+if jamf_version != "":
+    with open("jamf/VERSION", "w", encoding="utf-8") as fh:
+        fh.write(f"{jamf_version}\n")
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
