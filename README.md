@@ -112,6 +112,14 @@ If you have additional questions, or need more help getting started, post a ques
 
 ## Latest Status
 
-Since we recorded our session over a month ago, some of the information in our presentation is out of date already. We have spent the time between when we recorded the presentation and now (October 14, 2021) getting GitHub actions working so that it will test and publish to pypi.com. It took longer to get this working than we thought. So that's about where we are. But it works now. We also added some Docker containers that you can run locally to try out `python-jamf` and `jctl`. There are also some minor differences in `pkgctl` than what is shown in the presentation.
+### Releases
 
-I should also mention, one of us also had an issue where we assumed that `pkgctl` was crashing our production Jamf Pro server. But, increasing the amount of RAM and CPU's for that server fixed this issue.
+python-jamf 0.7.4
+
+ - Bearer token support
+ - Fixed bug when creating records (shallow vs deep copy)
+ - Fixed version in setup.py bug
+ - Removed jamfnet from main docker-compose and move it to it's own file
+ - Support smb mounting on linux
+
+Thank you yairf-s1 and pythoninthegrass for your contributions.
