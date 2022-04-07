@@ -114,7 +114,7 @@ If you have additional questions, or need more help getting started, post a ques
 
 ### Releases
 
-:new: (python-jamf 0.7.4)[https://github.com/univ-of-utah-marriott-library-apple/python-jamf/releases/tag/0.7.4-af4107c6]
+:new: [python-jamf 0.7.4] (https://github.com/univ-of-utah-marriott-library-apple/python-jamf/releases/tag/0.7.4-af4107c6)
 
  - Bearer token support
  - Fixed bug when creating records (shallow vs deep copy)
