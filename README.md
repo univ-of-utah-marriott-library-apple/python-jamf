@@ -123,3 +123,5 @@ If you have additional questions, or need more help getting started, post a ques
  - Support smb mounting on linux
 
 Thank you yairf-s1 and pythoninthegrass for your contributions.
+
+See `python-jamf` [upgrade](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/Installing#upgrading) documentation to upgrade to latest release.
