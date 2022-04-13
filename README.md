@@ -182,7 +182,7 @@ This is the python with 2 items.
 
 Do you see the huge difference? When an array has more than one item, it's converted into an actual Python array. But if it's only got one, it's converted to a dictionary. This is a giant problem and has been a pain in our side. Our goal is to fix this.
 
-There are several giveaways to help us fix it. First, array's have a size. I think some arrays don't include a size, but there's more giveaways. Second, the items in the array have singlar names of the parent array ("policy" inside of "policies"). Third, we have a swagger specification file that tells us what should be an array. Lastly, we could just get the JSON, but unless we do an exhaustive comparison to make sure it's not buggy, I'd rather just stick with the XML.
+There are several giveaways to help us fix it. First, array's have a size key/value pair. I think some arrays don't include a size key/value pair, but there's more giveaways. Second, the items in the array have singlar names of the parent array ("policy" inside of "policies"). Third, we have a swagger specification file that tells us what should be an array. Lastly, we could just get the JSON, but unless we do an exhaustive comparison to make sure it's not buggy, I'd rather just stick with the XML.
 
 We have written code to deal with this on a case by case basis as we bump into errors, but we really need to solve this globally. We haven't started working on this yet, but it is on our roadmap.
 
