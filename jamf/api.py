@@ -127,21 +127,21 @@ class API(metaclass=Singleton):
             session.headers.update({"Authorization": f"Bearer {old_token}"})
             url = f"{self.hostname}/api/v1/auth/keep-alive"
         else:
-            session.auth = ( self.username, self.password )
+            session.auth = (self.username, self.password)
             url = f"{self.hostname}/api/v1/auth/token"
         response = session.post(url)
         if response.status_code != 200:
             print("Server did not return a bearer token")
-            return(None)
+            return None
         try:
             json_data = json.loads(response.text)
         except Exception as e:
             print("Couldn't parse bearer token json")
-            return(None)
+            return None
         if self.save_token_in_keyring:
-            keyring.set_password(self.hostname, "api-token", json_data['token'])
-            keyring.set_password(self.hostname, "api-expires", json_data['expires'])
-        return(json_data['token'])
+            keyring.set_password(self.hostname, "api-token", json_data["token"])
+            keyring.set_password(self.hostname, "api-expires", json_data["expires"])
+        return json_data["token"]
 
     def set_session_auth(self):
         """set the session Jamf Pro API token or basic auth"""
@@ -152,15 +152,21 @@ class API(metaclass=Singleton):
             expires = keyring.get_password(self.hostname, "api-expires")
             if saved_token:
                 try:
-                    expires = expires[:-1] # remove the Z because in case there's no "."
-                    deadline = datetime.strptime(expires.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+                    expires = expires[
+                        :-1
+                    ]  # remove the Z because in case there's no "."
+                    deadline = datetime.strptime(
+                        expires.split(".")[0], "%Y-%m-%dT%H:%M:%S"
+                    )
                     if deadline > datetime.utcnow():
                         token = self.get_token(old_token=saved_token)
                 except ValueError as e:
-                    stderr.write(f"Error getting saved token: {e}\n"
-                                 f"expire string 1: {expires}\n"
-                                 f"expire string 2: {expires.split('.')[0]}\n"
-                                 f"Will try to continue.\n")
+                    stderr.write(
+                        f"Error getting saved token: {e}\n"
+                        f"expire string 1: {expires}\n"
+                        f"expire string 2: {expires.split('.')[0]}\n"
+                        f"Will try to continue.\n"
+                    )
         # Get a new token
         if not token:
             token = self.get_token()
@@ -174,7 +180,7 @@ class API(metaclass=Singleton):
             if response.status_code == 200:
                 try:
                     json_data = json.loads(response.text)
-                    version = json_data['version'].split("-")[0]
+                    version = json_data["version"].split("-")[0]
                     v1 = tuple(map(int, (version.split("."))))
                     v2 = tuple(map(int, (10, 35, 0)))
                     if v1 >= v2:

@@ -502,7 +502,9 @@ class FileShare:
 
     def _linux_mount(self, user, passwd):
         if self.protocol != "smb":
-            raise NotImplementedError(f"File upload protocol {self.protocol} not supported on linux machines")
+            raise NotImplementedError(
+                f"File upload protocol {self.protocol} not supported on linux machines"
+            )
         args = f"-t cifs -o username={user},password={passwd} //{self.host}/{self.share} /mnt/"
         self.log.debug(f"> mount {args.replace(passwd, '******')}")
         subprocess.check_call(["/bin/mount", args])
@@ -523,7 +525,9 @@ class FileShare:
         elif sys.platform == "darwin":
             self._osx_mount(user, passwd)
         else:
-            raise NotImplementedError(f"FileShare.mount not implemented for {sys.platform}")
+            raise NotImplementedError(
+                f"FileShare.mount not implemented for {sys.platform}"
+            )
         self._wait_for_mount(timeout=timeout)
         self.log.info(f"successfully mounted: {self.name}")
         self.log.debug(f"path: {str(self.path)!r}")

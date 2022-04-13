@@ -154,8 +154,8 @@ class ClassicSwagger(metaclass=Singleton):
             "DirectoryBindings": post_template2,
             "Ebooks": post_template2,
             "JSONWebTokenConfigurations": post_template2,
-            #"LicensedSoftware": post_template2,
-            #"LDAPServers": post_template2,
+            # "LicensedSoftware": post_template2,
+            # "LDAPServers": post_template2,
             "MacApplications": post_template2,
             "ManagedPreferenceProfiles": post_template2,
             "MobileDevices": post_template2,
@@ -192,19 +192,13 @@ class ClassicSwagger(metaclass=Singleton):
                 "starting_address": "10.0.0.1",
                 "ending_address": "10.0.0.1",
             },
-            "Packages": {
-                "name": "%NAME%",
-                "filename": "filename.pkg",
-            },
-            "PatchExternalSources": {
-                "name": "%NAME%",
-                "host_name": "example.com",
-            },
+            "Packages": {"name": "%NAME%", "filename": "filename.pkg",},
+            "PatchExternalSources": {"name": "%NAME%", "host_name": "example.com",},
             "PatchPolicies": {
                 "general": {"name": "%NAME%", "target_version": "%VERSION%"}
             },
             "PatchSoftwareTitles": {"name_id": "%NAME%", "source_id": "1"},
-            #"RestrictedSoftware": {"general":{"name":"%NAME%","process_name":"%NAME%"}},
+            # "RestrictedSoftware": {"general":{"name":"%NAME%","process_name":"%NAME%"}},
             "UserGroups": {"general": {"name": "%NAME%"}, "is_smart": False},
             "WebHooks": {
                 "event": "ComputerAdded",
@@ -213,16 +207,9 @@ class ClassicSwagger(metaclass=Singleton):
             },
         }
         self._swagger_fixes = {
-            "ComputerConfigurations": {
-                "s2": "configuration",
-            },
-            "ComputerReports": {
-                "s1": "computer_reports",
-            },
-            "MobileDeviceCommands": {
-                "id_text1": "uuid",
-                "id_text2": "uuid",
-            },
+            "ComputerConfigurations": {"s2": "configuration",},
+            "ComputerReports": {"s1": "computer_reports",},
+            "MobileDeviceCommands": {"id_text1": "uuid", "id_text2": "uuid",},
             "RestrictedSoftware": {
                 "p3": "restricted_software_title",
                 "s1": "restricted_software",
