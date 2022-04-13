@@ -20,7 +20,7 @@ from os import path, _exit
 import plistlib
 import subprocess
 import requests
-from sys import exit
+from sys import exit, stderr
 import keyring
 from datetime import datetime
 import json
@@ -151,9 +151,16 @@ class API(metaclass=Singleton):
             saved_token = keyring.get_password(self.hostname, "api-token")
             expires = keyring.get_password(self.hostname, "api-expires")
             if saved_token:
-                deadline = datetime.strptime(expires.split('.')[0], '%Y-%m-%dT%H:%M:%S')
-                if deadline > datetime.utcnow():
-                    token = self.get_token(old_token=saved_token)
+                try:
+                    expires = expires[:-1] # remove the Z because in case there's no "."
+                    deadline = datetime.strptime(expires.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+                    if deadline > datetime.utcnow():
+                        token = self.get_token(old_token=saved_token)
+                except ValueError as e:
+                    stderr.write(f"Error getting saved token: {e}\n"
+                                 f"expire string 1: {expires}\n"
+                                 f"expire string 2: {expires.split('.')[0]}\n"
+                                 f"Will try to continue.\n")
         # Get a new token
         if not token:
             token = self.get_token()
