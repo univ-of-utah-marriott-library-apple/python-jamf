@@ -31,14 +31,23 @@ def etree_to_dict(elem):
     children = list(elem)
     if children:
         defd = defaultdict(list)
-        for dct in map(etree_to_dict, children):
+        has_size = False
+        for child in children:
+            if child.tag == "size":
+                has_size = True
+            dct = etree_to_dict(child)
             for key, val in dct.items():
                 defd[key].append(val)
-        result = {
-            elem.tag: {
-                key: val[0] if len(val) == 1 else val for key, val in defd.items()
-            }
-        }
+        result = {}
+        for key, val in defd.items():
+            print(f"{key}, {val[0]}, {type(val[0])}, {has_size}")
+            is_array = len(val) > 1 or ( has_size and type(val[0]) is dict )
+            if not elem.tag in result:
+                result[elem.tag] = {}
+            if is_array:
+                result[elem.tag][key] = val
+            else:
+                result[elem.tag][key] = val[0]
     elif elem.text:
         result[elem.tag] = elem.text.strip()
     return result
@@ -68,7 +77,6 @@ def dict_to_xml(data):
     else:
         # string, boolean, integers, floats, etc
         xml_str = xml.sax.saxutils.escape(f"{data}")
-
     return xml_str
 
 
