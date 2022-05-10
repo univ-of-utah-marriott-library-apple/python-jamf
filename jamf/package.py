@@ -10,7 +10,6 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "1.1.3"
 
-# import re
 import os
 import shutil
 import hashlib
