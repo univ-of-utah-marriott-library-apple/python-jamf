@@ -10,7 +10,6 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "1.0.1"
 
-# import os
 import pprint
 import shutil
 import pathlib
