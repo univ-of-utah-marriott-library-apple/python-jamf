@@ -11,12 +11,12 @@ __license__ = "MIT"
 __version__ = "0.1.1"
 
 import copy
-import shutil
+import datetime as dt
 import logging
 import pathlib
 import plistlib
+import shutil
 import unittest
-import datetime as dt
 
 from jamf import config
 

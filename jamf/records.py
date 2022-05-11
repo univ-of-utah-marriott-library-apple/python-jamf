@@ -23,15 +23,16 @@ __date__ = "2020-09-21"
 __version__ = "0.4.4"
 
 
-# pylint: disable=relative-beyond-top-level
-from .api import API
-from pprint import pprint
 import copy
 import json
 import logging
 import os.path
 import re
 import sys
+from pprint import pprint
+
+# pylint: disable=relative-beyond-top-level
+from .api import API
 
 __all__ = (
     "AdvancedComputerSearches",
@@ -192,8 +193,14 @@ class ClassicSwagger(metaclass=Singleton):
                 "starting_address": "10.0.0.1",
                 "ending_address": "10.0.0.1",
             },
-            "Packages": {"name": "%NAME%", "filename": "filename.pkg",},
-            "PatchExternalSources": {"name": "%NAME%", "host_name": "example.com",},
+            "Packages": {
+                "name": "%NAME%",
+                "filename": "filename.pkg",
+            },
+            "PatchExternalSources": {
+                "name": "%NAME%",
+                "host_name": "example.com",
+            },
             "PatchPolicies": {
                 "general": {"name": "%NAME%", "target_version": "%VERSION%"}
             },
@@ -207,9 +214,16 @@ class ClassicSwagger(metaclass=Singleton):
             },
         }
         self._swagger_fixes = {
-            "ComputerConfigurations": {"s2": "configuration",},
-            "ComputerReports": {"s1": "computer_reports",},
-            "MobileDeviceCommands": {"id_text1": "uuid", "id_text2": "uuid",},
+            "ComputerConfigurations": {
+                "s2": "configuration",
+            },
+            "ComputerReports": {
+                "s1": "computer_reports",
+            },
+            "MobileDeviceCommands": {
+                "id_text1": "uuid",
+                "id_text2": "uuid",
+            },
             "RestrictedSoftware": {
                 "p3": "restricted_software_title",
                 "s1": "restricted_software",

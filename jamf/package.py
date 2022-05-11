@@ -10,19 +10,19 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "1.1.3"
 
-import os
-import shutil
+import datetime as dt
 import hashlib
 import logging
+import os
 import pathlib
 import plistlib
+import shutil
 import subprocess
-import datetime as dt
-from distutils.version import StrictVersion, LooseVersion
+from distutils.version import LooseVersion, StrictVersion
 from xml.etree import ElementTree as ET
 
-from .records import Categories
 from . import config
+from .records import Categories
 
 # GLOBALS
 TMPDIR = os.environ.get("TMPDIR", "/tmp")

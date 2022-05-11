@@ -7,8 +7,8 @@ test_records
 Test the Jamf object classes
 """
 
-import unittest
 import logging
+import unittest
 
 from jamf import records
 

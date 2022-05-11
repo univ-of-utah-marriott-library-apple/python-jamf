@@ -3,6 +3,7 @@
 # pylint: disable=missing-class-docstring, missing-module-docstring, invalid-name
 
 import unittest
+
 from jamf import convert
 
 patchpolicies = """<?xml version="1.0" encoding="UTF-8"?>

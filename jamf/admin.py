@@ -12,23 +12,21 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "1.3.1"
 
-import re
 import glob
-import json
-import sys
-import time
-import shutil
-import urllib
 import hashlib
+import json
 import logging
 import pathlib
-import requests
+import re
+import shutil
 import subprocess
+import sys
+import time
+import urllib
 
-from . import config
-from . import convert
-from . import package
-from . import records
+import requests
+
+from . import config, convert, package, records
 
 # GLOBALS
 logger = logging.getLogger(__name__)

@@ -13,19 +13,20 @@ __license__ = "MIT"
 __version__ = "0.5.0"
 
 import html.parser
+import json
 import logging
 import logging.handlers
 import pathlib
-from os import path, _exit
 import plistlib
 import subprocess
-import requests
-from sys import exit, stderr
-import keyring
 from datetime import datetime
-import json
-from . import convert
-from . import config
+from os import _exit, path
+from sys import exit, stderr
+
+import keyring
+import requests
+
+from . import config, convert
 
 LOGLEVEL = logging.INFO
 

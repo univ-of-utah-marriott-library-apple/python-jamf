@@ -13,8 +13,9 @@ __version__ = "1.2.4"
 import getpass
 import logging
 import plistlib
-import keyring
 from os import path, remove
+
+import keyring
 
 LINUX_PREFS_TILDA = "~/.edu.utah.mlib.jamfutil.plist"
 MACOS_PREFS_TILDA = "~/Library/Preferences/edu.utah.mlib.jamfutil.plist"
