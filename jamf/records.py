@@ -97,8 +97,8 @@ def valid_records():
     valid = tuple(
         x
         for x in __all__
-        if not x
-        in [
+        if x
+        not in [
             # Exclude list, add all non-Jamf Record classes here
             "JamfError"
         ]
@@ -447,7 +447,7 @@ class Record:
         if not self.s.is_action_valid(self.plural, "get"):
             raise JamfError(f"get({end}) is an invalid action for get")
         results = self.api.get(end)
-        if not s1 in results:
+        if s1 not in results:
             print("---------------------------------------------\nData dump\n")
             pprint(results)
             raise JamfError(f"Endpoint {end} has no member named {s1} (s1).")
@@ -639,7 +639,7 @@ class Records:
         lst = self.api.get(p1)  # e.g. categories
         if p2 in lst:
             self.data = lst[p2]
-            if not self.data or not "size" in self.data or self.data["size"] == "0":
+            if not self.data or "size" not in self.data or self.data["size"] == "0":
                 self._records = {}
                 self._names = {}
                 self._jamf_ids = {}
@@ -777,9 +777,9 @@ class Computer(Record):
         if apps:
             for ii, app in enumerate(apps):
                 ver = versions[ii]
-                if not app in plural_cls.app_list:
+                if app not in plural_cls.app_list:
                     plural_cls.app_list[app] = {}
-                if not ver in plural_cls.app_list[app]:
+                if ver not in plural_cls.app_list[app]:
                     plural_cls.app_list[app][ver] = {}
                 plural_cls.app_list[app][ver][self.name] = True
 
@@ -1048,7 +1048,7 @@ class Package(Record):
             }
             if not self._metadata["basename"] in self.plural.groups:
                 self.plural.groups[self._metadata["basename"]] = []
-            if not self in self.plural.groups[self._metadata["basename"]]:
+            if self not in self.plural.groups[self._metadata["basename"]]:
                 self.plural.groups[self._metadata["basename"]].append(self)
 
         return self._metadata
@@ -1067,9 +1067,9 @@ class Package(Record):
                     if not str(title.id) in patchsoftwaretitles_ids:
                         patchsoftwaretitles_ids[str(title.id)] = {}
                     patchsoftwaretitles_ids[str(title.id)][versions[ii]] = pkg
-                    if not pkg in related:
+                    if pkg not in related:
                         related[pkg] = {"PatchSoftwareTitles": []}
-                    if not "PatchSoftwareTitles" in related[pkg]:
+                    if "PatchSoftwareTitles" not in related[pkg]:
                         related[pkg]["PatchSoftwareTitles"] = []
                     temp = title.name + " - " + versions[ii]
                     related[pkg]["PatchSoftwareTitles"].append(temp)
@@ -1081,9 +1081,9 @@ class Package(Record):
                 ppp = patchsoftwaretitles_ids[str(parent_id)]
                 if parent_version in ppp:
                     pkg = ppp[parent_version]
-                    if not pkg in related:
+                    if pkg not in related:
                         related[pkg] = {"PatchPolicies": []}
-                    if not "PatchPolicies" in related[pkg]:
+                    if "PatchPolicies" not in related[pkg]:
                         related[pkg]["PatchPolicies"] = []
                     related[pkg]["PatchPolicies"].append(policy.name)
         policies = jamf_records(Policies)
@@ -1091,9 +1091,9 @@ class Package(Record):
             pkgs = policy.get_path("package_configuration/packages/package/name")
             if pkgs:
                 for pkg in pkgs:
-                    if not pkg in related:
+                    if pkg not in related:
                         related[pkg] = {"Policies": []}
-                    if not "Policies" in related[pkg]:
+                    if "Policies" not in related[pkg]:
                         related[pkg]["Policies"] = []
                     related[pkg]["Policies"].append(policy.name)
         groups = jamf_records(ComputerGroups)
@@ -1102,9 +1102,9 @@ class Package(Record):
             if criterions:
                 for pkg in criterions:
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
-                        if not pkg in related:
+                        if pkg not in related:
                             related[pkg] = {"ComputerGroups": []}
-                        if not "ComputerGroups" in related[pkg]:
+                        if "ComputerGroups" not in related[pkg]:
                             related[pkg]["ComputerGroups"] = []
                         related[pkg]["ComputerGroups"].append(group.name)
         self.__class__._related = related
@@ -1426,7 +1426,7 @@ class Policy(Record):
         return _text
 
     def promote_update_during(self):
-        if not "package" in self.data["package_configuration"]["packages"]:
+        if "package" not in self.data["package_configuration"]["packages"]:
             print(f"{self.name} has no package to update.")
             return True
         if int(self.data["package_configuration"]["packages"]["size"]) > 1:
