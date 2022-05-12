@@ -11,11 +11,10 @@ __license__ = "MIT"
 __version__ = "1.0.1"
 
 import pathlib
-import pprint
 import shutil
 import unittest
 
-from jamf import api, category, package
+from jamf import package
 
 # location for temporary files created with tests
 LOCATION = pathlib.Path(__file__).parent

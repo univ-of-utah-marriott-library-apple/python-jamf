@@ -22,7 +22,6 @@ from distutils.version import LooseVersion, StrictVersion
 from xml.etree import ElementTree as ET
 
 from . import config
-from .records import Categories
 
 # GLOBALS
 TMPDIR = os.environ.get("TMPDIR", "/tmp")

@@ -28,7 +28,6 @@ import json
 import logging
 import os.path
 import re
-import sys
 from pprint import pprint
 
 # pylint: disable=relative-beyond-top-level

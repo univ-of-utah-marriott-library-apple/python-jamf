@@ -16,11 +16,7 @@ import html.parser
 import json
 import logging
 import logging.handlers
-import pathlib
-import plistlib
-import subprocess
 from datetime import datetime
-from os import _exit, path
 from sys import exit, stderr
 
 import keyring
