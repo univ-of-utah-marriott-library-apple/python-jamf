@@ -496,7 +496,7 @@ class Record:
                     else:
                         result.append(item[current])
             placeholder = result
-        elif placeholder == None:
+        elif placeholder is None:
             return None
         else:
             print("Something went wrong in get_path2")
@@ -511,7 +511,7 @@ class Record:
         except NotFound:
             print("Not Found")
             result = []
-        if type(result) is list or type(result) is dict or result == None:
+        if type(result) is list or type(result) is dict or result is None:
             return result
         return [result]
 
@@ -1062,7 +1062,7 @@ class Package(Record):
             versions = title.get_path("versions/version/software_version")
             if pkgs:
                 for ii, pkg in enumerate(pkgs):
-                    if pkg == None:
+                    if pkg is None:
                         continue
                     if not str(title.id) in patchsoftwaretitles_ids:
                         patchsoftwaretitles_ids[str(title.id)] = {}
@@ -1203,7 +1203,7 @@ class PatchSoftwareTitle(Record):
         if not type(versions) is list:
             versions = [versions]
         for version in versions:
-            if version["package"] != None:
+            if version["package"] is not None:
                 print(f" {version['software_version']}: {version['package']['name']}")
 
     def patchpolicies_print_during(self):
@@ -1282,7 +1282,7 @@ class PatchSoftwareTitle(Record):
         if not type(versions) is list:
             versions = [versions]
         for version in versions:
-            if version["package"] != None:
+            if version["package"] is not None:
                 print(f" {version['software_version']}: {version['package']['name']}")
             else:
                 print(f" {version['software_version']}: -")
