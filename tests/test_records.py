@@ -94,7 +94,7 @@ class MockAPI(metaclass=Singleton):
         if len(r) != 3 or r[1] not in ("id", "name"):
             raise MockAPIError("put", f"bad request: {record}")
         try:
-            val = int(record)
+            _ = int(record)
         except ValueError:
             if self.post_by_name:
                 return {"id": "1"}

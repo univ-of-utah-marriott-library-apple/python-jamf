@@ -137,7 +137,7 @@ class TestAPIError(unittest.TestCase):
         """
         err = api.APIError(self.response)
         with self.assertRaises(AttributeError):
-            unused = err.undefined_attribute  # pylint: disable=unused-variable
+            _ = err.undefined_attribute
 
 
 class TestParseError(unittest.TestCase):

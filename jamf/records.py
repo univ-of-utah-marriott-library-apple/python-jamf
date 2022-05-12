@@ -508,7 +508,7 @@ class Record:
             self.refresh()
         try:
             result = self.get_path2(path.split("/"), self._data)
-        except NotFound as error:
+        except NotFound:
             print("Not Found")
             result = []
         if type(result) is list or type(result) is dict or result == None:

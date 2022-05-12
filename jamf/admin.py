@@ -367,7 +367,7 @@ class Package(package.Package):
         except TypeError:
             fileshare.mount()
             volume = pathlib.Path(fileshare.path)
-        path = volume / "Packages" / conf["filename"]
+        _ = volume / "Packages" / conf["filename"]
         keys = ("checksum", "hashValue", "info", "notes", "groupid")
         return cls({k: conf[k] for k in keys if k in conf}, fileshare)
 
@@ -388,8 +388,7 @@ class Package(package.Package):
         """
         returns existing package if one has been instantiated
         """
-        logger = logging.getLogger(__name__)
-        # logger.debug(f'data: {data}')
+        _ = logging.getLogger(__name__)
         jssid = int(data["id"])
         if jssid not in cls._instances:
             cls._instances[jssid] = super(Package, cls).__new__(cls)
@@ -601,7 +600,7 @@ def package_update_form(pkg):
 
     try:
         pkginfo = json.dumps(_info, indent=2)
-    except Exception as e:
+    except Exception:
         pkginfo = ""
     try:
         notes = str(pkg.notes)

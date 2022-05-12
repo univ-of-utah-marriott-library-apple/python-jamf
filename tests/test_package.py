@@ -77,7 +77,7 @@ class TestPackageInit(BaseTestCase):
         """
         path = DATA / "pkgs" / "edu.utah.mlib.package.test.pkg"
         if path.exists():
-            pkg = package.Package(path)
+            _ = package.Package(path)
 
 
 class PackageTests(BaseTestCase):

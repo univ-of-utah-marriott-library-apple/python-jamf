@@ -132,7 +132,7 @@ class API(metaclass=Singleton):
             return None
         try:
             json_data = json.loads(response.text)
-        except Exception as e:
+        except Exception:
             print("Couldn't parse bearer token json")
             return None
         if self.save_token_in_keyring:
@@ -182,7 +182,7 @@ class API(metaclass=Singleton):
                     v2 = tuple(map(int, (10, 35, 0)))
                     if v1 >= v2:
                         use_token = True
-                except Exception as e:
+                except Exception:
                     print("Couldn't parse jamf version json")
         if use_token:
             self.session.headers.update({"Authorization": f"Bearer {token}"})
