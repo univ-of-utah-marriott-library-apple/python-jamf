@@ -26,6 +26,7 @@ from . import config, convert
 
 LOGLEVEL = logging.INFO
 
+
 # pylint: disable=unnecessary-pass
 class Error(Exception):
     """just passing through"""
