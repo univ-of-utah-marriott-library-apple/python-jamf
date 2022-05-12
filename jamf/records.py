@@ -384,7 +384,7 @@ class Record:
             s1, s2, end = swag.swagger(plural, "s1, s2, end")
             if cls.plural_class == "PatchPolicies":
                 if len(a[1]) < 3:
-                    raise JamfError(f"patchpolicies requires 3 args to create records")
+                    raise JamfError("patchpolicies requires 3 args to create records")
                 softwaretitleconfigid = a[1][1]
                 end = f"patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
                 out = {s1: swag.post_template(cls.plural_class, name)}
@@ -544,7 +544,7 @@ class Record:
                 pprint(placeholder)
                 return False
         else:
-            print(f"Error: empty data:")
+            print("Error: empty data:")
             pprint(placeholder)
             return False
 

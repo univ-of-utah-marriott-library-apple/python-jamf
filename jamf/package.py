@@ -367,7 +367,7 @@ class Package:
             try:
                 xattr("-w", VERSIONKEY, self._min_os_ver, self.path)
             except subprocess.CalledProcessError:
-                self.log.error(f"xattr failed")
+                self.log.error("xattr failed")
         return self._min_os_ver
 
     @property
