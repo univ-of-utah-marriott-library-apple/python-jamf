@@ -1023,11 +1023,11 @@ class OSXConfigurationProfiles(Records, metaclass=Singleton):
 
 
 def parse_package_name(name):
-    m = re.match("([^-]*)-(.*)\.([^\.]*)$", name)
+    m = re.match(r"([^-]*)-(.*)\.([^\.]*)$", name)
     if m:
         return m[1], m[2], m[3]
     else:
-        m = re.match("([^-]*)\.([^\.]*)$", name)
+        m = re.match(r"([^-]*)\.([^\.]*)$", name)
         if m:
             return m[1], "", m[2]
         else:
@@ -1217,27 +1217,27 @@ class PatchSoftwareTitle(Record):
 
     def set_all_packages_update_during(self):
         policy_regex = {
-            "1Password 7": "^1Password-%VERSION%\.pkg",
-            "Apple GarageBand 10": "^GarageBand-%VERSION%\.pkg",
-            "Apple Keynote": "^Keynote-%VERSION%\.pkg",
-            "Apple Numbers": "^Numbers-%VERSION%\.pkg",
-            "Apple Pages": "^Pages-%VERSION%\.pkg",
-            "Apple Xcode": "^Xcode-%VERSION%\.pkg",
-            "Apple iMovie": "^iMovie-%VERSION%\.pkg",
-            "Arduino IDE": "^Arduino-%VERSION%\.pkg",
-            "Bare Bones BBEdit": "BBEdit-%VERSION%\.pkg",
-            "BusyCal 3": "^BusyCal-%VERSION%\.pkg",
-            "Microsoft Remote Desktop 10": "^Microsoft Remote Desktop-%VERSION%\.pkg",
-            "Microsoft Visual Studio Code": "^Visual Studio Code-%VERSION%\.pkg",
-            "Microsoft Teams": "^Microsoft_Teams_%VERSION%\.pkg",
-            "Mozilla Firefox": "^Firefox-%VERSION%\.pkg",
-            "R for Statistical Computing": "^R-%VERSION%\.pkg",
-            "RStudio Desktop": "RStudio-%VERSION%\.dmg",
-            "Sublime Text 3": "Sublime Text-%VERSION%\.pkg",
-            "VLC media player": "VLC-%VERSION%\.pkg",
-            "VMware Fusion 12": "VMware Fusion-%VERSION%\.pkg",
-            "VMware Horizon 8 Client": "VMwareHorizonClient-%VERSION%.pkg",
-            "Zoom Client for Meetings": "Zoom-%VERSION%.pkg",
+            "1Password 7": r"^1Password-%VERSION%\.pkg",
+            "Apple GarageBand 10": r"^GarageBand-%VERSION%\.pkg",
+            "Apple Keynote": r"^Keynote-%VERSION%\.pkg",
+            "Apple Numbers": r"^Numbers-%VERSION%\.pkg",
+            "Apple Pages": r"^Pages-%VERSION%\.pkg",
+            "Apple Xcode": r"^Xcode-%VERSION%\.pkg",
+            "Apple iMovie": r"^iMovie-%VERSION%\.pkg",
+            "Arduino IDE": r"^Arduino-%VERSION%\.pkg",
+            "Bare Bones BBEdit": r"BBEdit-%VERSION%\.pkg",
+            "BusyCal 3": r"^BusyCal-%VERSION%\.pkg",
+            "Microsoft Remote Desktop 10": r"^Microsoft Remote Desktop-%VERSION%\.pkg",
+            "Microsoft Visual Studio Code": r"^Visual Studio Code-%VERSION%\.pkg",
+            "Microsoft Teams": r"^Microsoft_Teams_%VERSION%\.pkg",
+            "Mozilla Firefox": r"^Firefox-%VERSION%\.pkg",
+            "R for Statistical Computing": r"^R-%VERSION%\.pkg",
+            "RStudio Desktop": r"RStudio-%VERSION%\.dmg",
+            "Sublime Text 3": r"Sublime Text-%VERSION%\.pkg",
+            "VLC media player": r"VLC-%VERSION%\.pkg",
+            "VMware Fusion 12": r"VMware Fusion-%VERSION%\.pkg",
+            "VMware Horizon 8 Client": r"VMwareHorizonClient-%VERSION%.pkg",
+            "Zoom Client for Meetings": r"Zoom-%VERSION%.pkg",
         }
         change_made = False
         packages = jamf_records(Packages)
@@ -1253,7 +1253,9 @@ class PatchSoftwareTitle(Record):
                             "%VERSION%", pkg_version["software_version"]
                         )
                     else:
-                        regex = f".*{self.name}.*{pkg_version['software_version']}\.pkg"
+                        regex = (
+                            rf".*{self.name}.*{pkg_version['software_version']}\.pkg"
+                        )
                     regex = regex.replace("(", "\\(")
                     regex = regex.replace(")", "\\)")
                     if re.search(regex, package.name):
