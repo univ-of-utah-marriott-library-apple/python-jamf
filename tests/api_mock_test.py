@@ -11,8 +11,8 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "0.0.0"
 
-import unittest
 import logging
+import unittest
 
 from jamf import api
 
@@ -137,7 +137,7 @@ class TestAPIError(unittest.TestCase):
         """
         err = api.APIError(self.response)
         with self.assertRaises(AttributeError):
-            unused = err.undefined_attribute  # pylint: disable=unused-variable
+            _ = err.undefined_attribute
 
 
 class TestParseError(unittest.TestCase):

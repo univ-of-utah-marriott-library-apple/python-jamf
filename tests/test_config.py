@@ -11,12 +11,12 @@ __license__ = "MIT"
 __version__ = "0.1.1"
 
 import copy
-import shutil
+import datetime as dt
 import logging
 import pathlib
 import plistlib
+import shutil
 import unittest
-import datetime as dt
 
 from jamf import config
 
@@ -87,7 +87,7 @@ class ConfigPathTests(unittest.TestCase):
         """
         config.PREFERENCES = None
         with self.assertRaises(TypeError):
-            test = config.Config()
+            _ = config.Config()
 
     def test_default_global_with_path_as_None(self):
         """
@@ -585,10 +585,10 @@ class TranspositionTest(unittest.TestCase):
         test iterable of different types raises ValueError
         """
         with self.assertRaises(ValueError):
-            f = config.transposition((7, "t"))
+            _ = config.transposition((7, "t"))
 
     def test_default_transposition(self):
-        key = self.key
+        _ = self.key
         self.assertMirroredTransposition(lambda x: x, self.secret)
 
 

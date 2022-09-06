@@ -23,15 +23,15 @@ __date__ = "2020-09-21"
 __version__ = "0.4.4"
 
 
-# pylint: disable=relative-beyond-top-level
-from .api import API
-from pprint import pprint
 import copy
 import json
 import logging
 import os.path
 import re
-import sys
+from pprint import pprint
+
+# pylint: disable=relative-beyond-top-level
+from .api import API
 
 __all__ = (
     "AdvancedComputerSearches",
@@ -97,8 +97,8 @@ def valid_records():
     valid = tuple(
         x
         for x in __all__
-        if not x
-        in [
+        if x
+        not in [
             # Exclude list, add all non-Jamf Record classes here
             "JamfError"
         ]
@@ -384,7 +384,7 @@ class Record:
             s1, s2, end = swag.swagger(plural, "s1, s2, end")
             if cls.plural_class == "PatchPolicies":
                 if len(a[1]) < 3:
-                    raise JamfError(f"patchpolicies requires 3 args to create records")
+                    raise JamfError("patchpolicies requires 3 args to create records")
                 softwaretitleconfigid = a[1][1]
                 end = f"patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
                 out = {s1: swag.post_template(cls.plural_class, name)}
@@ -447,7 +447,7 @@ class Record:
         if not self.s.is_action_valid(self.plural, "get"):
             raise JamfError(f"get({end}) is an invalid action for get")
         results = self.api.get(end)
-        if not s1 in results:
+        if s1 not in results:
             print("---------------------------------------------\nData dump\n")
             pprint(results)
             raise JamfError(f"Endpoint {end} has no member named {s1} (s1).")
@@ -496,7 +496,7 @@ class Record:
                     else:
                         result.append(item[current])
             placeholder = result
-        elif placeholder == None:
+        elif placeholder is None:
             return None
         else:
             print("Something went wrong in get_path2")
@@ -508,10 +508,10 @@ class Record:
             self.refresh()
         try:
             result = self.get_path2(path.split("/"), self._data)
-        except NotFound as error:
+        except NotFound:
             print("Not Found")
             result = []
-        if type(result) is list or type(result) is dict or result == None:
+        if type(result) is list or type(result) is dict or result is None:
             return result
         return [result]
 
@@ -544,7 +544,7 @@ class Record:
                 pprint(placeholder)
                 return False
         else:
-            print(f"Error: empty data:")
+            print("Error: empty data:")
             pprint(placeholder)
             return False
 
@@ -639,7 +639,7 @@ class Records:
         lst = self.api.get(p1)  # e.g. categories
         if p2 in lst:
             self.data = lst[p2]
-            if not self.data or not "size" in self.data or self.data["size"] == "0":
+            if not self.data or "size" not in self.data or self.data["size"] == "0":
                 self._records = {}
                 self._names = {}
                 self._jamf_ids = {}
@@ -777,9 +777,9 @@ class Computer(Record):
         if apps:
             for ii, app in enumerate(apps):
                 ver = versions[ii]
-                if not app in plural_cls.app_list:
+                if app not in plural_cls.app_list:
                     plural_cls.app_list[app] = {}
-                if not ver in plural_cls.app_list[app]:
+                if ver not in plural_cls.app_list[app]:
                     plural_cls.app_list[app][ver] = {}
                 plural_cls.app_list[app][ver][self.name] = True
 
@@ -1025,11 +1025,11 @@ class OSXConfigurationProfiles(Records, metaclass=Singleton):
 
 
 def parse_package_name(name):
-    m = re.match("([^-]*)-(.*)\.([^\.]*)$", name)
+    m = re.match(r"([^-]*)-(.*)\.([^\.]*)$", name)
     if m:
         return m[1], m[2], m[3]
     else:
-        m = re.match("([^-]*)\.([^\.]*)$", name)
+        m = re.match(r"([^-]*)\.([^\.]*)$", name)
         if m:
             return m[1], "", m[2]
         else:
@@ -1050,7 +1050,7 @@ class Package(Record):
             }
             if not self._metadata["basename"] in self.plural.groups:
                 self.plural.groups[self._metadata["basename"]] = []
-            if not self in self.plural.groups[self._metadata["basename"]]:
+            if self not in self.plural.groups[self._metadata["basename"]]:
                 self.plural.groups[self._metadata["basename"]].append(self)
 
         return self._metadata
@@ -1064,14 +1064,14 @@ class Package(Record):
             versions = title.get_path("versions/version/software_version")
             if pkgs:
                 for ii, pkg in enumerate(pkgs):
-                    if pkg == None:
+                    if pkg is None:
                         continue
                     if not str(title.id) in patchsoftwaretitles_ids:
                         patchsoftwaretitles_ids[str(title.id)] = {}
                     patchsoftwaretitles_ids[str(title.id)][versions[ii]] = pkg
-                    if not pkg in related:
+                    if pkg not in related:
                         related[pkg] = {"PatchSoftwareTitles": []}
-                    if not "PatchSoftwareTitles" in related[pkg]:
+                    if "PatchSoftwareTitles" not in related[pkg]:
                         related[pkg]["PatchSoftwareTitles"] = []
                     temp = title.name + " - " + versions[ii]
                     related[pkg]["PatchSoftwareTitles"].append(temp)
@@ -1083,9 +1083,9 @@ class Package(Record):
                 ppp = patchsoftwaretitles_ids[str(parent_id)]
                 if parent_version in ppp:
                     pkg = ppp[parent_version]
-                    if not pkg in related:
+                    if pkg not in related:
                         related[pkg] = {"PatchPolicies": []}
-                    if not "PatchPolicies" in related[pkg]:
+                    if "PatchPolicies" not in related[pkg]:
                         related[pkg]["PatchPolicies"] = []
                     related[pkg]["PatchPolicies"].append(policy.name)
         policies = jamf_records(Policies)
@@ -1093,9 +1093,9 @@ class Package(Record):
             pkgs = policy.get_path("package_configuration/packages/package/name")
             if pkgs:
                 for pkg in pkgs:
-                    if not pkg in related:
+                    if pkg not in related:
                         related[pkg] = {"Policies": []}
-                    if not "Policies" in related[pkg]:
+                    if "Policies" not in related[pkg]:
                         related[pkg]["Policies"] = []
                     related[pkg]["Policies"].append(policy.name)
         groups = jamf_records(ComputerGroups)
@@ -1104,9 +1104,9 @@ class Package(Record):
             if criterions:
                 for pkg in criterions:
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
-                        if not pkg in related:
+                        if pkg not in related:
                             related[pkg] = {"ComputerGroups": []}
-                        if not "ComputerGroups" in related[pkg]:
+                        if "ComputerGroups" not in related[pkg]:
                             related[pkg]["ComputerGroups"] = []
                         related[pkg]["ComputerGroups"].append(group.name)
         self.__class__._related = related
@@ -1205,7 +1205,7 @@ class PatchSoftwareTitle(Record):
         if not type(versions) is list:
             versions = [versions]
         for version in versions:
-            if version["package"] != None:
+            if version["package"] is not None:
                 print(f" {version['software_version']}: {version['package']['name']}")
 
     def patchpolicies_print_during(self):
@@ -1219,27 +1219,27 @@ class PatchSoftwareTitle(Record):
 
     def set_all_packages_update_during(self):
         policy_regex = {
-            "1Password 7": "^1Password-%VERSION%\.pkg",
-            "Apple GarageBand 10": "^GarageBand-%VERSION%\.pkg",
-            "Apple Keynote": "^Keynote-%VERSION%\.pkg",
-            "Apple Numbers": "^Numbers-%VERSION%\.pkg",
-            "Apple Pages": "^Pages-%VERSION%\.pkg",
-            "Apple Xcode": "^Xcode-%VERSION%\.pkg",
-            "Apple iMovie": "^iMovie-%VERSION%\.pkg",
-            "Arduino IDE": "^Arduino-%VERSION%\.pkg",
-            "Bare Bones BBEdit": "BBEdit-%VERSION%\.pkg",
-            "BusyCal 3": "^BusyCal-%VERSION%\.pkg",
-            "Microsoft Remote Desktop 10": "^Microsoft Remote Desktop-%VERSION%\.pkg",
-            "Microsoft Visual Studio Code": "^Visual Studio Code-%VERSION%\.pkg",
-            "Microsoft Teams": "^Microsoft_Teams_%VERSION%\.pkg",
-            "Mozilla Firefox": "^Firefox-%VERSION%\.pkg",
-            "R for Statistical Computing": "^R-%VERSION%\.pkg",
-            "RStudio Desktop": "RStudio-%VERSION%\.dmg",
-            "Sublime Text 3": "Sublime Text-%VERSION%\.pkg",
-            "VLC media player": "VLC-%VERSION%\.pkg",
-            "VMware Fusion 12": "VMware Fusion-%VERSION%\.pkg",
-            "VMware Horizon 8 Client": "VMwareHorizonClient-%VERSION%.pkg",
-            "Zoom Client for Meetings": "Zoom-%VERSION%.pkg",
+            "1Password 7": r"^1Password-%VERSION%\.pkg",
+            "Apple GarageBand 10": r"^GarageBand-%VERSION%\.pkg",
+            "Apple Keynote": r"^Keynote-%VERSION%\.pkg",
+            "Apple Numbers": r"^Numbers-%VERSION%\.pkg",
+            "Apple Pages": r"^Pages-%VERSION%\.pkg",
+            "Apple Xcode": r"^Xcode-%VERSION%\.pkg",
+            "Apple iMovie": r"^iMovie-%VERSION%\.pkg",
+            "Arduino IDE": r"^Arduino-%VERSION%\.pkg",
+            "Bare Bones BBEdit": r"BBEdit-%VERSION%\.pkg",
+            "BusyCal 3": r"^BusyCal-%VERSION%\.pkg",
+            "Microsoft Remote Desktop 10": r"^Microsoft Remote Desktop-%VERSION%\.pkg",
+            "Microsoft Visual Studio Code": r"^Visual Studio Code-%VERSION%\.pkg",
+            "Microsoft Teams": r"^Microsoft_Teams_%VERSION%\.pkg",
+            "Mozilla Firefox": r"^Firefox-%VERSION%\.pkg",
+            "R for Statistical Computing": r"^R-%VERSION%\.pkg",
+            "RStudio Desktop": r"RStudio-%VERSION%\.dmg",
+            "Sublime Text 3": r"Sublime Text-%VERSION%\.pkg",
+            "VLC media player": r"VLC-%VERSION%\.pkg",
+            "VMware Fusion 12": r"VMware Fusion-%VERSION%\.pkg",
+            "VMware Horizon 8 Client": r"VMwareHorizonClient-%VERSION%.pkg",
+            "Zoom Client for Meetings": r"Zoom-%VERSION%.pkg",
         }
         change_made = False
         packages = jamf_records(Packages)
@@ -1255,7 +1255,9 @@ class PatchSoftwareTitle(Record):
                             "%VERSION%", pkg_version["software_version"]
                         )
                     else:
-                        regex = f".*{self.name}.*{pkg_version['software_version']}\.pkg"
+                        regex = (
+                            rf".*{self.name}.*{pkg_version['software_version']}\.pkg"
+                        )
                     regex = regex.replace("(", "\\(")
                     regex = regex.replace(")", "\\)")
                     if re.search(regex, package.name):
@@ -1282,7 +1284,7 @@ class PatchSoftwareTitle(Record):
         if not type(versions) is list:
             versions = [versions]
         for version in versions:
-            if version["package"] != None:
+            if version["package"] is not None:
                 print(f" {version['software_version']}: {version['package']['name']}")
             else:
                 print(f" {version['software_version']}: -")
@@ -1429,7 +1431,7 @@ class Policy(Record):
         return _text
 
     def promote_update_during(self):
-        if not "package" in self.data["package_configuration"]["packages"]:
+        if "package" not in self.data["package_configuration"]["packages"]:
             print(f"{self.name} has no package to update.")
             return True
         if int(self.data["package_configuration"]["packages"]["size"]) > 1:

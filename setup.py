@@ -1,6 +1,7 @@
-import setuptools
-import subprocess
 import os
+import subprocess
+
+import setuptools
 
 jamf_version = (
     subprocess.run(["git", "describe", "--tags"], stdout=subprocess.PIPE)

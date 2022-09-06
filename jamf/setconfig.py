@@ -14,12 +14,13 @@ __version__ = "1.0.4"
 
 import argparse
 import getpass
-import jamf
 import logging
 import platform
 import pprint
 import sys
 from os import path
+
+import jamf
 
 
 class Parser:

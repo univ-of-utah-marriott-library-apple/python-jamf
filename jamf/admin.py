@@ -12,23 +12,21 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "1.3.1"
 
-import re
 import glob
-import json
-import sys
-import time
-import shutil
-import urllib
 import hashlib
+import json
 import logging
 import pathlib
-import requests
+import re
+import shutil
 import subprocess
+import sys
+import time
+import urllib
 
-from . import config
-from . import convert
-from . import package
-from . import records
+import requests
+
+from . import config, convert, package, records
 
 # GLOBALS
 logger = logging.getLogger(__name__)
@@ -248,7 +246,7 @@ class JamfAdmin(metaclass=Singleton):
         # verify file copied
         # TO-DO: get size of server file to compare to original (fast)
         # TO-DO: calculate checksums of each (slow)
-        self.log.info(f"verifying package upload")
+        self.log.info("verifying package upload")
         self.log.warning("upload verification minimally implemented")
         verified = True
         self.log.debug("checking sizes")
@@ -270,7 +268,7 @@ class JamfAdmin(metaclass=Singleton):
         else:
             if not force:
                 raise DuplicatePackageError(f"package already added: {pkg}")
-            self.log.debug(f"forcing upload")
+            self.log.debug("forcing upload")
             self.upload(pkg)
             return uploaded
 
@@ -369,7 +367,7 @@ class Package(package.Package):
         except TypeError:
             fileshare.mount()
             volume = pathlib.Path(fileshare.path)
-        path = volume / "Packages" / conf["filename"]
+        _ = volume / "Packages" / conf["filename"]
         keys = ("checksum", "hashValue", "info", "notes", "groupid")
         return cls({k: conf[k] for k in keys if k in conf}, fileshare)
 
@@ -390,8 +388,7 @@ class Package(package.Package):
         """
         returns existing package if one has been instantiated
         """
-        logger = logging.getLogger(__name__)
-        # logger.debug(f'data: {data}')
+        _ = logging.getLogger(__name__)
         jssid = int(data["id"])
         if jssid not in cls._instances:
             cls._instances[jssid] = super(Package, cls).__new__(cls)
@@ -603,7 +600,7 @@ def package_update_form(pkg):
 
     try:
         pkginfo = json.dumps(_info, indent=2)
-    except Exception as e:
+    except Exception:
         pkginfo = ""
     try:
         notes = str(pkg.notes)
@@ -683,7 +680,7 @@ def mounted_volumes():
     # e.g. '/dev/disk1s1 on / (apfs, local, journaled)'
     #  -> ('/dev/disk1s1', '/', 'apfs, local, journaled')
     r = re.compile(r"^(.+) on (.+) \((.+)\)$")
-    logger.debug(f"checking mounted volumes")
+    logger.debug("checking mounted volumes")
     out = subprocess.check_output(["/sbin/mount"]).decode()
     return [re.match(r, x).groups() for x in out.splitlines()]
 
@@ -727,7 +724,7 @@ def package_index(path, cleanup=True):
     if not boms:
         raise RuntimeError(f"no bill of materials found: {path}")
     # see `man lsbom` for formatting
-    logger.debug(f"> lsbom -p fMguTsc '%s'", "', '".join(boms))
+    logger.debug("> lsbom -p fMguTsc '%s'", "', '".join(boms))
     cmd = ["/usr/bin/lsbom", "-p", "fMguTsc"] + boms
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
