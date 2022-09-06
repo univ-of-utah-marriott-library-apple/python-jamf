@@ -13,21 +13,19 @@ __license__ = "MIT"
 __version__ = "0.5.0"
 
 import html.parser
+import json
 import logging
 import logging.handlers
-import pathlib
-from os import path, _exit
-import plistlib
-import subprocess
-import requests
-from sys import exit, stderr
-import keyring
 from datetime import datetime
-import json
-from . import convert
-from . import config
+from sys import exit, stderr
+
+import keyring
+import requests
+
+from . import config, convert
 
 LOGLEVEL = logging.INFO
+
 
 # pylint: disable=unnecessary-pass
 class Error(Exception):
@@ -135,7 +133,7 @@ class API(metaclass=Singleton):
             return None
         try:
             json_data = json.loads(response.text)
-        except Exception as e:
+        except Exception:
             print("Couldn't parse bearer token json")
             return None
         if self.save_token_in_keyring:
@@ -185,7 +183,7 @@ class API(metaclass=Singleton):
                     v2 = tuple(map(int, (10, 35, 0)))
                     if v1 >= v2:
                         use_token = True
-                except Exception as e:
+                except Exception:
                     print("Couldn't parse jamf version json")
         if use_token:
             self.session.headers.update({"Authorization": f"Bearer {token}"})

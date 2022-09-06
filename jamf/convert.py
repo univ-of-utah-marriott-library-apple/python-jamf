@@ -10,9 +10,9 @@ __copyright__ = "Copyright (c) 2019 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "0.2.2"
 
-from xml.etree import cElementTree as ElementTree
 import xml.sax.saxutils
 from collections import defaultdict
+from xml.etree import cElementTree as ElementTree
 
 
 class Error(Exception):

@@ -10,19 +10,17 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "1.1.3"
 
-# import re
-import os
-import shutil
+import datetime as dt
 import hashlib
 import logging
+import os
 import pathlib
 import plistlib
+import shutil
 import subprocess
-import datetime as dt
-from distutils.version import StrictVersion, LooseVersion
+from distutils.version import LooseVersion, StrictVersion
 from xml.etree import ElementTree as ET
 
-from .records import Categories
 from . import config
 
 # GLOBALS
@@ -354,7 +352,7 @@ class Package:
                     v.replace(" ", "")
                     try:
                         versions.append(StrictVersion(v))
-                    except ValueError as e:
+                    except ValueError:
                         self.log.error(f"invalid version: {v!r} (using default)")
                         versions.append(StrictVersion("10.0"))
             # minimum version is the HIGHEST version of all bundles
@@ -369,7 +367,7 @@ class Package:
             try:
                 xattr("-w", VERSIONKEY, self._min_os_ver, self.path)
             except subprocess.CalledProcessError:
-                self.log.error(f"xattr failed")
+                self.log.error("xattr failed")
         return self._min_os_ver
 
     @property
@@ -810,9 +808,7 @@ def extract(path, payload, save_dir):
     if not TMPDIR.exists():
         TMPDIR.mkdir(mode=0o755)
     logger.debug(f"> xar -xf '{path}' '{payload}' -C '{save_dir}'")
-    xar_output = subprocess.check_output(
-        ["/usr/bin/xar", "-xf", path, payload, "-C", save_dir]
-    )
+    _ = subprocess.check_output(["/usr/bin/xar", "-xf", path, payload, "-C", save_dir])
     pkg_info = subprocess.check_output(["/bin/cat", save_dir / payload])
     return pkg_info
 
@@ -822,7 +818,7 @@ def find_payload(archive):
     locate payload inside of an archive
     """
     # https://dev.to/aarohmankad/bash-functions-a-more-powerful-alias-4p3i
-    cmd = ["/usr/bin/xar", "-tf", archive]
+    _ = ["/usr/bin/xar", "-tf", archive]
     raise NotImplementedError()
 
 

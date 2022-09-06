@@ -10,15 +10,11 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "1.0.1"
 
-# import os
-import pprint
-import shutil
 import pathlib
+import shutil
 import unittest
 
 from jamf import package
-from jamf import api
-from jamf import category
 
 # location for temporary files created with tests
 LOCATION = pathlib.Path(__file__).parent
@@ -81,7 +77,7 @@ class TestPackageInit(BaseTestCase):
         """
         path = DATA / "pkgs" / "edu.utah.mlib.package.test.pkg"
         if path.exists():
-            pkg = package.Package(path)
+            _ = package.Package(path)
 
 
 class PackageTests(BaseTestCase):
