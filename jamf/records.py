@@ -192,8 +192,14 @@ class ClassicSwagger(metaclass=Singleton):
                 "starting_address": "10.0.0.1",
                 "ending_address": "10.0.0.1",
             },
-            "Packages": {"name": "%NAME%", "filename": "filename.pkg",},
-            "PatchExternalSources": {"name": "%NAME%", "host_name": "example.com",},
+            "Packages": {
+                "name": "%NAME%",
+                "filename": "filename.pkg",
+            },
+            "PatchExternalSources": {
+                "name": "%NAME%",
+                "host_name": "example.com",
+            },
             "PatchPolicies": {
                 "general": {"name": "%NAME%", "target_version": "%VERSION%"}
             },
@@ -207,9 +213,16 @@ class ClassicSwagger(metaclass=Singleton):
             },
         }
         self._swagger_fixes = {
-            "ComputerConfigurations": {"s2": "configuration",},
-            "ComputerReports": {"s1": "computer_reports",},
-            "MobileDeviceCommands": {"id_text1": "uuid", "id_text2": "uuid",},
+            "ComputerConfigurations": {
+                "s2": "configuration",
+            },
+            "ComputerReports": {
+                "s1": "computer_reports",
+            },
+            "MobileDeviceCommands": {
+                "id_text1": "uuid",
+                "id_text2": "uuid",
+            },
             "RestrictedSoftware": {
                 "p3": "restricted_software_title",
                 "s1": "restricted_software",
@@ -771,7 +784,9 @@ class Computer(Record):
 class Computers(Records, metaclass=Singleton):
     # http://localhost/computers.html?queryType=COMPUTERS&query=
     singular_class = Computer
-    sub_commands = {"apps": {"required_args": 0, "args_description": ""}}
+    sub_commands = {
+        "apps": {"required_args": 0, "args_description": ""},
+    }
 
     def apps_print_after(self):
         print("application,version,", end="")
@@ -1323,7 +1338,11 @@ class Policy(Record):
             _trigger.append("Startup")
         if self.data["general"]["trigger_login"] == "true":
             _trigger.append("Login")
-        if self.data["general"]["trigger_logout"] == "true":
+
+        if (
+            hasattr(self.data["general"], "trigger_logout")
+            and self.data["general"]["trigger_logout"] == "true"
+        ):
             _trigger.append("Logout")
         if self.data["general"]["trigger_network_state_changed"] == "true":
             _trigger.append("Network")
