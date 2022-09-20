@@ -20,7 +20,7 @@ __email__ = "reynolds@biology.utah.edu, sam.forester@utah.edu, tonyw@honestpuck.
 __copyright__ = "Copyright (c) 2021 University of Utah, School of Biological Sciences and Copyright (c) 2020 Tony Williams"
 __license__ = "MIT"
 __date__ = "2020-09-21"
-__version__ = "0.4.4"
+__version__ = "0.4.5"
 
 
 import copy
@@ -1340,7 +1340,6 @@ class Policy(Record):
             _trigger.append("Startup")
         if self.data["general"]["trigger_login"] == "true":
             _trigger.append("Login")
-
         if (
             hasattr(self.data["general"], "trigger_logout")
             and self.data["general"]["trigger_logout"] == "true"
