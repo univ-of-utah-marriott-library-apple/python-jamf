@@ -518,7 +518,7 @@ class Record:
     def force_array(self, parent, child_name):
         _data = parent[child_name]
         if "size" in parent:
-            if int(parent["size"]) > 1:
+            if int(parent["size"]) > 0:
                 return _data
         else:
             if type(_data) is list:
@@ -644,10 +644,7 @@ class Records:
                 self._names = {}
                 self._jamf_ids = {}
             elif p3 in self.data:  # e.g. category
-                if self.data["size"] == "1":
-                    records = [self.data[p3]]
-                else:
-                    records = self.data[p3]
+                records = self.data[p3]
                 for d in records:
                     c = self.singular_class(d[id1], d["name"])  # e.g. id1 = "id"
                     c.plural_class = self.cls
@@ -1434,10 +1431,7 @@ class Policy(Record):
         if "package" not in self.data["package_configuration"]["packages"]:
             print(f"{self.name} has no package to update.")
             return True
-        if int(self.data["package_configuration"]["packages"]["size"]) > 1:
-            my_packages = self.data["package_configuration"]["packages"]["package"]
-        else:
-            my_packages = [self.data["package_configuration"]["packages"]["package"]]
+        my_packages = self.data["package_configuration"]["packages"]["package"]
 
         all_packages = jamf_records(Packages)
         print(self.name)
