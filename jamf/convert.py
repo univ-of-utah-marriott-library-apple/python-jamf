@@ -40,7 +40,7 @@ def etree_to_dict(elem):
                 defd[key].append(val)
         result = {}
         for key, val in defd.items():
-            print(f"{key}, {val[0]}, {type(val[0])}, {has_size}")
+#             print(f"{key}, {val[0]}, {type(val[0])}, {has_size}")
             is_array = len(val) > 1 or ( has_size and type(val[0]) is dict )
             if not elem.tag in result:
                 result[elem.tag] = {}
