@@ -43,10 +43,10 @@ class APIError(Error):
         err = parse_html_error(response.text)
         self.message = ": ".join(err) or "failed"
         if response.status_code == 401:
-            print(f"{response.url} returned: \"401 Unauthorized\"")
+            print(f'{response.url} returned: "401 Unauthorized"')
             exit(1)
         elif response.status_code == 503:
-            print(f"{response.url} returned: \"503 Service Unavailable\"")
+            print(f'{response.url} returned: "503 Service Unavailable"')
             exit(1)
         print(
             f"{response}: {response.request.method} - {response.url}: \n{self.message}"
