@@ -151,6 +151,16 @@ class API(metaclass=Singleton):
             keyring.set_password(self.hostname, "api-expires", json_data["expires"])
         return json_data["token"]
 
+    def revoke_token(self):
+        try:
+            keyring.delete_password(self.hostname, "api-token")
+        except:
+            pass
+        try:
+            keyring.delete_password(self.hostname, "api-expires")
+        except:
+            pass
+
     def set_session_auth(self):
         """set the session Jamf Pro API token or basic auth"""
         token = None
@@ -158,7 +168,7 @@ class API(metaclass=Singleton):
         if self.save_token_in_keyring:
             saved_token = keyring.get_password(self.hostname, "api-token")
             expires = keyring.get_password(self.hostname, "api-expires")
-            if saved_token:
+            if saved_token and expires:
                 try:
                     expires = expires[
                         :-1

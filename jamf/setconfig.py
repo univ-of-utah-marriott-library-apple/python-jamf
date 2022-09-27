@@ -41,6 +41,9 @@ class Parser:
             "-p", "--passwd", help="specify password (default: prompt)"
         )
         self.parser.add_argument(
+            "-r", "--revoke-token", action="store_true", help="Revoke Bearer token"
+        )
+        self.parser.add_argument(
             "-C",
             "--config",
             dest="path",
@@ -95,6 +98,9 @@ def setconfig(argv):
             print("Password is set")
         else:
             print("Password is not set")
+    elif args.revoke_token:
+        api = jamf.API(config_path=config_path)
+        api.revoke_token()
     else:
         if args.hostname:
             hostname = args.hostname
