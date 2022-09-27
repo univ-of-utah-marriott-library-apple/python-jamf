@@ -42,6 +42,12 @@ class APIError(Error):
         self.response = response
         err = parse_html_error(response.text)
         self.message = ": ".join(err) or "failed"
+        if response.status_code == 401:
+            print(f"{response.url} returned: \"401 Unauthorized\"")
+            exit(1)
+        elif response.status_code == 503:
+            print(f"{response.url} returned: \"503 Service Unavailable\"")
+            exit(1)
         print(
             f"{response}: {response.request.method} - {response.url}: \n{self.message}"
         )
@@ -127,7 +133,11 @@ class API(metaclass=Singleton):
         else:
             session.auth = (self.username, self.password)
             url = f"{self.hostname}/api/v1/auth/token"
-        response = session.post(url)
+        try:
+            response = session.post(url)
+        except requests.exceptions.ConnectionError as error:
+            print(f"Could not connect to {self.hostname}: {error}")
+            exit(1)
         if response.status_code != 200:
             print("Server did not return a bearer token")
             return None
@@ -174,7 +184,11 @@ class API(metaclass=Singleton):
             session = requests.Session()
             url = f"{self.hostname}/api/v1/jamf-pro-version"
             session.headers.update({"Authorization": f"Bearer {token}"})
-            response = session.get(url)
+            try:
+                response = session.get(url)
+            except requests.exceptions.ConnectionError as error:
+                print(f"Could not connect to {self.hostname}: {error}")
+                exit(1)
             if response.status_code == 200:
                 try:
                     json_data = json.loads(response.text)
@@ -205,16 +219,14 @@ class API(metaclass=Singleton):
         try:
             response = self.session.get(url)
         except requests.exceptions.ConnectionError as error:
-            print(error)
+            print(f"Could not connect to {self.hostname}: {error}")
             exit(1)
 
         if raw:
             return response
         if not response.ok:
-            if response.status_code == 401:
-                print("401 Unauthorized")
-                exit(1)
             raise APIError(response)
+        self.log.debug("xml response.text: %s", response.text)
         return convert.xml_to_dict(response.text)
 
     def post(self, endpoint, data, raw=False):
@@ -231,19 +243,17 @@ class API(metaclass=Singleton):
         self.log.debug("creating: %s", endpoint)
         if isinstance(data, dict):
             data = convert.dict_to_xml(data)
+        self.log.debug("xml data: %s", data)
         self.set_session_auth()
         try:
             response = self.session.post(url, data=data)
         except requests.exceptions.ConnectionError as error:
-            print(error)
+            print(f"Could not connect to {self.hostname}: {error}")
             exit(1)
 
         if raw:
             return response
         if not response.ok:
-            if response.status_code == 401:
-                print("401 Unauthorized")
-                exit(1)
             raise APIError(response)
 
         # return successfull response data (usually: {'id': jssid})
@@ -267,15 +277,12 @@ class API(metaclass=Singleton):
         try:
             response = self.session.put(url, data=data)
         except requests.exceptions.ConnectionError as error:
-            print(error)
+            print(f"Could not connect to {self.hostname}: {error}")
             exit(1)
 
         if raw:
             return response
         if not response.ok:
-            if response.status_code == 401:
-                print("401 Unauthorized")
-                exit(1)
             raise APIError(response)
 
         # return successful response data (usually: {'id': jssid})
@@ -296,18 +303,16 @@ class API(metaclass=Singleton):
         try:
             response = self.session.delete(url)
         except requests.exceptions.ConnectionError as error:
-            print(error)
+            print(f"Could not connect to {self.hostname}: {error}")
             exit(1)
 
         if raw:
             return response
         if not response.ok:
-            if response.status_code == 401:
-                print("401 Unauthorized")
-                exit(1)
             raise APIError(response)
 
         # return successful response data (usually: {'id': jssid})
+        self.log.debug("xml response.text: %s", response.text)
         return convert.xml_to_dict(response.text)
 
     def __del__(self):
