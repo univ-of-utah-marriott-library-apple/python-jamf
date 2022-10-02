@@ -290,19 +290,9 @@ class API(metaclass=Singleton):
         :returns <dict|requests.Response>:
         """
         self.set_session_auth()
-        try:
-            response = self.session.delete(url)
-        except requests.exceptions.ConnectionError as error:
-            print(f"Could not connect to {self.hostname}: {error}")
-            exit(1)
-
-        if raw:
-            return response
-        if not response.ok:
-            raise APIError(response)
-
-        # return successful response data (usually: {'id': jssid})
-        self.log.debug("xml response.text: %s", response.text)
+        self.session.headers.update({"Accept": "application/xml"})
+        url = f"{self.hostname}/JSSResource/{endpoint}"
+        response = self._submit_request(self.session, "delete", url, None, raw)
         return convert.xml_to_dict(response.text)
 
     def __del__(self):
