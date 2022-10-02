@@ -57,6 +57,17 @@ This is just a quick example of the power and ease-of-use of python-jamf. The fo
 		computer.data['general']['name'] = "James' Mac"
 		computer.save()
 
+	# Delete a record
+
+	computer = computers.recordWithName("Richard's Mac)
+	if computer:
+		computer.delete()
+
+	# Create a record (2 ways)
+
+	comp1 = computers.createNewRecord("computer1") # This really is a short-cut for the next line.
+	comp2 = jamf.records.Computer(0, "computer2")
+
 A few notes. You can replace `jamf.Computers()` with `jamf.Policies()` or any supported record type.
 
 ## Quick Start
