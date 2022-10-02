@@ -9,7 +9,7 @@ __author__ = "Sam Forester"
 __email__ = "sam.forester@utah.edu"
 __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 
 
 import argparse

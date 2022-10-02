@@ -10,7 +10,7 @@ __author__ = "Sam Forester"
 __email__ = "sam.forester@utah.edu"
 __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 import html.parser
 import json
