@@ -89,7 +89,11 @@ def setconfig(argv):
         config_path = path.expanduser(config_path)
     if args.test:
         api = jamf.API(config_path=config_path)
-        pprint.pprint(api.get("accounts"))
+        try:
+            print(api.get("accounts"))
+            print("Connection successful")
+        except SystemExit as error:
+            print(f"Connection failed, check your settings\n{error}")
     elif args.print:
         conf = jamf.config.Config(prompt=False, explain=True, config_path=config_path)
         print(conf.hostname)
@@ -118,6 +122,7 @@ def setconfig(argv):
             hostname=hostname, username=user, password=passwd, prompt=False
         )
         conf.save(config_path=config_path)
+        print("Test the config by invoking `conf-python-jamf -t`")
 
 
 def main():
