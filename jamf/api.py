@@ -116,14 +116,10 @@ class API(metaclass=Singleton):
         if not hostname and not self.username and not self.password:
             print("No jamf hostname or credentials could be found.")
             exit(1)
-        if hostname[-1] == "/":
-            self.url = f"{hostname}JSSResource"
-            self.hostname = hostname[:-1]
-        else:
-            self.url = f"{hostname}/JSSResource"
-            self.hostname = hostname
+        while hostname[-1] == "/":
+            hostname = hostname[:-1]
+        self.hostname = hostname
         self.session = requests.Session()
-        self.session.headers.update({"Accept": "application/xml"})
 
     def get_token(self, old_token=None):
         session = requests.Session()
@@ -133,11 +129,7 @@ class API(metaclass=Singleton):
         else:
             session.auth = (self.username, self.password)
             url = f"{self.hostname}/api/v1/auth/token"
-        try:
-            response = session.post(url)
-        except requests.exceptions.ConnectionError as error:
-            print(f"Could not connect to {self.hostname}: {error}")
-            exit(1)
+        response = self._submit_request(session, "post", url)
         if response.status_code != 200:
             print("Server did not return a bearer token")
             return None
@@ -155,10 +147,12 @@ class API(metaclass=Singleton):
         try:
             keyring.delete_password(self.hostname, "api-token")
         except:
+            stderr.write("Warning: couldn't delete token\n")
             pass
         try:
             keyring.delete_password(self.hostname, "api-expires")
         except:
+            stderr.write("Warning: couldn't delete token expire date\n")
             pass
 
     def set_session_auth(self):
@@ -194,11 +188,7 @@ class API(metaclass=Singleton):
             session = requests.Session()
             url = f"{self.hostname}/api/v1/jamf-pro-version"
             session.headers.update({"Authorization": f"Bearer {token}"})
-            try:
-                response = session.get(url)
-            except requests.exceptions.ConnectionError as error:
-                print(f"Could not connect to {self.hostname}: {error}")
-                exit(1)
+            response = self._submit_request(session, "get", url)
             if response.status_code == 200:
                 try:
                     json_data = json.loads(response.text)
@@ -214,6 +204,35 @@ class API(metaclass=Singleton):
         else:
             self.session.auth = (self.username, self.password)
 
+    def _submit_request(self, session, method, url, data=None, raw=False):
+        """
+        Generic request
+
+        :param method <str>:   get | post | put | delete
+        :param url <str>: API url (e.g. "http://server/JSSResource/policies/id/1")
+        :param data <dict>:    data submitted (get and delete ignore this)
+        :param raw <bool>:     return requests.Response obj  (skip errors)
+
+        :returns <dict|requests.Response>:
+        """
+        self.log.debug(f"{method}: {url}")
+        if isinstance(data, dict):
+            data = convert.dict_to_xml(data)
+            self.log.debug("xml data: %s", data)
+        session_method = getattr(session, method)
+        try:
+            response = session_method(url, data=data)
+        except requests.exceptions.ConnectionError as error:
+            print(f"Could not connect to {self.hostname}: {error}")
+            exit(1)
+        if raw:
+            return response
+        if not response.ok:
+            raise APIError(response)
+        self.log.debug("response.text: %s", response.text)
+        # return successful response data (usually: {'id': jssid})
+        return response
+
     def get(self, endpoint, raw=False):
         """
         Get JSS information
@@ -223,20 +242,10 @@ class API(metaclass=Singleton):
 
         :returns <dict|requests.Response>:
         """
-        url = f"{self.url}/{endpoint}"
-        self.log.debug("getting: %s", endpoint)
         self.set_session_auth()
-        try:
-            response = self.session.get(url)
-        except requests.exceptions.ConnectionError as error:
-            print(f"Could not connect to {self.hostname}: {error}")
-            exit(1)
-
-        if raw:
-            return response
-        if not response.ok:
-            raise APIError(response)
-        self.log.debug("xml response.text: %s", response.text)
+        self.session.headers.update({"Accept": "application/xml"})
+        url = f"{self.hostname}/JSSResource/{endpoint}"
+        response = self._submit_request(self.session, "get", url, None, raw)
         return convert.xml_to_dict(response.text)
 
     def post(self, endpoint, data, raw=False):
@@ -249,24 +258,10 @@ class API(metaclass=Singleton):
 
         :returns dict:          response data
         """
-        url = f"{self.url}/{endpoint}"
-        self.log.debug("creating: %s", endpoint)
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-        self.log.debug("xml data: %s", data)
         self.set_session_auth()
-        try:
-            response = self.session.post(url, data=data)
-        except requests.exceptions.ConnectionError as error:
-            print(f"Could not connect to {self.hostname}: {error}")
-            exit(1)
-
-        if raw:
-            return response
-        if not response.ok:
-            raise APIError(response)
-
-        # return successfull response data (usually: {'id': jssid})
+        self.session.headers.update({"Accept": "application/xml"})
+        url = f"{self.hostname}/JSSResource/{endpoint}"
+        response = self._submit_request(self.session, "post", url, data, raw)
         return convert.xml_to_dict(response.text)
 
     def put(self, endpoint, data, raw=False):
@@ -279,23 +274,10 @@ class API(metaclass=Singleton):
 
         :returns dict:          response data
         """
-        url = f"{self.url}/{endpoint}"
-        self.log.debug("updating: %s", endpoint)
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
         self.set_session_auth()
-        try:
-            response = self.session.put(url, data=data)
-        except requests.exceptions.ConnectionError as error:
-            print(f"Could not connect to {self.hostname}: {error}")
-            exit(1)
-
-        if raw:
-            return response
-        if not response.ok:
-            raise APIError(response)
-
-        # return successful response data (usually: {'id': jssid})
+        self.session.headers.update({"Accept": "application/xml"})
+        url = f"{self.hostname}/JSSResource/{endpoint}"
+        response = self._submit_request(self.session, "put", url, data, raw)
         return convert.xml_to_dict(response.text)
 
     def delete(self, endpoint, raw=False):
@@ -307,8 +289,6 @@ class API(metaclass=Singleton):
 
         :returns <dict|requests.Response>:
         """
-        url = f"{self.url}/{endpoint}"
-        self.log.debug("getting: %s", endpoint)
         self.set_session_auth()
         try:
             response = self.session.delete(url)
