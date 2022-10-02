@@ -17,7 +17,7 @@ import json
 import logging
 import logging.handlers
 from datetime import datetime
-from sys import exit, stderr
+from sys import stderr
 
 import keyring
 import requests
@@ -43,11 +43,11 @@ class APIError(Error):
         err = parse_html_error(response.text)
         self.message = ": ".join(err) or "failed"
         if response.status_code == 401:
-            print(f'{response.url} returned: "401 Unauthorized"')
-            exit(1)
+            raise SystemExit(f"{response.url} returned: \"401 Unauthorized\". Wrong username/password.")
+        elif response.status_code == 404:
+            raise SystemExit(f"{response.url} is \"404 Not Found\". Are you sure this is a Jamf Pro server?")
         elif response.status_code == 503:
-            print(f'{response.url} returned: "503 Service Unavailable"')
-            exit(1)
+            raise SystemExit(f"{response.url} returned: \"503 Service Unavailable\". Maybe the Jamf server is still starting.")
         print(
             f"{response}: {response.request.method} - {response.url}: \n{self.message}"
         )
@@ -114,8 +114,7 @@ class API(metaclass=Singleton):
             self.save_token_in_keyring = False
 
         if not hostname and not self.username and not self.password:
-            print("No jamf hostname or credentials could be found.")
-            exit(1)
+            raise SystemExit("No jamf hostname or credentials could be found.")
         while hostname[-1] == "/":
             hostname = hostname[:-1]
         self.hostname = hostname
@@ -223,8 +222,7 @@ class API(metaclass=Singleton):
         try:
             response = session_method(url, data=data)
         except requests.exceptions.ConnectionError as error:
-            print(f"Could not connect to {self.hostname}: {error}")
-            exit(1)
+            raise SystemExit(f"Could not connect to {self.hostname}\n{error}")
         if raw:
             return response
         if not response.ok:
