@@ -16,7 +16,6 @@ import argparse
 import getpass
 import logging
 import platform
-import pprint
 import sys
 from os import path
 
