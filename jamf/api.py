@@ -43,11 +43,17 @@ class APIError(Error):
         err = parse_html_error(response.text)
         self.message = ": ".join(err) or "failed"
         if response.status_code == 401:
-            raise SystemExit(f"{response.url} returned: \"401 Unauthorized\". Wrong username/password.")
+            raise SystemExit(
+                f'{response.url} returned: "401 Unauthorized". Wrong username/password.'
+            )
         elif response.status_code == 404:
-            raise SystemExit(f"{response.url} is \"404 Not Found\". Are you sure this is a Jamf Pro server?")
+            raise SystemExit(
+                f'{response.url} is "404 Not Found". Are you sure this is a Jamf Pro server?'
+            )
         elif response.status_code == 503:
-            raise SystemExit(f"{response.url} returned: \"503 Service Unavailable\". Maybe the Jamf server is still starting.")
+            raise SystemExit(
+                f'{response.url} returned: "503 Service Unavailable". Maybe the Jamf server is still starting.'
+            )
         print(
             f"{response}: {response.request.method} - {response.url}: \n{self.message}"
         )

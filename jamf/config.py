@@ -118,7 +118,9 @@ the "./jamf/setconfig.py" script.
                 self.password = getpass.getpass()
         elif not self.hostname and not self.username and not self.password:
             raise Exception("No jamf config file could be found and prompt is off.")
-        if not self.hostname.startswith('https://') and not self.hostname.startswith('http://'):
+        if not self.hostname.startswith("https://") and not self.hostname.startswith(
+            "http://"
+        ):
             raise Exception(
                 f"Hostname ({self.hostname}) does not start with 'https://' or 'http://'"
             )
@@ -140,6 +142,6 @@ def prompt_hostname():
     valid = False
     while not valid:
         hostname = input("Hostname (don't forget https:// and :8443): ")
-        if hostname.startswith('https://') or hostname.startswith('http://'):
+        if hostname.startswith("https://") or hostname.startswith("http://"):
             valid = True
     return hostname
