@@ -489,7 +489,7 @@ class Record:
                     index + 1
                 )
             else:
-                return None
+                raise NotFound
         elif type(placeholder) is list:
             # I'm not sure this is the best way to handle arrays...
             result = []
@@ -777,8 +777,14 @@ class Computer(Record):
         if not hasattr(plural_cls, "computers"):
             plural_cls.computers = {}
         plural_cls.computers[self.name] = True
-        apps = self.get_path("software/applications/application/path")
-        versions = self.get_path("software/applications/application/version")
+        try:
+            apps = self.get_path("software/applications/application/path")
+        except NotFound:
+            apps = None
+        try:
+            versions = self.get_path("software/applications/application/version")
+        except NotFound:
+            versions = None
         if apps:
             for ii, app in enumerate(apps):
                 ver = versions[ii]
@@ -1095,7 +1101,10 @@ class Package(Record):
                     related[pkg]["PatchPolicies"].append(policy.name)
         policies = jamf_records(Policies)
         for policy in policies:
-            pkgs = policy.get_path("package_configuration/packages/package/name")
+            try:
+                pkgs = policy.get_path("package_configuration/packages/package/name")
+            except NotFound:
+                pkgs = []
             if pkgs:
                 for pkg in pkgs:
                     if pkg not in related:
@@ -1105,7 +1114,10 @@ class Package(Record):
                     related[pkg]["Policies"].append(policy.name)
         groups = jamf_records(ComputerGroups)
         for group in groups:
-            criterions = group.get_path("criteria/criterion/value")
+            try:
+                criterions = group.get_path("criteria/criterion/value")
+            except NotFound:
+                criterions = None
             if criterions:
                 for pkg in criterions:
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
@@ -1217,7 +1229,10 @@ class PatchSoftwareTitle(Record):
         print(self.name)
         patchpolicies = jamf_records(PatchPolicies)
         for policy in patchpolicies:
-            parent_id = policy.get_path("software_title_configuration_id")[0]
+            try:
+                parent_id = policy.get_path("software_title_configuration_id")[0]
+            except NotFound:
+                parent_id = None
             if str(parent_id) != str(self.id):
                 continue
             print(f" {policy.data['general']['target_version']}: {str(policy)}")
@@ -1521,8 +1536,11 @@ class Script(Record):
     plural_class = "Scripts"
 
     def script_contents_print_during(self):
-        printme = self.get_path("script_contents")
-        print(printme[0])
+        try:
+            printme = self.get_path("script_contents")
+            print(printme[0])
+        except NotFound:
+            printme = None
 
 
 class Scripts(Records, metaclass=Singleton):
