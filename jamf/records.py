@@ -477,13 +477,17 @@ class Record:
             self.refresh()
         return self._data
 
-    def get_path2(self, path, placeholder, index=0):
+    def get_path_worker(self, path, placeholder, index=0):
         current = path[index]
         if type(placeholder) is dict:
             if current in placeholder:
                 if index + 1 >= len(path):
                     return placeholder[current]
-                placeholder = self.get_path2(path, placeholder[current], index + 1)
+                placeholder = self.get_path_worker(
+                    path,
+                    placeholder[current],
+                    index + 1
+                )
             else:
                 return None
         elif type(placeholder) is list:
@@ -492,14 +496,18 @@ class Record:
             for item in placeholder:
                 if current in item:
                     if index + 1 < len(path):
-                        result.append(self.get_path2(path, item[current], index + 1))
+                        result.append(self.get_path_worker(
+                            path,
+                            item[current],
+                            index + 1
+                        ))
                     else:
                         result.append(item[current])
             placeholder = result
         elif placeholder is None:
             return None
         else:
-            print("Something went wrong in get_path2")
+            print("Something went wrong in get_path_worker")
             exit()
         return placeholder
 
@@ -507,7 +515,7 @@ class Record:
         if not self._data:
             self.refresh()
         try:
-            result = self.get_path2(path.split("/"), self._data)
+            result = self.get_path_worker(path.split("/"), self._data)
         except NotFound:
             print("Not Found")
             result = []
