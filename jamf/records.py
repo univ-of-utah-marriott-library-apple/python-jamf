@@ -433,10 +433,10 @@ class Record:
         return False
 
     def __str__(self):
-        if self.name:
+        if self.name != None:
             return self.name
         else:
-            return "Empty name"
+            return ""
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.id}, {self.name!r})"
