@@ -238,6 +238,15 @@ class API(metaclass=Singleton):
         # return successful response data (usually: {'id': jssid})
         return response
 
+    def _crud(self, method, endpoint, data=None, raw=False):
+        self.set_session_auth()
+        self.session.headers.update({"Accept": "application/xml"})
+        url = f"{self.hostname}/JSSResource/{endpoint}"
+        response = self._submit_request(self.session, method, url, data, raw)
+        convert_data = convert.xml_to_dict(response.text)
+        self.log.debug("converted data: %s", convert_data)
+        return convert_data
+    
     def get(self, endpoint, raw=False):
         """
         Get JSS information
@@ -247,11 +256,7 @@ class API(metaclass=Singleton):
 
         :returns <dict|requests.Response>:
         """
-        self.set_session_auth()
-        self.session.headers.update({"Accept": "application/xml"})
-        url = f"{self.hostname}/JSSResource/{endpoint}"
-        response = self._submit_request(self.session, "get", url, None, raw)
-        return convert.xml_to_dict(response.text)
+        return self._crud("get", endpoint, None, raw)
 
     def post(self, endpoint, data, raw=False):
         """
@@ -263,11 +268,7 @@ class API(metaclass=Singleton):
 
         :returns dict:          response data
         """
-        self.set_session_auth()
-        self.session.headers.update({"Accept": "application/xml"})
-        url = f"{self.hostname}/JSSResource/{endpoint}"
-        response = self._submit_request(self.session, "post", url, data, raw)
-        return convert.xml_to_dict(response.text)
+        return self._crud("post", endpoint, data, raw)
 
     def put(self, endpoint, data, raw=False):
         """
@@ -279,11 +280,7 @@ class API(metaclass=Singleton):
 
         :returns dict:          response data
         """
-        self.set_session_auth()
-        self.session.headers.update({"Accept": "application/xml"})
-        url = f"{self.hostname}/JSSResource/{endpoint}"
-        response = self._submit_request(self.session, "put", url, data, raw)
-        return convert.xml_to_dict(response.text)
+        return self._crud("put", endpoint, data, raw)
 
     def delete(self, endpoint, raw=False):
         """
@@ -294,11 +291,7 @@ class API(metaclass=Singleton):
 
         :returns <dict|requests.Response>:
         """
-        self.set_session_auth()
-        self.session.headers.update({"Accept": "application/xml"})
-        url = f"{self.hostname}/JSSResource/{endpoint}"
-        response = self._submit_request(self.session, "delete", url, None, raw)
-        return convert.xml_to_dict(response.text)
+        return self._crud("delete", endpoint, None, raw)
 
     def __del__(self):
         if self.session:
