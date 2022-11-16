@@ -504,24 +504,13 @@ class Record:
                     else:
                         result.append(item[current])
             placeholder = result
-        elif placeholder is None:
-            return None
-        else:
-            print("Something went wrong in get_path_worker")
-            exit()
         return placeholder
 
     def get_path(self, path):
         if not self._data:
             self.refresh()
-        try:
-            result = self.get_path_worker(path.split("/"), self._data)
-        except NotFound:
-            print("Not Found")
-            result = []
-        if type(result) is list or type(result) is dict or result is None:
-            return result
-        return [result]
+        result = self.get_path_worker(path.split("/"), self._data)
+        return result
 
     def force_array(self, parent, child_name):
         _data = parent[child_name]
@@ -1230,7 +1219,7 @@ class PatchSoftwareTitle(Record):
         patchpolicies = jamf_records(PatchPolicies)
         for policy in patchpolicies:
             try:
-                policy_id = policy.get_path("software_title_configuration_id")[0]
+                policy_id = policy.get_path("software_title_configuration_id")
             except NotFound:
                 policy_id = None
             if str(policy_id) != str(self.id):
