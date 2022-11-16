@@ -223,6 +223,7 @@ class API(metaclass=Singleton):
         self.log.debug(f"{method}: {url}")
         if isinstance(data, dict):
             data = convert.dict_to_xml(data)
+            data = data.encode('utf-8')
             self.log.debug("xml data: %s", data)
         session_method = getattr(session, method)
         try:
