@@ -358,15 +358,15 @@ class Record:
     Just in case that's not confusing enough the id tag is not always 'id'.
     """
 
-    def __new__(cls, *a, **kw):
+    def __new__(cls, *args, **kw):
         """
         returns existing record if one has been instantiated
         """
-        jamf_id = int(a[0])
-        if type(a[1]) is str:
-            name = a[1]
+        jamf_id = int(args[0])
+        if type(args[1]) is str:
+            name = args[1]
         else:
-            name = a[1][0]
+            name = args[1][0]
         if not hasattr(cls, "_instances"):
             cls._instances = {}
         swag = ClassicSwagger()
@@ -383,14 +383,14 @@ class Record:
                 return None
             s1, s2, end = swag.swagger(plural, "s1, s2, end")
             if cls.plural_class == "PatchPolicies":
-                if len(a[1]) < 3:
+                if len(args[1]) < 3:
                     raise JamfError("patchpolicies requires 3 args to create records")
-                softwaretitleconfigid = a[1][1]
+                softwaretitleconfigid = args[1][1]
                 end = f"patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
                 out = {s1: swag.post_template(cls.plural_class, name)}
                 t = out["patch_policy"]["general"]["target_version"]
                 out["patch_policy"]["general"]["target_version"] = t.replace(
-                    "%VERSION%", a[1][2]
+                    "%VERSION%", args[1][2]
                 )
             else:
                 end = f"{end}0"
@@ -1230,10 +1230,10 @@ class PatchSoftwareTitle(Record):
         patchpolicies = jamf_records(PatchPolicies)
         for policy in patchpolicies:
             try:
-                parent_id = policy.get_path("software_title_configuration_id")[0]
+                policy_id = policy.get_path("software_title_configuration_id")[0]
             except NotFound:
-                parent_id = None
-            if str(parent_id) != str(self.id):
+                policy_id = None
+            if str(policy_id) != str(self.id):
                 continue
             print(f" {policy.data['general']['target_version']}: {str(policy)}")
 
