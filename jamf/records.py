@@ -484,9 +484,7 @@ class Record:
                 if index + 1 >= len(path):
                     return placeholder[current]
                 placeholder = self.get_path_worker(
-                    path,
-                    placeholder[current],
-                    index + 1
+                    path, placeholder[current], index + 1
                 )
             else:
                 raise NotFound
@@ -496,11 +494,9 @@ class Record:
             for item in placeholder:
                 if current in item:
                     if index + 1 < len(path):
-                        result.append(self.get_path_worker(
-                            path,
-                            item[current],
-                            index + 1
-                        ))
+                        result.append(
+                            self.get_path_worker(path, item[current], index + 1)
+                        )
                     else:
                         result.append(item[current])
             placeholder = result

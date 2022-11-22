@@ -223,7 +223,7 @@ class API(metaclass=Singleton):
         self.log.debug(f"{method}: {url}")
         if isinstance(data, dict):
             data = convert.dict_to_xml(data)
-            data = data.encode('utf-8')
+            data = data.encode("utf-8")
             self.log.debug("xml data: %s", data)
         session_method = getattr(session, method)
         try:
@@ -246,7 +246,7 @@ class API(metaclass=Singleton):
         convert_data = convert.xml_to_dict(response.text)
         self.log.debug("converted data: %s", convert_data)
         return convert_data
-    
+
     def get(self, endpoint, raw=False):
         """
         Get JSS information
