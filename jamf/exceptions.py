@@ -18,6 +18,7 @@ class Error(Exception):
 
     pass
 
+
 # pylint: disable=unnecessary-pass
 class Error(Exception):
     """just passing through"""
