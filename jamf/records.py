@@ -363,16 +363,11 @@ class Record:
         returns existing record if one has been instantiated
         """
         jamf_id = int(args[0])
-        if type(args[1]) is str:
-            name = args[1]
-        else:
-            name = args[1][0]
         if not hasattr(cls, "_instances"):
             cls._instances = {}
         swag = ClassicSwagger()
         plural = eval(cls.plural_class)
         api = API()
-        _data = {}
         if jamf_id == 0:
             if not swag.is_action_valid(plural, "post"):
                 print(
@@ -382,21 +377,42 @@ class Record:
                 )
                 return None
             s1, s2, end = swag.swagger(plural, "s1, s2, end")
-            if cls.plural_class == "PatchPolicies":
-                if len(args[1]) < 3:
-                    raise JamfError("patchpolicies requires 3 args to create records")
-                softwaretitleconfigid = args[1][1]
-                end = f"patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
-                out = {s1: swag.post_template(cls.plural_class, name)}
-                t = out["patch_policy"]["general"]["target_version"]
-                out["patch_policy"]["general"]["target_version"] = t.replace(
-                    "%VERSION%", args[1][2]
-                )
+            use_template = True
+            if type(args[1]) is list:
+                if type(args[1][0]) is str:
+                    name = args[1][0]
+                elif type(args[1][0]) is dict:
+                    name = ""
+                    use_template = False
+            elif type(args[1]) is str or args[1] is None:
+                name = args[1]
+#             if len(name) > 60:
+#                 raise JamfError("records with names longer than 60 characters kill the database")
+            if use_template:
+                if cls.plural_class == "PatchPolicies":
+                    if len(args[1]) < 3:
+                        raise JamfError("patchpolicies requires 3 args to create records")
+                    softwaretitleconfigid = args[1][1]
+                    end = f"patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
+                    out = {s1: swag.post_template(cls.plural_class, name)}
+                    t = out["patch_policy"]["general"]["target_version"]
+                    out["patch_policy"]["general"]["target_version"] = t.replace(
+                        "%VERSION%", args[1][2]
+                    )
+                else:
+                    end = f"{end}0"
+                    out = {s1: swag.post_template(cls.plural_class, name)}
+                _data = api.post(end, out)
             else:
                 end = f"{end}0"
-                out = {s1: swag.post_template(cls.plural_class, name)}
-            _data = api.post(end, out)
+                _data = api.post(end, args[1][0])
             jamf_id = int(_data[s2]["id"])
+        else:
+            _data = {}
+            try:
+                name = args[1]
+            except NameError:
+                name = ""
         if jamf_id not in cls._instances:
             rec = super(Record, cls).__new__(cls)
             rec.cls = cls
