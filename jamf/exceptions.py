@@ -19,11 +19,8 @@ class Error(Exception):
     pass
 
 
-# pylint: disable=unnecessary-pass
-class Error(Exception):
-    """just passing through"""
-
-    pass
+class JamfConfigError(Error):
+    """Error with the config"""
 
 
 # pylint: disable=super-init-not-called
@@ -60,6 +57,79 @@ class APIError(Error):
         rsp = self.response
         return f"{rsp}: {rsp.request.method} - {rsp.url}: {self.message}"
 
+## The following are used for tests only.
 
-class JamfConfigError(Error):
-    """Error with the config"""
+
+# pylint: disable=too-few-public-methods, abstract-method
+class _DummyTag:
+    """
+    Minimal mock implementation of bs4.element.Tag (only has text attribute)
+
+    >>> eg = _DummyTag('some text')
+    >>> eg.text
+    'some text'
+    """
+
+    def __init__(self, text):
+        self.text = text
+
+
+class JSSErrorParser(html.parser.HTMLParser):
+    """
+    Minimal mock implementation of bs4.BeautifulSoup()
+
+    >>> [t.text for t in JSSErrorParser(html).find_all('p')]
+    ['Unauthorized', 'The request requires user authentication',
+     'You can get technical details here. {...}']
+    """
+
+    def __init__(self, _html):
+        super().__init__()
+        self._data = {}
+        if _html:
+            self.feed(_html)
+
+    def find_all(self, tag):
+        """
+        Minimal mock implemetation of BeautifulSoup(html).find_all(tag)
+
+        :param tag <str>:   html tag
+        :returns <list>:    list of _DummyTags
+        """
+        return self._data.get(tag, [])
+
+    # pylint: disable=attribute-defined-outside-init
+    def handle_data(self, data):
+        """
+        override HTMLParser().handle_data()
+            (automatically called during HTMLParser.feed())
+        creates _DummyTag with text attribute from data
+        """
+        self._dummytag = _DummyTag(data)
+
+    def handle_endtag(self, tag):
+        """
+        override HTMLParser().handle_endtag()
+            (automatically called during HTMLParser.feed())
+        add _DummyTag object to dictionary based on tag
+        """
+        # only create new list if one doesn't already exist
+        self._data.setdefault(tag, [])
+        self._data[tag].append(self._dummytag)
+
+
+def parse_html_error(error):
+    """
+    Get meaningful error information from JSS Error response HTML
+
+    :param html <str>:  JSS HTML error text
+    :returns <list>:    list of meaningful error strings
+    """
+    if not error:
+        return []
+    soup = JSSErrorParser(error)
+    # e.g.: ['Unauthorized', 'The request requires user authentication',
+    #        'You can get technical details here. (...)']
+    # NOTE: get first two <p> tags from HTML error response
+    #       3rd <p> is always 'You can get technical details here...'
+    return [t.text for t in soup.find_all("p")][0:2]
