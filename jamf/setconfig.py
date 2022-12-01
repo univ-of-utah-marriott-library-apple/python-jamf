@@ -120,7 +120,7 @@ def setconfig(argv):
         conf = jamf.config.Config(
             hostname=hostname, username=user, password=passwd, prompt=False
         )
-        conf.save(config_path=config_path)
+        conf.save()
         print("Test the config by invoking `conf-python-jamf -t`")
 
 

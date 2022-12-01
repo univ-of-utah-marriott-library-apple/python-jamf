@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Configuration for jamfutil
+Configuration for python-jamf
 """
 
 __author__ = "Sam Forester"
@@ -10,12 +10,12 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "1.2.5"
 
+from .exceptions import JamfConfigError
+from os import path, remove
 import getpass
+import keyring
 import logging
 import plistlib
-from os import path, remove
-
-import keyring
 
 LINUX_PREFS_TILDA = "~/.edu.utah.mlib.jamfutil.plist"
 MACOS_PREFS_TILDA = "~/Library/Preferences/edu.utah.mlib.jamfutil.plist"
@@ -32,82 +32,15 @@ class Config:
         username=None,
         password=None,
         prompt=False,
-        explain=False,
     ):
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.prompt = prompt
         self.hostname = hostname
         self.username = username
         self.password = password
+        self.config_path = resolve_config_path(config_path)
         if not self.hostname and not self.username and not self.password:
-            if not config_path:
-                macos_prefs = path.expanduser(MACOS_PREFS_TILDA)
-                linux_prefs = path.expanduser(LINUX_PREFS_TILDA)
-                autopkg_prefs = path.expanduser(AUTOPKG_PREFS_TILDA)
-                if path.exists(macos_prefs):
-                    if explain:
-                        print("Using macos: " + macos_prefs)
-                    config_path = macos_prefs
-                elif path.exists(linux_prefs):
-                    if explain:
-                        print("Using linux: " + linux_prefs)
-                    config_path = linux_prefs
-                elif path.exists(autopkg_prefs):
-                    if explain:
-                        print("Using autopkg: " + autopkg_prefs)
-                    config_path = autopkg_prefs
-                elif path.exists(JAMF_PREFS):
-                    if explain:
-                        print("Using jamf: " + JAMF_PREFS)
-                    config_path = JAMF_PREFS
-                else:
-                    if explain:
-                        print("Using " + macos_prefs + " but it doesn't exist yet.")
-                    config_path = macos_prefs
-            elif explain:
-                print("Using " + config_path + " because you said so.")
-
-            if config_path[0] == "~":
-                config_path = path.expanduser(config_path)
-                if explain:
-                    print("Expanding the path. Using " + config_path)
-
-            if not self.hostname and not self.username and not self.password:
-                if path.exists(config_path):
-                    fptr = open(config_path, "rb")
-                    prefs = plistlib.load(fptr)
-                    fptr.close()
-                    if "JSSHostname" in prefs:
-                        if "Credentials" in prefs:
-                            cmessage = f"""
-ATTENTION
-To improve security with storing credentials used with the jctl tool, we have
-deprecated the use of a property list file for storing configuration
-information and have migrated to use the Python keyring library provides an
-easy way to access the system keyring service from python. It can be used with
-the macOS Keychain and Linux KWallet.
-
-Please delete the the configuration at {config_path} and recreate it using
-the "./jamf/setconfig.py" script.
-"""
-                            raise Exception(cmessage)
-                        self.hostname = prefs["JSSHostname"]
-                        self.username = prefs["Username"]
-                        self.password = keyring.get_password(
-                            self.hostname, self.username
-                        )
-                    elif "JSS_URL" in prefs:
-                        self.hostname = prefs["JSS_URL"]
-                        self.username = prefs["API_USERNAME"]
-                        self.password = prefs["API_PASSWORD"]
-                    elif "jss_url" in prefs:
-                        self.hostname = prefs["jss_url"]
-                        # No auth in that file
-                else:
-                    self.log.debug(f"file not found: {config_path}")
-
-        self.config_path = config_path
-
+            self.load()
         # Prompt for any missing prefs
         if self.prompt:
             if not self.hostname:
@@ -117,26 +50,85 @@ the "./jamf/setconfig.py" script.
             if not self.password:
                 self.password = getpass.getpass()
         elif not self.hostname and not self.username and not self.password:
-            raise Exception("No jamf config file could be found and prompt is off.")
+            raise JamfConfigError("No jamf config file could be found and prompt is off.")
+        if not self.hostname:
+            raise JamfConfigError("Config failed to obtain a hostname.")
+        if not self.username:
+            raise JamfConfigError("Config failed to obtain a username.")
+        if not self.password:
+            raise JamfConfigError("Config failed to obtain a password.")
         if not self.hostname.startswith("https://") and not self.hostname.startswith(
             "http://"
         ):
-            raise Exception(
+            raise JamfConfigError(
                 f"Hostname ({self.hostname}) does not start with 'https://' or 'http://'"
             )
 
-    def save(self, config_path=None):
+    def load(self):
+        if path.exists(self.config_path):
+            fptr = open(self.config_path, "rb")
+            prefs = plistlib.load(fptr)
+            fptr.close()
+            if "JSSHostname" in prefs:
+                if "Credentials" in prefs:
+                    cmessage = f"""
+ATTENTION
+To improve security with storing credentials used with the jctl tool, we have
+deprecated the use of a property list file for storing configuration
+information and have migrated to use the Python keyring library provides an
+easy way to access the system keyring service from python. It can be used with
+the macOS Keychain and Linux KWallet.
+
+Please delete the the configuration at {self.config_path} and recreate it using
+the "./jamf/setconfig.py" script.
+"""
+                    raise JamfConfigError(cmessage)
+                self.hostname = prefs["JSSHostname"]
+                self.username = prefs["Username"]
+                self.password = keyring.get_password(
+                    self.hostname, self.username
+                )
+            elif "JSS_URL" in prefs:
+                self.hostname = prefs["JSS_URL"]
+                self.username = prefs["API_USERNAME"]
+                self.password = prefs["API_PASSWORD"]
+            elif "jss_url" in prefs:
+                self.hostname = prefs["jss_url"]
+                # No auth in that file
+        else:
+            raise JamfConfigError(f"Config file does not exist: {self.config_path}")
+
+    def save(self):
         keyring.set_password(self.hostname, self.username, self.password)
         data = {"JSSHostname": self.hostname, "Username": self.username}
-        self.log.info(f"saving: {config_path}")
-        fptr = open(config_path, "wb")
+        self.log.info(f"saving: {self.config_path}")
+        fptr = open(self.config_path, "wb")
         plistlib.dump(data, fptr)
         fptr.close()
 
-    def reset(self, path):
+    def reset(self):
         keyring.delete_password(self.hostname, self.username)
-        remove(path)
+        remove(self.config_path)
 
+
+def resolve_config_path(config_path=None):
+    if not config_path:
+        macos_prefs = path.expanduser(MACOS_PREFS_TILDA)
+        linux_prefs = path.expanduser(LINUX_PREFS_TILDA)
+        autopkg_prefs = path.expanduser(AUTOPKG_PREFS_TILDA)
+        if path.exists(macos_prefs):
+            config_path = macos_prefs
+        elif path.exists(linux_prefs):
+            config_path = linux_prefs
+        elif path.exists(autopkg_prefs):
+            config_path = autopkg_prefs
+        elif path.exists(JAMF_PREFS):
+            config_path = JAMF_PREFS
+        else:
+            config_path = macos_prefs
+    if config_path[0] == "~":
+        config_path = path.expanduser(config_path)
+    return config_path
 
 def prompt_hostname():
     valid = False
