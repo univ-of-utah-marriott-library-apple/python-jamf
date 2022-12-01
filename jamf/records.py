@@ -386,14 +386,18 @@ class Record:
                     use_template = False
             elif type(args[1]) is str or args[1] is None:
                 name = args[1]
-#             if len(name) > 60:
-#                 raise JamfError("records with names longer than 60 characters kill the database")
+            #             if len(name) > 60:
+            #                 raise JamfError("records with names longer than 60 characters kill the database")
             if use_template:
                 if cls.plural_class == "PatchPolicies":
                     if len(args[1]) < 3:
-                        raise JamfError("patchpolicies requires 3 args to create records")
+                        raise JamfError(
+                            "patchpolicies requires 3 args to create records"
+                        )
                     softwaretitleconfigid = args[1][1]
-                    end = f"patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
+                    end = (
+                        f"patchpolicies/softwaretitleconfig/id/{softwaretitleconfigid}"
+                    )
                     out = {s1: swag.post_template(cls.plural_class, name)}
                     t = out["patch_policy"]["general"]["target_version"]
                     out["patch_policy"]["general"]["target_version"] = t.replace(
@@ -630,10 +634,14 @@ class Records:
         return self._jamf_ids.get(x)
 
     def recordWithName(self, x):
-        sys.stderr("WARNING: recordWithName deprecated, use recordsWithName (it turns out names are not unique).")
+        sys.stderr(
+            "WARNING: recordWithName deprecated, use recordsWithName (it turns out names are not unique)."
+        )
         names = recordsWithName(self, x)[0]
         if len(names) > 1:
-            sys.stderr("There is more than one record with the name you are searching for! Only the first one is being used.")
+            sys.stderr(
+                "There is more than one record with the name you are searching for! Only the first one is being used."
+            )
         return names[0]
 
     def recordsWithName(self, x):
