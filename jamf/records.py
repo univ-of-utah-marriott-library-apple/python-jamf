@@ -386,8 +386,6 @@ class Record:
                     use_template = False
             elif type(args[1]) is str or args[1] is None:
                 name = args[1]
-            #             if len(name) > 60:
-            #                 raise JamfError("records with names longer than 60 characters kill the database")
             if use_template:
                 if cls.plural_class == "PatchPolicies":
                     if len(args[1]) < 3:

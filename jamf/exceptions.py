@@ -12,6 +12,9 @@ __copyright__ = "Copyright (c) 2022 University of Utah"
 __license__ = "MIT"
 __version__ = "0.1.1"
 
+import html.parser
+
+
 # pylint: disable=unnecessary-pass
 class Error(Exception):
     """just passing through"""
