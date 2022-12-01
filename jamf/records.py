@@ -614,9 +614,16 @@ class Records:
         return self._jamf_ids.get(x)
 
     def recordWithName(self, x):
+        sys.stderr("WARNING: recordWithName deprecated, use recordsWithName (it turns out names are not unique).")
+        names = recordsWithName(self, x)[0]
+        if len(names) > 1:
+            sys.stderr("There is more than one record with the name you are searching for! Only the first one is being used.")
+        return names[0]
+
+    def recordsWithName(self, x):
         if not self.data:
             self.refresh()
-        return self._names.get(x)
+        return [self._names.get(x)]
 
     def recordsWithRegex(self, x):
         if not self.data:
