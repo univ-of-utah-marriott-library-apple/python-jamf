@@ -10,12 +10,14 @@ __copyright__ = "Copyright (c) 2022 University of Utah"
 __license__ = "MIT"
 __version__ = "0.2.0"
 
-from jamf.config import Config
-from jamf.exceptions import JamfConfigError
-from os import path, remove
-import keyring
 import logging
 import unittest
+from os import path, remove
+
+import keyring
+
+from jamf.config import Config
+from jamf.exceptions import JamfConfigError
 
 
 class ConfigTests(unittest.TestCase):
@@ -30,11 +32,11 @@ class ConfigTests(unittest.TestCase):
         cls.username = "test"
         cls.password = "test"
         cls.pref = Config(
-            config_path = cls.config_path,
-            hostname = cls.hostname,
-            username = cls.username,
-            password = cls.password,
-            prompt = False,
+            config_path=cls.config_path,
+            hostname=cls.hostname,
+            username=cls.username,
+            password=cls.password,
+            prompt=False,
         )
 
     def test_parameters(self):
@@ -87,8 +89,7 @@ class ConfigTests(unittest.TestCase):
         self.pref.save()
         self.assertTrue(path.exists(self.config_path))
         self.assertEqual(
-            keyring.get_password(self.hostname, self.username),
-            self.password
+            keyring.get_password(self.hostname, self.username), self.password
         )
         self.pref.reset()
         self.assertIsNone(keyring.get_password(self.hostname, self.username))
@@ -101,10 +102,7 @@ class ConfigTests(unittest.TestCase):
         if path.exists(self.config_path):
             remove(self.config_path)
             self.assertTrue(not path.exists(self.config_path))
-        self.assertRaises(
-            JamfConfigError,
-            lambda: Config(config_path = self.config_path)
-        )
+        self.assertRaises(JamfConfigError, lambda: Config(config_path=self.config_path))
 
     def test_bad_hostname(self):
         """
@@ -112,14 +110,13 @@ class ConfigTests(unittest.TestCase):
         """
         self.assertRaises(
             JamfConfigError,
-            lambda:
-                Config(
-                    config_path = self.config_path,
-                    hostname = "fail",
-                    username = "test",
-                    password = "test",
-                    prompt = False,
-                )
+            lambda: Config(
+                config_path=self.config_path,
+                hostname="fail",
+                username="test",
+                password="test",
+                prompt=False,
+            ),
         )
 
     def test_http(self):
@@ -127,11 +124,11 @@ class ConfigTests(unittest.TestCase):
         test http hostname
         """
         Config(
-            config_path = self.config_path,
-            hostname = "http://localhost",
-            username = "test",
-            password = "test",
-            prompt = False,
+            config_path=self.config_path,
+            hostname="http://localhost",
+            username="test",
+            password="test",
+            prompt=False,
         )
 
     def test_https(self):
@@ -139,11 +136,11 @@ class ConfigTests(unittest.TestCase):
         test https hostname
         """
         Config(
-            config_path = self.config_path,
-            hostname = "https://localhost",
-            username = "test",
-            password = "test",
-            prompt = False,
+            config_path=self.config_path,
+            hostname="https://localhost",
+            username="test",
+            password="test",
+            prompt=False,
         )
 
 

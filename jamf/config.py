@@ -10,12 +10,14 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "1.2.5"
 
-from .exceptions import JamfConfigError
-from os import path, remove
 import getpass
-import keyring
 import logging
 import plistlib
+from os import path, remove
+
+import keyring
+
+from .exceptions import JamfConfigError
 
 LINUX_PREFS_TILDA = "~/.edu.utah.mlib.jamfutil.plist"
 MACOS_PREFS_TILDA = "~/Library/Preferences/edu.utah.mlib.jamfutil.plist"
@@ -50,7 +52,9 @@ class Config:
             if not self.password:
                 self.password = getpass.getpass()
         elif not self.hostname and not self.username and not self.password:
-            raise JamfConfigError("No jamf config file could be found and prompt is off.")
+            raise JamfConfigError(
+                "No jamf config file could be found and prompt is off."
+            )
         if not self.hostname:
             raise JamfConfigError("Config failed to obtain a hostname.")
         if not self.username:
@@ -85,9 +89,7 @@ the "./jamf/setconfig.py" script.
                     raise JamfConfigError(cmessage)
                 self.hostname = prefs["JSSHostname"]
                 self.username = prefs["Username"]
-                self.password = keyring.get_password(
-                    self.hostname, self.username
-                )
+                self.password = keyring.get_password(self.hostname, self.username)
             elif "JSS_URL" in prefs:
                 self.hostname = prefs["JSS_URL"]
                 self.username = prefs["API_USERNAME"]
@@ -129,6 +131,7 @@ def resolve_config_path(config_path=None):
     if config_path[0] == "~":
         config_path = path.expanduser(config_path)
     return config_path
+
 
 def prompt_hostname():
     valid = False
