@@ -255,4 +255,3 @@ class API(metaclass=Singleton):
         if self.session:
             self.log.debug("closing session")
             self.session.close()
-

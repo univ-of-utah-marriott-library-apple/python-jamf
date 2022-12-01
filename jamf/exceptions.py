@@ -57,6 +57,7 @@ class APIError(Error):
         rsp = self.response
         return f"{rsp}: {rsp.request.method} - {rsp.url}: {self.message}"
 
+
 ## The following are used for tests only.
 
 
