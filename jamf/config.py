@@ -53,17 +53,23 @@ class Config:
             if self.prompt:
                 self.hostname = prompt_hostname()
             else:
-                raise JamfConfigError("Config failed to obtain a hostname and prompt is off.")
+                raise JamfConfigError(
+                    "Config failed to obtain a hostname and prompt is off."
+                )
         if not self.username:
             if self.prompt:
                 self.username = input("Username: ")
             else:
-                raise JamfConfigError("Config failed to obtain a username and prompt is off.")
+                raise JamfConfigError(
+                    "Config failed to obtain a username and prompt is off."
+                )
         if not self.password:
             if self.prompt:
                 self.password = getpass.getpass()
             else:
-                raise JamfConfigError("Config failed to obtain a password and prompt is off.")
+                raise JamfConfigError(
+                    "Config failed to obtain a password and prompt is off."
+                )
         if not self.hostname.startswith("https://") and not self.hostname.startswith(
             "http://"
         ):
@@ -78,7 +84,9 @@ class Config:
                 prefs = plistlib.load(fptr)
             except plistlib.InvalidFileException:
                 fptr.close()
-                raise JamfConfigError(f"Could not load {self.config_path}, isit plist formatted?")
+                raise JamfConfigError(
+                    f"Could not load {self.config_path}, isit plist formatted?"
+                )
             fptr.close()
             if "JSSHostname" in prefs:
                 if "Credentials" in prefs:
@@ -121,12 +129,8 @@ the "./jamf/setconfig.py" script.
         self.expired = False
         if self.token and expires:
             try:
-                expires = expires[
-                    :-1
-                ]  # remove the Z because in case there's no "."
-                deadline = datetime.strptime(
-                    expires.split(".")[0], "%Y-%m-%dT%H:%M:%S"
-                )
+                expires = expires[:-1]  # remove the Z because in case there's no "."
+                deadline = datetime.strptime(expires.split(".")[0], "%Y-%m-%dT%H:%M:%S")
                 if deadline > datetime.utcnow():
                     self.expired = True
             except ValueError as e:
