@@ -16,10 +16,8 @@ import html.parser
 import json
 import logging
 import logging.handlers
-from datetime import datetime
 from sys import stderr
 
-import keyring
 import requests
 
 from . import config, convert, exceptions
@@ -62,17 +60,17 @@ class API(metaclass=Singleton):
         self.log = logging.getLogger(f"{__name__}.API")
         self.log.setLevel(LOGLEVEL)
         # Load Prefs and Init session
-        conf = config.Config(
+        self.config = config.Config(
             config_path=config_path,
             hostname=hostname,
             username=username,
             password=password,
             prompt=prompt,
         )
-        hostname = hostname or conf.hostname
-        self.username = username or conf.username
-        self.password = password or conf.password
-        if conf.password:
+        hostname = hostname or self.config.hostname
+        self.username = username or self.config.username
+        self.password = password or self.config.password
+        if self.config.password:
             self.save_token_in_keyring = True
         else:
             self.save_token_in_keyring = False
@@ -101,47 +99,21 @@ class API(metaclass=Singleton):
         except Exception:
             print("Couldn't parse bearer token json")
             return None
-        if self.save_token_in_keyring:
-            keyring.set_password(self.hostname, "api-token", json_data["token"])
-            keyring.set_password(self.hostname, "api-expires", json_data["expires"])
+        if self.config.password:
+            self.config.save_new_token(json_data["token"], json_data["expires"])
         return json_data["token"]
 
     def revoke_token(self):
-        try:
-            keyring.delete_password(self.hostname, "api-token")
-        except:
-            stderr.write("Warning: couldn't delete token\n")
-            pass
-        try:
-            keyring.delete_password(self.hostname, "api-expires")
-        except:
-            stderr.write("Warning: couldn't delete token expire date\n")
-            pass
+        self.config.revoke_token()
 
     def set_session_auth(self):
         """set the session Jamf Pro API token or basic auth"""
         token = None
         # Check for old token and renew it if found
-        if self.save_token_in_keyring:
-            saved_token = keyring.get_password(self.hostname, "api-token")
-            expires = keyring.get_password(self.hostname, "api-expires")
-            if saved_token and expires:
-                try:
-                    expires = expires[
-                        :-1
-                    ]  # remove the Z because in case there's no "."
-                    deadline = datetime.strptime(
-                        expires.split(".")[0], "%Y-%m-%dT%H:%M:%S"
-                    )
-                    if deadline > datetime.utcnow():
-                        token = self.get_token(old_token=saved_token)
-                except ValueError as e:
-                    stderr.write(
-                        f"Error getting saved token: {e}\n"
-                        f"expire string 1: {expires}\n"
-                        f"expire string 2: {expires.split('.')[0]}\n"
-                        f"Will try to continue.\n"
-                    )
+        if self.config.password:
+            self.config.load_token()
+            if self.config.expired:
+                token = self.get_token(old_token=self.config.token)
         # Get a new token
         if not token:
             token = self.get_token()

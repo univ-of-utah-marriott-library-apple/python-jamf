@@ -55,10 +55,6 @@ class MockSession:
         pass
 
 
-class BaseTestCase(unittest.TestCase):
-    pass
-
-
 class TestAPI(unittest.TestCase):
     def setUp(self):
         response = MockResponse({"text": "<>", "code": 200})

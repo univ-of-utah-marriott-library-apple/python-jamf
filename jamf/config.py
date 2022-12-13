@@ -13,7 +13,9 @@ __version__ = "1.2.5"
 import getpass
 import logging
 import plistlib
+from datetime import datetime
 from os import path, remove
+from sys import stderr
 
 import keyring
 
@@ -24,6 +26,9 @@ MACOS_PREFS_TILDA = "~/Library/Preferences/edu.utah.mlib.jamfutil.plist"
 AUTOPKG_PREFS_TILDA = "~/Library/Preferences/com.github.autopkg.plist"
 JAMF_PREFS = "/Library/Preferences/com.jamfsoftware.jamf.plist"
 logging.getLogger(__name__).addHandler(logging.NullHandler())
+
+TOKEN_KEY = "python-jamf-token"
+EXPIRE_KEY = "python-jamf-expires"
 
 
 class Config:
@@ -44,23 +49,21 @@ class Config:
         if not self.hostname and not self.username and not self.password:
             self.load()
         # Prompt for any missing prefs
-        if self.prompt:
-            if not self.hostname:
-                self.hostname = prompt_hostname()
-            if not self.username:
-                self.username = input("Username: ")
-            if not self.password:
-                self.password = getpass.getpass()
-        elif not self.hostname and not self.username and not self.password:
-            raise JamfConfigError(
-                "No jamf config file could be found and prompt is off."
-            )
         if not self.hostname:
-            raise JamfConfigError("Config failed to obtain a hostname.")
+            if self.prompt:
+                self.hostname = prompt_hostname()
+            else:
+                raise JamfConfigError("Config failed to obtain a hostname and prompt is off.")
         if not self.username:
-            raise JamfConfigError("Config failed to obtain a username.")
+            if self.prompt:
+                self.username = input("Username: ")
+            else:
+                raise JamfConfigError("Config failed to obtain a username and prompt is off.")
         if not self.password:
-            raise JamfConfigError("Config failed to obtain a password.")
+            if self.prompt:
+                self.password = getpass.getpass()
+            else:
+                raise JamfConfigError("Config failed to obtain a password and prompt is off.")
         if not self.hostname.startswith("https://") and not self.hostname.startswith(
             "http://"
         ):
@@ -71,7 +74,11 @@ class Config:
     def load(self):
         if path.exists(self.config_path):
             fptr = open(self.config_path, "rb")
-            prefs = plistlib.load(fptr)
+            try:
+                prefs = plistlib.load(fptr)
+            except plistlib.InvalidFileException:
+                fptr.close()
+                raise JamfConfigError(f"Could not load {self.config_path}, isit plist formatted?")
             fptr.close()
             if "JSSHostname" in prefs:
                 if "Credentials" in prefs:
@@ -108,8 +115,50 @@ the "./jamf/setconfig.py" script.
         plistlib.dump(data, fptr)
         fptr.close()
 
+    def load_token(self):
+        self.token = keyring.get_password(self.hostname, TOKEN_KEY)
+        expires = keyring.get_password(self.hostname, EXPIRE_KEY)
+        self.expired = False
+        if self.token and expires:
+            try:
+                expires = expires[
+                    :-1
+                ]  # remove the Z because in case there's no "."
+                deadline = datetime.strptime(
+                    expires.split(".")[0], "%Y-%m-%dT%H:%M:%S"
+                )
+                if deadline > datetime.utcnow():
+                    self.expired = True
+            except ValueError as e:
+                stderr.write(
+                    f"Error getting saved token: {e}\n"
+                    f"expire string 1: {expires}\n"
+                    f"expire string 2: {expires.split('.')[0]}\n"
+                    f"Will try to continue.\n"
+                )
+
+    def save_new_token(self, token, expires):
+        self.token = token
+        self.expires = expires
+        keyring.set_password(self.hostname, TOKEN_KEY, self.token)
+        keyring.set_password(self.hostname, EXPIRE_KEY, self.expires)
+
+    def revoke_token(self):
+        try:
+            keyring.delete_password(self.hostname, TOKEN_KEY)
+        except:
+            stderr.write("Warning: couldn't delete keyring token\n")
+        try:
+            keyring.delete_password(self.hostname, EXPIRE_KEY)
+        except:
+            stderr.write("Warning: couldn't delete keyring token expire date\n")
+
     def reset(self):
-        keyring.delete_password(self.hostname, self.username)
+        self.revoke_token()
+        try:
+            keyring.delete_password(self.hostname, self.username)
+        except:
+            stderr.write("Warning: couldn't delete keyring password\n")
         remove(self.config_path)
 
 
