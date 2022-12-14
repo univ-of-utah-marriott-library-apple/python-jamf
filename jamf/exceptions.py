@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-JSS API
-Modifications by Tony Williams (tonyw@honestpuck.com) (ARW)
+Python Jamf Exceptions
 """
 
 __author__ = "James Reynolds"
@@ -23,7 +22,37 @@ class Error(Exception):
 
 
 class JamfConfigError(Error):
-    """Error with the config"""
+    """Error with the config or keyring"""
+
+
+class JamfNoConnectionError(Error):
+    """Error connecting to the server"""
+
+
+class JamfRecordNotFound(Error):
+    """Record not found"""
+
+
+class JamfConnectionError(Error):
+    """Error connecting to the server"""
+
+    def __init__(self, response, message=None):
+        self.response = response
+        self.message = message
+
+    def __getattr__(self, attr):
+        """
+        missing attributes fallback on response
+        """
+        return getattr(self.response, attr)
+
+    def __str__(self):
+        rsp = self.response
+        return f"{rsp}: {rsp.request.method} - {rsp.url}: {self.message}"
+
+
+class JamfAuthenticationError(JamfConnectionError):
+    """Error connecting to the server"""
 
 
 # pylint: disable=super-init-not-called

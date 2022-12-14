@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-tests for jamf.config
+Tests for jamf.config
 """
 
 __author__ = "James Reynolds"
@@ -14,11 +14,13 @@ import logging
 import unittest
 from os import path, remove
 
-import keyring
-
 from jamf.config import Config
 from jamf.exceptions import JamfConfigError
 
+import keyring
+
+TOKEN_KEY = "python-jamf-token"
+EXPIRE_KEY = "python-jamf-expires"
 
 class ConfigTests(unittest.TestCase):
     """
@@ -31,7 +33,7 @@ class ConfigTests(unittest.TestCase):
         cls.hostname = "https://localhost"
         cls.username = "test"
         cls.password = "test"
-        cls.pref = Config(
+        cls.config = Config(
             config_path=cls.config_path,
             hostname=cls.hostname,
             username=cls.username,
@@ -43,10 +45,10 @@ class ConfigTests(unittest.TestCase):
         """
         test parameters
         """
-        self.assertEqual(self.pref.config_path, self.config_path)
-        self.assertEqual(self.pref.hostname, self.hostname)
-        self.assertEqual(self.pref.username, self.username)
-        self.assertEqual(self.pref.password, self.password)
+        self.assertEqual(self.config.config_path, self.config_path)
+        self.assertEqual(self.config.hostname, self.hostname)
+        self.assertEqual(self.config.username, self.username)
+        self.assertEqual(self.config.password, self.password)
 
     def test_save(self):
         """
@@ -55,7 +57,7 @@ class ConfigTests(unittest.TestCase):
         if path.exists(self.config_path):
             remove(self.config_path)
             self.assertTrue(not path.exists(self.config_path))
-        self.pref.save()
+        self.config.save()
         self.assertTrue(path.exists(self.config_path))
         remove(self.config_path)
 
@@ -66,11 +68,11 @@ class ConfigTests(unittest.TestCase):
         if path.exists(self.config_path):
             remove(self.config_path)
             self.assertTrue(not path.exists(self.config_path))
-        self.pref.save()
-        self.pref.load()
-        self.assertEqual(self.pref.hostname, self.hostname)
-        self.assertEqual(self.pref.username, self.username)
-        self.assertEqual(self.pref.password, self.password)
+        self.config.save()
+        self.config.load()
+        self.assertEqual(self.config.hostname, self.hostname)
+        self.assertEqual(self.config.username, self.username)
+        self.assertEqual(self.config.password, self.password)
         remove(self.config_path)
 
     def test_config_missing_load(self):
@@ -80,20 +82,21 @@ class ConfigTests(unittest.TestCase):
         if path.exists(self.config_path):
             remove(self.config_path)
             self.assertTrue(not path.exists(self.config_path))
-        self.assertRaises(JamfConfigError, self.pref.load)
+        self.assertRaises(JamfConfigError, self.config.load)
 
-    def test_reset(self):
-        if path.exists(self.config_path):
-            remove(self.config_path)
-            self.assertTrue(not path.exists(self.config_path))
-        self.pref.save()
-        self.assertTrue(path.exists(self.config_path))
-        self.assertEqual(
-            keyring.get_password(self.hostname, self.username), self.password
-        )
-        self.pref.reset()
-        self.assertIsNone(keyring.get_password(self.hostname, self.username))
-        self.assertTrue(not path.exists(self.config_path))
+    def test_token(self):
+        """
+        test token save, load, revoke
+        """
+        TEMP_TOKEN="BlaBlaBla"
+        TEMP_EXPIRE="2022-05-12T00:28:08.131Z"
+        self.config.save_new_token(TEMP_TOKEN, TEMP_EXPIRE)
+        self.config.load_token()
+        self.assertEqual(keyring.get_password(self.hostname, TOKEN_KEY), TEMP_TOKEN)
+        self.assertEqual(keyring.get_password(self.hostname, EXPIRE_KEY), TEMP_EXPIRE)
+        self.config.revoke_token()
+        self.assertIsNone(keyring.get_password(self.hostname, TOKEN_KEY))
+        self.assertIsNone(keyring.get_password(self.hostname, EXPIRE_KEY))
 
     def test_config_missing_no_prompt(self):
         """
@@ -102,6 +105,19 @@ class ConfigTests(unittest.TestCase):
         if path.exists(self.config_path):
             remove(self.config_path)
             self.assertTrue(not path.exists(self.config_path))
+        self.assertRaises(JamfConfigError, lambda: Config(config_path=self.config_path))
+
+    def test_malformed_config(self):
+        """
+        test malformed config
+        """
+        if path.exists(self.config_path):
+            remove(self.config_path)
+            self.assertTrue(not path.exists(self.config_path))
+        # write bad file
+        f = open(self.config_path, "w")
+        f.write("This isn't plist")
+        f.close()
         self.assertRaises(JamfConfigError, lambda: Config(config_path=self.config_path))
 
     def test_bad_hostname(self):
@@ -142,6 +158,22 @@ class ConfigTests(unittest.TestCase):
             password="test",
             prompt=False,
         )
+
+    def test_reset(self):
+        if path.exists(self.config_path):
+            remove(self.config_path)
+            self.assertTrue(not path.exists(self.config_path))
+        self.config.save()
+        self.config.save_new_token("BlaBlaBla", "2022-05-12T00:28:08.131Z")
+        self.assertTrue(path.exists(self.config_path))
+        self.assertEqual(
+            keyring.get_password(self.hostname, self.username), self.password
+        )
+        self.config.reset()
+        self.assertIsNone(keyring.get_password(self.hostname, TOKEN_KEY))
+        self.assertIsNone(keyring.get_password(self.hostname, EXPIRE_KEY))
+        self.assertIsNone(keyring.get_password(self.hostname, self.username))
+        self.assertTrue(not path.exists(self.config_path))
 
 
 if __name__ == "__main__":
