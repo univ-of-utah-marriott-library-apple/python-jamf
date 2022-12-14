@@ -14,13 +14,14 @@ import logging
 import unittest
 from os import path, remove
 
+import keyring
+
 from jamf.config import Config
 from jamf.exceptions import JamfConfigError
 
-import keyring
-
 TOKEN_KEY = "python-jamf-token"
 EXPIRE_KEY = "python-jamf-expires"
+
 
 class ConfigTests(unittest.TestCase):
     """
@@ -88,8 +89,8 @@ class ConfigTests(unittest.TestCase):
         """
         test token save, load, revoke
         """
-        TEMP_TOKEN="BlaBlaBla"
-        TEMP_EXPIRE="2022-05-12T00:28:08.131Z"
+        TEMP_TOKEN = "BlaBlaBla"
+        TEMP_EXPIRE = "2022-05-12T00:28:08.131Z"
         self.config.save_new_token(TEMP_TOKEN, TEMP_EXPIRE)
         self.config.load_token()
         self.assertEqual(keyring.get_password(self.hostname, TOKEN_KEY), TEMP_TOKEN)

@@ -11,8 +11,8 @@ __license__ = "MIT"
 __version__ = "0.1.0"
 
 import logging
-import unittest
 import os
+import unittest
 
 from jamf import api, exceptions
 
@@ -42,7 +42,6 @@ def get_creds():
 
 
 class TestHost(unittest.TestCase):
-
     def test_successful_connection(self):
         """
         Test successful connection
@@ -51,8 +50,8 @@ class TestHost(unittest.TestCase):
         hostname, username, password = get_creds()
         server = api.API(hostname=hostname, username=username, password=password)
         server.revoke_token()
-        accounts = server.get('accounts')
-        self.assertTrue('accounts' in accounts)
+        accounts = server.get("accounts")
+        self.assertTrue("accounts" in accounts)
 
     def test_bad_prefs(self):
         """
@@ -61,7 +60,13 @@ class TestHost(unittest.TestCase):
         api.API._instances = {}
         self.assertRaises(
             exceptions.JamfConfigError,
-            lambda: api.API(config_path="/var/false", hostname="", username="", password="", prompt=False)
+            lambda: api.API(
+                config_path="/var/false",
+                hostname="",
+                username="",
+                password="",
+                prompt=False,
+            ),
         )
 
     def test_bad_hostname(self):
@@ -72,8 +77,9 @@ class TestHost(unittest.TestCase):
         hostname, username, password = get_creds()
         server = api.API(hostname=BAD_HOSTNAME, username=username, password=password)
         server.revoke_token()
-        self.assertRaises(exceptions.JamfNoConnectionError, lambda: server.get('accounts'))
-
+        self.assertRaises(
+            exceptions.JamfNoConnectionError, lambda: server.get("accounts")
+        )
 
     def test_bad_port(self):
         """
@@ -81,9 +87,13 @@ class TestHost(unittest.TestCase):
         """
         api.API._instances = {}
         hostname, username, password = get_creds()
-        server = api.API(hostname=BAD_HOSTNAME_PORT, username=username, password=password)
+        server = api.API(
+            hostname=BAD_HOSTNAME_PORT, username=username, password=password
+        )
         server.revoke_token()
-        self.assertRaises(exceptions.JamfNoConnectionError, lambda: server.get('accounts'))
+        self.assertRaises(
+            exceptions.JamfNoConnectionError, lambda: server.get("accounts")
+        )
 
     def test_bad_username_password(self):
         """
@@ -93,7 +103,9 @@ class TestHost(unittest.TestCase):
         hostname, username, password = get_creds()
         server = api.API(hostname=hostname, username=BAD_USERNAME, password=password)
         server.revoke_token()
-        self.assertRaises(exceptions.JamfAuthenticationError, lambda: server.get('accounts'))
+        self.assertRaises(
+            exceptions.JamfAuthenticationError, lambda: server.get("accounts")
+        )
 
 
 class TestAPI(unittest.TestCase):
@@ -101,7 +113,6 @@ class TestAPI(unittest.TestCase):
         api.API._instances = {}
         hostname, username, password = get_creds()
         self.server = api.API(hostname=hostname, username=username, password=password)
-
 
     def test_get_token(self):
         """
@@ -124,54 +135,54 @@ class TestAPI(unittest.TestCase):
         """
         Test get accounts
         """
-        accounts = self.server.get('accounts')
-        self.assertTrue('accounts' in accounts)
+        accounts = self.server.get("accounts")
+        self.assertTrue("accounts" in accounts)
 
     def test_get_account_1(self):
         """
         Test get accounts
         """
-        account = self.server.get('accounts/userid/1')
-        self.assertTrue('account' in account)
-        self.assertTrue('password_sha256' in account['account'])
+        account = self.server.get("accounts/userid/1")
+        self.assertTrue("account" in account)
+        self.assertTrue("password_sha256" in account["account"])
 
     def test_crud(self):
         """
         Test CRUD: post new record, get, assert email, change email, put, get, assert email, delete, assert not found
         """
         data = {
-            'account': {
-                'access_level': 'Full Access',
-                'directory_user': 'false',
-                'email': 'python@jamf.jamf',
-                'email_address': 'python@jamf.jamf',
-                'enabled': 'Disabled',
-                'force_password_change': 'false',
-                'full_name': 'Python-Jamf',
-                'name': 'python-jamf',
-                'password': 'probably-not-a-good-test',
-                'privilege_set': 'Custom',
-                'privileges': {
-                    'casper_admin': None,
-                    'casper_remote': None,
-                    'jss_actions': None,
-                    'jss_objects': None,
-                    'jss_settings': None,
-                    'recon': None
-                }
+            "account": {
+                "access_level": "Full Access",
+                "directory_user": "false",
+                "email": "python@jamf.jamf",
+                "email_address": "python@jamf.jamf",
+                "enabled": "Disabled",
+                "force_password_change": "false",
+                "full_name": "Python-Jamf",
+                "name": "python-jamf",
+                "password": "probably-not-a-good-test",
+                "privilege_set": "Custom",
+                "privileges": {
+                    "casper_admin": None,
+                    "casper_remote": None,
+                    "jss_actions": None,
+                    "jss_objects": None,
+                    "jss_settings": None,
+                    "recon": None,
+                },
             }
         }
-        self.server.post('accounts/userid/0', data)
-        account = self.server.get('accounts/username/python-jamf')
-        self.assertTrue(account['account']['email'] == 'python@jamf.jamf')
-        account['account']['email'] = 'test@test.test'
+        self.server.post("accounts/userid/0", data)
+        account = self.server.get("accounts/username/python-jamf")
+        self.assertTrue(account["account"]["email"] == "python@jamf.jamf")
+        account["account"]["email"] = "test@test.test"
         self.server.put(f"accounts/userid/{account['account']['id']}", account)
-        account = self.server.get('accounts/username/python-jamf')
-        self.assertTrue(account['account']['email'] == 'test@test.test')
-        self.server.delete('accounts/username/python-jamf')
+        account = self.server.get("accounts/username/python-jamf")
+        self.assertTrue(account["account"]["email"] == "test@test.test")
+        self.server.delete("accounts/username/python-jamf")
         self.assertRaises(
             exceptions.JamfRecordNotFound,
-            lambda: self.server.get('accounts/username/python-jamf')
+            lambda: self.server.get("accounts/username/python-jamf"),
         )
 
 

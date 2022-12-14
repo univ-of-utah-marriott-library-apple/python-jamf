@@ -79,7 +79,9 @@ class API(metaclass=Singleton):
             self.save_token_in_keyring = False
 
         if not hostname and not self.username and not self.password:
-            raise exceptions.JamfConfigError("No jamf hostname or credentials could be found.")
+            raise exceptions.JamfConfigError(
+                "No jamf hostname or credentials could be found."
+            )
         while hostname[-1] == "/":
             hostname = hostname[:-1]
         self.hostname = hostname
@@ -162,7 +164,9 @@ class API(metaclass=Singleton):
         try:
             response = session_method(url, data=data)
         except requests.exceptions.ConnectionError as error:
-            raise exceptions.JamfNoConnectionError(f"Could not connect to {self.hostname}\n{error}")
+            raise exceptions.JamfNoConnectionError(
+                f"Could not connect to {self.hostname}\n{error}"
+            )
         if raw:
             return response
         if not response.ok:
@@ -171,7 +175,9 @@ class API(metaclass=Singleton):
             elif response.status_code == 404:
                 raise exceptions.JamfRecordNotFound(response, f"Not Found")
             else:
-                raise exceptions.JamfConnectionError(response, f"Error: {response.status_code}")
+                raise exceptions.JamfConnectionError(
+                    response, f"Error: {response.status_code}"
+                )
         self.log.debug("response.text: %s", response.text)
         # return successful response data (usually: {'id': jssid})
         return response
