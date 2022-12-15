@@ -33,6 +33,10 @@ jobs:
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Run Unit Tests
         run: python -m unittest discover -s tests -p '*_test.py'
+        env:
+          JAMF_HOSTNAME: ${{ secrets.JAMF_HOSTNAME }}
+          JAMF_USERNAME: ${{ secrets.JAMF_USERNAME }}
+          JAMF_PASSWORD: ${{ secrets.JAMF_PASSWORD }}
   codeql:
     name: Run CodeQL
     runs-on: ubuntu-latest
