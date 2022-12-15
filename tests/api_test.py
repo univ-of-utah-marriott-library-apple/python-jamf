@@ -26,8 +26,8 @@ BAD_USERNAME = "asdf"
 
 
 def get_creds():
-    if "JAMF_SERVER" in os.environ:
-        hostname = os.environ["JAMF_SERVER"]
+    if "JAMF_HOSTNAME" in os.environ:
+        hostname = os.environ["JAMF_HOSTNAME"]
     else:
         hostname = HOSTNAME
     if "JAMF_USERNAME" in os.environ:
