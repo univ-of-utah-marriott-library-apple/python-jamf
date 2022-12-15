@@ -12,6 +12,8 @@ __version__ = "0.1.0"
 
 import logging
 import os
+import string
+import random
 import unittest
 
 from jamf import api, exceptions
@@ -150,6 +152,7 @@ class TestAPI(unittest.TestCase):
         """
         Test CRUD: post new record, get, assert email, change email, put, get, assert email, delete, assert not found
         """
+        name = "python-jamf-" + "".join(random.choices(string.ascii_letters, k=16))
         data = {
             "account": {
                 "access_level": "Full Access",
@@ -159,7 +162,7 @@ class TestAPI(unittest.TestCase):
                 "enabled": "Disabled",
                 "force_password_change": "false",
                 "full_name": "Python-Jamf",
-                "name": "python-jamf",
+                "name": name,
                 "password": "probably-not-a-good-test",
                 "privilege_set": "Custom",
                 "privileges": {
@@ -173,16 +176,16 @@ class TestAPI(unittest.TestCase):
             }
         }
         self.server.post("accounts/userid/0", data)
-        account = self.server.get("accounts/username/python-jamf")
+        account = self.server.get(f"accounts/username/{name}")
         self.assertTrue(account["account"]["email"] == "python@jamf.jamf")
         account["account"]["email"] = "test@test.test"
         self.server.put(f"accounts/userid/{account['account']['id']}", account)
-        account = self.server.get("accounts/username/python-jamf")
+        account = self.server.get(f"accounts/username/{name}")
         self.assertTrue(account["account"]["email"] == "test@test.test")
-        self.server.delete("accounts/username/python-jamf")
+        self.server.delete(f"accounts/username/{name}")
         self.assertRaises(
             exceptions.JamfRecordNotFound,
-            lambda: self.server.get("accounts/username/python-jamf"),
+            lambda: self.server.get(f"accounts/username/{name}"),
         )
 
 
