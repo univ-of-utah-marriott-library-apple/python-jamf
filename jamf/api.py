@@ -15,11 +15,9 @@ __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
 __version__ = "0.5.2"
 
-import html.parser
 import json
 import logging
 import logging.handlers
-from sys import stderr
 
 import requests
 
@@ -171,9 +169,9 @@ class API(metaclass=Singleton):
             return response
         if not response.ok:
             if response.status_code == 401:
-                raise exceptions.JamfAuthenticationError(response, f"Bad auth")
+                raise exceptions.JamfAuthenticationError(response, "Bad auth")
             elif response.status_code == 404:
-                raise exceptions.JamfRecordNotFound(response, f"Not Found")
+                raise exceptions.JamfRecordNotFound(response, "Not Found")
             else:
                 raise exceptions.JamfConnectionError(
                     response, f"Error: {response.status_code}"

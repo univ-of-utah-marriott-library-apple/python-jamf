@@ -29,6 +29,7 @@ import logging
 import os.path
 import re
 from pprint import pprint
+from sys import stderr
 
 # pylint: disable=relative-beyond-top-level
 from .api import API
@@ -451,7 +452,7 @@ class Record:
         return False
 
     def __str__(self):
-        if self.name != None:
+        if self.name is not None:
             return self.name
         else:
             return ""
@@ -632,12 +633,12 @@ class Records:
         return self._jamf_ids.get(x)
 
     def recordWithName(self, x):
-        sys.stderr(
+        stderr(
             "WARNING: recordWithName deprecated, use recordsWithName (it turns out names are not unique)."
         )
-        names = recordsWithName(self, x)[0]
+        names = self.recordsWithName(self, x)[0]
         if len(names) > 1:
-            sys.stderr(
+            stderr(
                 "There is more than one record with the name you are searching for! Only the first one is being used."
             )
         return names[0]
