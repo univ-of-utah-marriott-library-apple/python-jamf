@@ -12,8 +12,8 @@ __version__ = "0.1.0"
 
 import logging
 import os
-import string
 import random
+import string
 import unittest
 
 from jamf import api, exceptions
