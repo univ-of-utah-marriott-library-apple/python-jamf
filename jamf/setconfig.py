@@ -9,15 +9,13 @@ __author__ = "Sam Forester"
 __email__ = "sam.forester@utah.edu"
 __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library"
 __license__ = "MIT"
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 
 
 import argparse
 import getpass
 import logging
 import platform
-import sys
-from os import path
 
 import jamf
 
@@ -71,6 +69,54 @@ class Parser:
         return self.parser.parse_args(argv)
 
 
+def test(config_path):
+    api = jamf.API(config_path=config_path)
+    try:
+        print(api.get("accounts"))
+        print("Connection successful")
+    except SystemExit as error:
+        print(f"Connection failed, check your settings\n{error}")
+
+
+def print_config(config_path):
+    conf = jamf.config.Config(prompt=False, explain=True, config_path=config_path)
+    print(conf.hostname)
+    print(conf.username)
+    if conf.password:
+        print("Password is set")
+    else:
+        print("Password is not set")
+
+
+def revoke_token(config_path):
+    api = jamf.API(config_path=config_path)
+    api.revoke_token()
+
+
+def config(args, config_path):
+    if args.hostname:
+        hostname = args.hostname
+    else:
+        hostname = jamf.config.prompt_hostname()
+    if args.user:
+        user = args.user
+    else:
+        user = input("username: ")
+    if args.passwd:
+        passwd = args.passwd
+    else:
+        passwd = getpass.getpass()
+    conf = jamf.config.Config(
+        hostname=hostname,
+        username=user,
+        password=passwd,
+        prompt=False,
+        config_path=config_path,
+    )
+    conf.save()
+    print("Test the config by invoking `conf-python-jamf -t`")
+
+
 def setconfig(argv):
     logger = logging.getLogger(__name__)
     args = Parser().parse(argv)
@@ -84,50 +130,20 @@ def setconfig(argv):
         elif myplatform == "Linux":
             default_pref = jamf.config.LINUX_PREFS_TILDA
         config_path = default_pref
-    if config_path[0] == "~":
-        config_path = path.expanduser(config_path)
+    config_path = jamf.config.resolve_config_path(config_path)
     if args.test:
-        api = jamf.API(config_path=config_path)
-        try:
-            print(api.get("accounts"))
-            print("Connection successful")
-        except SystemExit as error:
-            print(f"Connection failed, check your settings\n{error}")
-    elif args.print:
-        conf = jamf.config.Config(prompt=False, explain=True, config_path=config_path)
-        print(conf.hostname)
-        print(conf.username)
-        if conf.password:
-            print("Password is set")
-        else:
-            print("Password is not set")
+        test(config_path)
+    elif args.print_config:
+        print_config(config_path)
     elif args.revoke_token:
-        api = jamf.API(config_path=config_path)
-        api.revoke_token()
+        print_config(config_path)
     else:
-        if args.hostname:
-            hostname = args.hostname
-        else:
-            hostname = jamf.config.prompt_hostname()
-        if args.user:
-            user = args.user
-        else:
-            user = input("username: ")
-        if args.passwd:
-            passwd = args.passwd
-        else:
-            passwd = getpass.getpass()
-        conf = jamf.config.Config(
-            hostname=hostname, username=user, password=passwd, prompt=False
-        )
-        conf.save()
-        print("Test the config by invoking `conf-python-jamf -t`")
+        config(args, config_path)
 
 
 def main():
     fmt = "%(asctime)s: %(levelname)8s: %(name)s - %(funcName)s(): %(message)s"
     logging.basicConfig(level=logging.INFO, format=fmt)
-    setconfig(sys.argv[1:])
 
 
 if __name__ == "__main__":
