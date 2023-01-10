@@ -10,7 +10,7 @@ Test the Jamf object classes
 import logging
 import unittest
 
-from jamf import records, exceptions
+from jamf import exceptions, records
 
 HOSTNAME = "http://localhost"
 USERNAME = "python-jamf"
@@ -35,8 +35,6 @@ def get_creds():
     else:
         password = PASSWORD
     return (hostname, username, password)
-
-
 
 
 if __name__ == "__main__":

@@ -1108,7 +1108,9 @@ class Package(Record):
             patchsoftwaretitle_id = policy.get_path("software_title_configuration_id")
             parent_pkg_version = policy.get_path("general/target_version")
             if str(patchsoftwaretitle_id) in patchsoftwaretitles_definitions:
-                patch_definitions = patchsoftwaretitles_definitions[str(patchsoftwaretitle_id)]
+                patch_definitions = patchsoftwaretitles_definitions[
+                    str(patchsoftwaretitle_id)
+                ]
                 if parent_pkg_version in patch_definitions:
                     pkg = patch_definitions[parent_pkg_version]
                     if pkg not in related:
