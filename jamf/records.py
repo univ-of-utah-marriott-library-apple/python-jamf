@@ -630,6 +630,8 @@ class Records:
     def recordWithId(self, x):
         if not self.data:
             self.refresh()
+        if type(x) is str:
+            x = int(x)
         return self._jamf_ids.get(x)
 
     def recordWithName(self, x):
@@ -1084,7 +1086,7 @@ class Package(Record):
     def refresh_related(self):
         related = {}
         patchsoftwaretitles = jamf_records(PatchSoftwareTitles)
-        patchsoftwaretitles_ids = {}
+        patchsoftwaretitles_definitions = {}
         for title in patchsoftwaretitles:
             pkgs = title.get_path("versions/version/package/name")
             versions = title.get_path("versions/version/software_version")
@@ -1092,9 +1094,9 @@ class Package(Record):
                 for ii, pkg in enumerate(pkgs):
                     if pkg is None:
                         continue
-                    if not str(title.id) in patchsoftwaretitles_ids:
-                        patchsoftwaretitles_ids[str(title.id)] = {}
-                    patchsoftwaretitles_ids[str(title.id)][versions[ii]] = pkg
+                    if not str(title.id) in patchsoftwaretitles_definitions:
+                        patchsoftwaretitles_definitions[str(title.id)] = {}
+                    patchsoftwaretitles_definitions[str(title.id)][versions[ii]] = pkg
                     if pkg not in related:
                         related[pkg] = {"PatchSoftwareTitles": []}
                     if "PatchSoftwareTitles" not in related[pkg]:
@@ -1103,12 +1105,12 @@ class Package(Record):
                     related[pkg]["PatchSoftwareTitles"].append(temp)
         patchpolicies = jamf_records(PatchPolicies)
         for policy in patchpolicies:
-            parent_id = policy.get_path("software_title_configuration_id")[0]
-            parent_version = policy.get_path("general/target_version")[0]
-            if str(parent_id) in patchsoftwaretitles_ids:
-                ppp = patchsoftwaretitles_ids[str(parent_id)]
-                if parent_version in ppp:
-                    pkg = ppp[parent_version]
+            patchsoftwaretitle_id = policy.get_path("software_title_configuration_id")
+            parent_pkg_version = policy.get_path("general/target_version")
+            if str(patchsoftwaretitle_id) in patchsoftwaretitles_definitions:
+                patch_definitions = patchsoftwaretitles_definitions[str(patchsoftwaretitle_id)]
+                if parent_pkg_version in patch_definitions:
+                    pkg = patch_definitions[parent_pkg_version]
                     if pkg not in related:
                         related[pkg] = {"PatchPolicies": []}
                     if "PatchPolicies" not in related[pkg]:
