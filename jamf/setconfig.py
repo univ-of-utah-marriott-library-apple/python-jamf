@@ -93,7 +93,7 @@ def revoke_token(config_path):
     api.revoke_token()
 
 
-def config(args, config_path):
+def interactive(args, config_path):
     if args.hostname:
         hostname = args.hostname
     else:
@@ -133,17 +133,18 @@ def setconfig(argv):
     config_path = jamf.config.resolve_config_path(config_path)
     if args.test:
         test(config_path)
-    elif args.print_config:
+    elif args.print:
         print_config(config_path)
     elif args.revoke_token:
-        print_config(config_path)
+        revoke_token(config_path)
     else:
-        config(args, config_path)
+        interactive(args, config_path)
 
 
 def main():
     fmt = "%(asctime)s: %(levelname)8s: %(name)s - %(funcName)s(): %(message)s"
     logging.basicConfig(level=logging.INFO, format=fmt)
+    setconfig(sys.argv[1:])
 
 
 if __name__ == "__main__":
