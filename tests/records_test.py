@@ -8,6 +8,7 @@ Test the Jamf object classes
 """
 
 import logging
+import os
 import unittest
 
 from jamf import exceptions, records
