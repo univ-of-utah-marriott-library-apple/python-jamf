@@ -17,7 +17,6 @@ __version__ = "0.5.2"
 
 import json
 import logging
-import logging.handlers
 
 import requests
 
