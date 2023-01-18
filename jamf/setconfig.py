@@ -71,7 +71,11 @@ class Parser:
 
 
 def test(config_path):
-    api = jamf.API(config_path=config_path)
+    try:
+        api = jamf.API(config_path=config_path)
+    except jamf.exceptions.JamfConfigError:
+        sys.stderr.write(f"Could not read config preferences, have you set them yet?\n")
+        exit(1)
     try:
         print(api.get("accounts"))
         print("Connection successful")
@@ -80,7 +84,12 @@ def test(config_path):
 
 
 def print_config(config_path):
-    conf = jamf.config.Config(prompt=False, explain=True, config_path=config_path)
+    try:
+        conf = jamf.config.Config(prompt=False, config_path=config_path)
+    except jamf.exceptions.JamfConfigError:
+        sys.stderr.write(f"Could not read config preferences, have you set them yet?\n")
+        exit(1)
+    print(conf.config_path)
     print(conf.hostname)
     print(conf.username)
     if conf.password:
