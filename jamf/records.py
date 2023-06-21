@@ -33,12 +33,11 @@ import random
 import re
 import string
 
-from jps_api_wrapper.request_builder import RequestConflict
-
-from . import convert
+from . import convert, exceptions
 
 from jps_api_wrapper.classic import Classic
 from jps_api_wrapper.pro import Pro
+from jps_api_wrapper.request_builder import RequestConflict
 
 __all__ = (
     "AdvancedComputerSearches",
@@ -64,7 +63,6 @@ __all__ = (
     "MacApplications",
     "ManagedPreferenceProfiles",
     "MobileDeviceApplications",
-    "MobileDeviceCommands",
     "MobileDeviceConfigurationProfiles",
     "MobileDeviceEnrollmentProfiles",
     "MobileDeviceExtensionAttributes",
@@ -94,7 +92,6 @@ __all__ = (
     "VPPInvitations",
     "WebHooks",
     # Add all non-Jamf Record classes to the exclude list in valid_records below
-    "JamfError",
 )
 
 
@@ -109,6 +106,17 @@ def valid_records():
         ]
     )
     return valid
+
+
+# pylint: disable=eval-used
+def class_name(name, case_sensitive=True):
+    if case_sensitive and name in valid_records():
+        return eval(name)
+    if not case_sensitive:
+        for temp in valid_records():
+            if name.lower() == temp.lower():
+                return eval(temp)
+    raise exceptions.JamfRecordError(f"{name} is not a valid record.")
 
 
 class Singleton(type):
@@ -129,6 +137,7 @@ class Record:
         """
         if not hasattr(cls, "_instances"):
             cls._instances = {}
+        jamf_id = int(jamf_id)
         if jamf_id not in cls._instances:
             rec = super(Record, cls).__new__(cls)
             rec.id = jamf_id
@@ -173,17 +182,48 @@ class Record:
     def __repr__(self):
         return f"{self.__class__.__name__}({self.id}, {self.name!r})"
 
-    def delete(self):
-        pass
-
-    def save(self):
-        pass
-
     @property
     def data(self):
         if not self._data:
             self.refresh_data()
         return self._data
+
+    def delete(self, refresh=True):
+        if hasattr(self, "delete_method"):
+            results = getattr(self.classic, self.delete_method)(self.id)
+            if refresh:
+                self.plural().refresh_records()
+
+    def save(self):
+        if hasattr(self, "update_method"):
+            if isinstance(self._data, dict):
+                data_copy = self.save_override()
+                newdata = {self.singular_string: data_copy}
+                newdata = convert.dict_to_xml(newdata)
+                newdata = newdata.encode("utf-8")
+            results = getattr(self.classic, self.update_method)(newdata, id=self.id)
+            self.refresh_data()
+            self.name = self.get_data_name()
+
+    def save_override(self):
+        # Override this for records that get errors with empty values when updating
+        return self._data
+
+    def set_data_name(self, name):
+        # Override this when a record name is somewhere other than the root of the dict
+        self._data['name'] = name
+
+    def get_data_name(self):
+        # Override this when a record name is somewhere other than the root of the dict
+        return self._data['name']
+
+    def refresh_data(self):
+        results = getattr(self.classic, self.refresh_method)(self.id)
+        self._data = results[self.singular_string]
+
+    def refresh(self, *args, **kwargs):
+        # For compatibility, deprecated
+        self.refresh_data(*args, **kwargs)
 
     def get_path_worker(self, path, placeholder, index=0):
         current = path[index]
@@ -334,7 +374,12 @@ class Records:
                 found.append(record)
         return found
 
-    def refresh_records(
+    def refresh_records(self):
+        records = getattr(self.classic, self.refresh_method)()
+        records = records[self.plural_string]
+        self.refresh_records2(self.singular_class, records)
+
+    def refresh_records2(
         self, singular_class=Record, records=None, id_txt="id", name_txt="name"
     ):
         self._records = {}
@@ -343,9 +388,6 @@ class Records:
                 c = singular_class(d[id_txt], d[name_txt])
                 c.plural_class = self.cls
                 self._records.setdefault(c.id, c)
-
-    def createNewRecord(self, args):
-        return self.singular_class(0, args)
 
     def find(self, x):
         if not self._records:
@@ -390,6 +432,18 @@ class Records:
                 + ["-"]
                 + random.choices(string.hexdigits + string.digits, k=8)
             )
+        elif mode == "uuid2":
+            return "".join(
+                random.choices(string.hexdigits + string.digits, k=8)
+                + ["-"]
+                + random.choices(string.hexdigits + string.digits, k=4)
+                + ["-"]
+                + random.choices(string.hexdigits + string.digits, k=4)
+                + ["-"]
+                + random.choices(string.hexdigits + string.digits, k=4)
+                + ["-"]
+                + random.choices(string.hexdigits + string.digits, k=12)
+            )
         elif mode == "semver":
             return "".join(
                 random.choices(string.digits, k=2)
@@ -399,398 +453,164 @@ class Records:
                 + random.choices(string.digits, k=2)
             )
 
+    def stub_record(self):
+        return {self.singular_class.singular_string: {"name": self.random_value()}}
+
+    def delete(self, ids, feedback=False):
+        if hasattr(self.singular_class, "delete_method"):
+            for recid in ids:
+                record = self.recordWithId(recid)
+                if feedback:
+                    print(f"Deleting record: {record}")
+                record.delete(refresh=False)
+            self.refresh_records()
+
+    def create_override(self, data):
+        result = getattr(self.classic, self.create_method)(data)
+        newdata = convert.xml_to_dict(result)
+        return newdata[self.singular_class.singular_string]["id"]
+
+    def create(self, data=None):
+        data_array = None
+        if data is None:
+            data = self.stub_record()
+        elif isinstance(data, list):
+            data_array = data
+            data = self.stub_record()
+        if isinstance(data, dict):
+            data = convert.dict_to_xml(data)
+            data = data.encode("utf-8")
+        new_id = self.create_override(data)
+        self.refresh_records()
+        new_rec = self.recordWithId(new_id)
+        if data_array is not None:
+            new_rec.set_data_name(data_array[0])
+            # add more here..
+            new_rec.save()
+        return new_rec
+
 
 class AdvancedComputerSearch(Record):
     plural_class = "AdvancedComputerSearches"
     singular_string = "advanced_computer_search"
-
-    def refresh_data(self):
-        results = self.classic.get_advanced_computer_search(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_advanced_computer_search(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_advanced_computer_search(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_advanced_computer_search"
+    delete_method = "delete_advanced_computer_search"
+    update_method = "update_advanced_computer_search"
 
 
 class AdvancedComputerSearches(Records, metaclass=Singleton):
     singular_class = AdvancedComputerSearch
     plural_string = "advanced_computer_searches"
-
-    def refresh_records(self):
-        records = self.classic.get_advanced_computer_searches()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {
-            self.singular_class.singular_string: {
-                "criteria": [],
-                "display_fields": [],
-                "id": 2,
-                "mobile_devices": [],
-                "name": self.random_value(),
-                "sort_1": "",
-                "sort_2": "",
-                "sort_3": "",
-                "view_as": "Standard Web Page",
-            }
-        }
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_advanced_computer_search(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_advanced_computer_searches"
+    create_method = "create_advanced_computer_search"
 
 
 class AdvancedMobileDeviceSearch(Record):
     plural_class = "AdvancedMobileDeviceSearches"
     singular_string = "advanced_mobile_device_search"
-
-    def refresh_data(self):
-        results = self.classic.get_advanced_mobile_device_search(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_advanced_mobile_device_search(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_advanced_mobile_device_search(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_advanced_mobile_device_search"
+    delete_method = "delete_advanced_mobile_device_search"
+    update_method = "update_advanced_mobile_device_search"
 
 
 class AdvancedMobileDeviceSearches(Records, metaclass=Singleton):
     # http://localhost/mobileDevices.html
     singular_class = AdvancedMobileDeviceSearch
     plural_string = "advanced_mobile_device_searches"
-
-    def refresh_records(self):
-        records = self.classic.get_advanced_mobile_device_searches()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {
-            self.singular_class.singular_string: {
-                "criteria": [],
-                "display_fields": [],
-                "id": 2,
-                "mobile_devices": [],
-                "name": self.random_value(),
-                "site": {"id": -1, "name": "None"},
-                "sort_1": "",
-                "sort_2": "",
-                "sort_3": "",
-                "view_as": "Standard Web Page",
-            }
-        }
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_advanced_mobile_device_search(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_advanced_mobile_device_searches"
+    create_method = "create_advanced_mobile_device_search"
 
 
 class AdvancedUserSearch(Record):
     plural_class = "AdvancedUserSearches"
     singular_string = "advanced_user_search"
-
-    def refresh_data(self):
-        results = self.classic.get_advanced_user_search(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_advanced_user_search(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_advanced_user_search(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_advanced_user_search"
+    delete_method = "delete_advanced_user_search"
+    update_method = "update_advanced_user_search"
 
 
 class AdvancedUserSearches(Records, metaclass=Singleton):
     # http://localhost/users.html
     singular_class = AdvancedUserSearch
     plural_string = "advanced_user_searches"
-
-    def refresh_records(self):
-        records = self.classic.get_advanced_user_searches()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {
-            self.singular_class.singular_string: {
-                "criteria": [],
-                "display_fields": [{"name": "Email Address"}, {"name": "Full Name"}],
-                "id": 3,
-                "name": self.random_value(),
-                "site": {"id": -1, "name": "None"},
-                "users": [],
-            }
-        }
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_advanced_user_search(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_advanced_user_searches"
+    create_method = "create_advanced_user_search"
 
 
 class Building(Record):
     plural_class = "Buildings"
     singular_string = "building"
-
-    def refresh_data(self):
-        results = self.classic.get_building(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_building(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_building(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_building"
+    delete_method = "delete_building"
+    update_method = "update_building"
 
 
 class Buildings(Records, metaclass=Singleton):
     # http://localhost/view/settings/network/buildings
     singular_class = Building
     plural_string = "buildings"
-
-    def refresh_records(self):
-        records = self.classic.get_buildings()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {
-            self.singular_class.singular_string: {"id": 1, "name": self.random_value()}
-        }
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_building(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_buildings"
+    create_method = "create_building"
 
 
 class BYOProfile(Record):
     plural_class = "BYOProfiles"
     singular_string = "byo_profile"
-
-    def refresh_data(self):
-        results = self.classic.get_byo_profile(self.id)
-        self._data = results[self.singular_string]
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_byo_profile(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_byo_profile"
+    update_method = "update_byo_profile"
 
 
 class BYOProfiles(Records, metaclass=Singleton):
     singular_class = BYOProfile
     plural_string = "byoprofiles"
-
-    def refresh_records(self):
-        records = self.classic.get_byo_profiles()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+    refresh_method = "get_byo_profiles"
+    create_method = "create_byo_profile"
 
 
 class Category(Record):
     plural_class = "Categories"
     singular_string = "category"
-
-    def refresh_data(self):
-        results = self.classic.get_category(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_category(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_category(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_category"
+    delete_method = "delete_category"
+    update_method = "update_category"
 
 
 class Categories(Records, metaclass=Singleton):
     # http://localhost/categories.html
     singular_class = Category
     plural_string = "categories"
-
-    def refresh_records(self):
-        records = self.classic.get_categories()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_category(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_categories"
+    create_method = "create_category"
 
 
 class Class(Record):
     plural_class = "Classes"
     singular_string = "class"
-
-    def refresh_data(self):
-        results = self.classic.get_class(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_class(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_class(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_class"
+    delete_method = "delete_class"
+    update_method = "update_class"
 
 
 class Classes(Records, metaclass=Singleton):
     # http://localhost/classes.html
     singular_class = Class
     plural_string = "classes"
-
-    def refresh_records(self):
-        records = self.classic.get_classes()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {
-            self.singular_class.singular_string: {
-                "description": "",
-                "id": 1,
-                "mobile_device_group": {},
-                "mobile_device_group_ids": [],
-                "mobile_devices": [],
-                "name": self.random_value(),
-                "site": {"id": -1, "name": "None"},
-                "source": "N/A",
-                "student_group_ids": [],
-                "student_ids": [],
-                "students": [],
-                "teacher_group_ids": [],
-                "teacher_ids": [],
-                "teachers": [],
-            }
-        }
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_class(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_classes"
+    create_method = "create_class"
 
 
 class Computer(Record):
     plural_class = "Computers"
     singular_string = "computer"
+    refresh_method = "get_computer"
+    delete_method = "delete_computer"
+    update_method = "update_computer"
 
-    def refresh_data(self):
-        results = self.classic.get_computer(self.id)
-        self._data = results[self.singular_string]
+    def set_data_name(self, name):
+        self._data["general"]["name"] = name
 
-    def delete(self):
-        results = self.classic.delete_computer(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_computer(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    def get_data_name(self):
+        return self._data["general"]["name"]
 
     def apps_print_during(self):
         plural_cls = eval(self.cls.plural_class)
@@ -821,6 +641,15 @@ class Computers(Records, metaclass=Singleton):
     # http://localhost/computers.html?queryType=COMPUTERS&query=
     singular_class = Computer
     plural_string = "computers"
+    refresh_method = "get_computers"
+    create_method = "create_computer"
+
+    def stub_record(self):
+        return {
+            self.singular_class.singular_string: {
+                "general": {"name": self.random_value()}
+            }
+        }
 
     sub_commands = {
         "apps": {"required_args": 0, "args_description": ""},
@@ -842,95 +671,34 @@ class Computers(Records, metaclass=Singleton):
                         print(",", end="")
                 print("")
 
-    def refresh_records(self):
-        records = self.classic.get_computers()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_computer(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
-
 
 class ComputerExtensionAttribute(Record):
     plural_class = "ComputerExtensionAttributes"
     singular_string = "computer_extension_attribute"
+    refresh_method = "get_computer_extension_attribute"
+    delete_method = "delete_computer_extension_attribute"
+    update_method = "update_computer_extension_attribute"
 
-    def refresh_data(self):
-        results = self.classic.get_computer_extension_attribute(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_computer_extension_attribute(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_computer_extension_attribute(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
-
+    def save_override(self):
+        newdata = self._data
+        if 'inventory_display' in newdata and newdata['inventory_display'] == '':
+            del(newdata['inventory_display'])
+        return newdata
 
 class ComputerExtensionAttributes(Records, metaclass=Singleton):
     # http://localhost/computerExtensionAttributes.html
     singular_class = ComputerExtensionAttribute
     plural_string = "computer_extension_attributes"
-
-    def refresh_records(self):
-        records = self.classic.get_computer_extension_attributes()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_computer_extension_attribute(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_computer_extension_attributes"
+    create_method = "create_computer_extension_attribute"
 
 
 class ComputerGroup(Record):
     plural_class = "ComputerGroups"
     singular_string = "computer_group"
-
-    def refresh_data(self):
-        results = self.classic.get_computer_group(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_computer_group(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_computer_group(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_computer_group"
+    delete_method = "delete_computer_group"
+    update_method = "update_computer_group"
 
 
 class ComputerGroups(Records, metaclass=Singleton):
@@ -938,325 +706,130 @@ class ComputerGroups(Records, metaclass=Singleton):
     # http://localhost/staticComputerGroups.html
     singular_class = ComputerGroup
     plural_string = "computer_groups"
-
-    def refresh_records(self):
-        records = self.classic.get_computer_groups()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_computer_groups"
+    create_method = "create_computer_group"
 
     def stub_record(self):
         return {
             self.singular_class.singular_string: {
-                "computers": [],
-                "criteria": [],
                 "is_smart": True,
                 "name": self.random_value(),
             }
         }
 
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_computer_group(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
-
 
 class ComputerReport(Record):
     plural_class = "ComputerReports"
     singular_string = "computer_reports"
+    refresh_method = "get_computer_report"
 
-    def refresh_data(self):
-        results = self.classic.get_computer_report(self.id)
-        self._data = results[self.singular_string]
 
 class ComputerReports(Records, metaclass=Singleton):
     singular_class = ComputerReport
     plural_string = "computer_reports"
-
-    def refresh_records(self):
-        records = self.classic.get_computer_reports()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+    refresh_method = "get_computer_reports"
 
 
 class Department(Record):
     plural_class = "Departments"
     singular_string = "department"
-
-    def refresh_data(self):
-        results = self.classic.get_department(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_department(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_department(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_department"
+    delete_method = "delete_department"
+    update_method = "update_department"
 
 
 class Departments(Records, metaclass=Singleton):
     # http://localhost/departments.html
     singular_class = Department
     plural_string = "departments"
-
-    def refresh_records(self):
-        records = self.classic.get_departments()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_department(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_departments"
+    create_method = "create_department"
 
 
 class DirectoryBinding(Record):
     plural_class = "DirectoryBindings"
     singular_string = "directory_binding"
-
-    def refresh_data(self):
-        results = self.classic.get_directory_binding(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_directory_binding(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_directory_binding(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_directory_binding"
+    delete_method = "delete_directory_binding"
+    update_method = "update_directory_binding"
 
 
 class DirectoryBindings(Records, metaclass=Singleton):
     singular_class = DirectoryBinding
     plural_string = "directory_bindings"
-
-    def refresh_records(self):
-        records = self.classic.get_directory_bindings()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_directory_bindings"
+    create_method = "create_directory_binding"
 
     def stub_record(self):
         return {
             self.singular_class.singular_string: {
-                "active_directory": {
-                    "admin_groups": "",
-                    "cache_last_user": False,
-                    "default_shell": "/bin/bash",
-                    "forest": "",
-                    "gid": "",
-                    "local_home": True,
-                    "mount_style": "smb",
-                    "multiple_domains": True,
-                    "preferred_domain": "",
-                    "require_confirmation": False,
-                    "uid": "",
-                    "use_unc_path": True,
-                    "user_gid": "",
-                },
-                "computer_ou": "adsf",
-                "domain": "asdf",
                 "name": self.random_value(),
-                "password_sha256": "********************",
-                "priority": 1,
                 "type": "Active Directory",
-                "username": "asdf",
             }
         }
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_directory_binding(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
 
 
 class DiskEncryptionConfiguration(Record):
     plural_class = "DiskEncryptionConfigurations"
     singular_string = "disk_encryption_configuration"
-
-    def refresh_data(self):
-        results = self.classic.get_disk_encryption_configuration(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_disk_encryption_configuration(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_disk_encryption_configuration(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_disk_encryption_configuration"
+    delete_method = "delete_disk_encryption_configuration"
+    update_method = "update_disk_encryption_configuration"
 
 
 class DiskEncryptionConfigurations(Records, metaclass=Singleton):
     # http://localhost/diskEncryptions.html
     singular_class = DiskEncryptionConfiguration
     plural_string = "disk_encryption_configurations"
-
-    def refresh_records(self):
-        records = self.classic.get_disk_encryption_configurations()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_disk_encryption_configuration(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_disk_encryption_configurations"
+    create_method = "create_disk_encryption_configuration"
 
 
 class DistributionPoint(Record):
     plural_class = "DistributionPoints"
     singular_string = "distribution_point"
-
-    def refresh_data(self):
-        results = self.classic.get_distribution_point(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_distribution_point(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_distribution_point(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_distribution_point"
+    delete_method = "delete_distribution_point"
+    update_method = "update_distribution_point"
 
 
 class DistributionPoints(Records, metaclass=Singleton):
     singular_class = DistributionPoint
     plural_string = "distribution_points"
-
-    def refresh_records(self):
-        records = self.classic.get_distribution_points()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_distribution_points"
 
     def stub_record(self):
         return {
             self.singular_class.singular_string: {
-                "connection_type": "SMB",
-                "enable_load_balancing": False,
-                "ipAddress": self.random_value(),
-                "ip_address": self.random_value(),
-                "is_master": False,
-                "local_path": "",
                 "name": self.random_value(),
-                "no_authentication_required": True,
-                "port": 80,
-                "protocol": "http",
                 "read_only_password_sha256": "********************",
                 "read_only_username": self.random_value(),
                 "read_write_password_sha256": "********************",
                 "read_write_username": self.random_value(),
                 "share_name": self.random_value(),
-                "share_port": 139,
-                "ssh_password_sha256": "",
-                "ssh_username": "",
-                "username_password_required": False,
-                "workgroup_or_domain": "",
             }
         }
 
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
+    def create_override(self, data):
         result = self.classic.create_distribution_point(data)
         newdata = convert.xml_to_dict(result)
-        new_id = newdata["file_share_distribution_point"]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+        return newdata["file_share_distribution_point"]["id"]
 
 
 class DockItem(Record):
     plural_class = "DockItems"
     singular_string = "dock_item"
-
-    def refresh_data(self):
-        results = self.classic.get_dock_item(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_dock_item(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_dock_item(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_dock_item"
+    delete_method = "delete_dock_item"
+    update_method = "update_dock_item"
 
 
 class DockItems(Records, metaclass=Singleton):
     # http://localhost/dockItems.html
     singular_class = DockItem
     plural_string = "dock_items"
-
-    def refresh_records(self):
-        records = self.classic.get_dock_items()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_dock_items"
+    create_method = "create_dock_item"
 
     def stub_record(self):
         return {
@@ -1267,49 +840,32 @@ class DockItems(Records, metaclass=Singleton):
             }
         }
 
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_dock_item(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
-
 
 class Ebook(Record):
     plural_class = "Ebooks"
     singular_string = "ebook"
+    refresh_method = "get_ebook"
+    delete_method = "delete_ebook"
+    update_method = "update_ebook"
 
-    def refresh_data(self):
-        results = self.classic.get_ebook(self.id)
-        self._data = results[self.singular_string]
+    def set_data_name(self, name):
+        self._data["general"]["name"] = name
 
-    def delete(self):
-        results = self.classic.delete_ebook(self.id)
-        self.plural().refresh_records()
+    def get_data_name(self):
+        return self._data["general"]["name"]
 
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_ebook(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    def save_override(self):
+        newdata = self._data
+        if 'url' in newdata['general'] and newdata['general']['url'] == '':
+            del(newdata['general']['url'])
+        return newdata
 
 
 class Ebooks(Records, metaclass=Singleton):
     singular_class = Ebook
     plural_string = "ebooks"
-
-    def refresh_records(self):
-        records = self.classic.get_ebooks()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_ebooks"
+    create_method = "create_ebook"
 
     def stub_record(self):
         return {
@@ -1318,49 +874,20 @@ class Ebooks(Records, metaclass=Singleton):
             }
         }
 
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_ebook(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
-
 
 class Ibeacon(Record):
     plural_class = "Ibeacons"
     singular_string = "ibeacon"
-
-    def refresh_data(self):
-        results = self.classic.get_ibeacon_region(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_ibeacon_region(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_ibeacon_region(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_ibeacon_region"
+    delete_method = "delete_ibeacon_region"
+    update_method = "update_ibeacon_region"
 
 
 class Ibeacons(Records, metaclass=Singleton):
     singular_class = Ibeacon
     plural_string = "ibeacons"
-
-    def refresh_records(self):
-        records = self.classic.get_ibeacon_regions()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_ibeacon_regions"
+    create_method = "create_ibeacon_region"
 
     def stub_record(self):
         return {
@@ -1370,137 +897,72 @@ class Ibeacons(Records, metaclass=Singleton):
             }
         }
 
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_ibeacon_region(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
-
 
 class JSONWebTokenConfiguration(Record):
     plural_class = "JSONWebTokenConfigurations"
     singular_string = "json_web_token_configuration"
+    refresh_method = "get_json_web_token_configuration"
+    delete_method = "delete_json_web_token_configuration"
+    update_method = "update_json_web_token_configuration"
 
-    def refresh_data(self):
-        results = self.classic.get_json_web_token_configuration(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_json_web_token_configuration(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_json_web_token_configuration(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
-
+    def save_override(self):
+        newdata = self._data
+        if 'token_expiry' in newdata and newdata['token_expiry'] == 0:
+            del(newdata['token_expiry'])
+        return newdata
 
 class JSONWebTokenConfigurations(Records, metaclass=Singleton):
     singular_class = JSONWebTokenConfiguration
     plural_string = "json_web_token_configurations"
-
-    def refresh_records(self):
-        records = self.classic.get_json_web_token_configurations()
-
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_json_web_token_configurations"
+    create_method = "create_json_web_token_configuration"
 
     def stub_record(self):
         return {
             self.singular_class.singular_string: {
                 "name": self.random_value(),
                 "encryption_key": self.random_value(),
+                "token_expiry": 1,
             }
         }
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_json_web_token_configuration(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
 
 
 class LDAPServer(Record):
     plural_class = "LDAPServers"
     singular_string = "ldap_server"
-
-    def refresh_data(self):
-        results = self.classic.get_ldap_server(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_ldap_server(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_ldap_server(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_ldap_server"
+    delete_method = "delete_ldap_server"
+    update_method = "update_ldap_server"
 
 
 class LDAPServers(Records, metaclass=Singleton):
     singular_class = LDAPServer
     plural_string = "ldap_servers"
-
-    def refresh_records(self):
-        records = self.classic.get_ldap_servers()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+    refresh_method = "get_ldap_servers"
+    create_method = "create_ldap_server"
+# Can't create a test Server
+# (self, data: str, id: Union[int, str] = 0) -> str:
 
 
 class MacApplication(Record):
     plural_class = "MacApplications"
     singular_string = "mac_application"
+    refresh_method = "get_mac_application"
+    delete_method = "delete_mac_application"
+    update_method = "update_mac_application"
 
-    def refresh_data(self):
-        results = self.classic.get_mac_application(self.id)
-        self._data = results[self.singular_string]
+    def set_data_name(self, name):
+        self._data["general"]["name"] = name
 
-    def delete(self):
-        results = self.classic.delete_mac_application(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_mac_application(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    def get_data_name(self):
+        return self._data["general"]["name"]
 
 
 class MacApplications(Records, metaclass=Singleton):
     singular_class = MacApplication
     plural_string = "mac_applications"
-
-    def refresh_records(self):
-        records = self.classic.get_mac_applications()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_mac_applications"
+    create_method = "create_mac_application"
 
     def stub_record(self):
         return {
@@ -1514,132 +976,80 @@ class MacApplications(Records, metaclass=Singleton):
             }
         }
 
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_mac_application(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
-
 
 class ManagedPreferenceProfile(Record):
     plural_class = "ManagedPreferenceProfiles"
     singular_string = "managed_preference_profile"
-
-    def refresh_data(self):
-        results = self.classic.get_managed_preference_profile(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_managed_preference_profile(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_managed_preference_profile(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_managed_preference_profile"
+    delete_method = "delete_managed_preference_profile"
+    update_method = "update_managed_preference_profile"
 
 
 class ManagedPreferenceProfiles(Records, metaclass=Singleton):
     singular_class = ManagedPreferenceProfile
     plural_string = "managed_preference_profiles"
-
-    def refresh_records(self):
-        records = self.classic.get_managed_preference_profiles()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+    refresh_method = "get_managed_preference_profiles"
 
 
 class MobileDevice(Record):
     plural_class = "MobileDevices"
     singular_string = "mobile_device"
+    refresh_method = "get_mobile_device"
+    delete_method = "delete_mobile_device"
+    update_method = "update_mobile_device"
 
-    def refresh_data(self):
-        results = self.classic.get_mobile_device(self.id)
-        self._data = results[self.singular_string]
+    def set_data_name(self, name):
+        self._data["general"]["name"] = name
 
-    def delete(self):
-        results = self.classic.delete_mobile_device(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_mobile_device(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    def get_data_name(self):
+        return self._data["general"]["name"]
 
 
 class MobileDevices(Records, metaclass=Singleton):
     # http://localhost/mobileDevices.html?queryType=MOBILE_DEVICES&query=
     singular_class = MobileDevice
     plural_string = "mobile_devices"
-
-    def refresh_records(self):
-        records = self.classic.get_mobile_devices()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_mobile_devices"
+    create_method = "create_mobile_device"
 
     def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_mobile_device(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+        return {
+            self.singular_class.singular_string: {
+                "general": {
+                    "name": self.random_value(),
+                    "udid": self.random_value('uuid'),
+                }
+            }
+        }
 
 
 class MobileDeviceApplication(Record):
     plural_class = "MobileDeviceApplications"
     singular_string = "mobile_device_application"
+    refresh_method = "get_mobile_device_application"
+    delete_method = "delete_mobile_device_application"
+    update_method = "update_mobile_device_application"
 
-    def refresh_data(self):
-        results = self.classic.get_mobile_device_application(self.id)
-        self._data = results[self.singular_string]
+    def set_data_name(self, name):
+        self._data["general"]["name"] = name
 
-    def delete(self):
-        results = self.classic.delete_mobile_device_application(self.id)
-        self.plural().refresh_records()
+    def get_data_name(self):
+        return self._data["general"]["name"]
 
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_mobile_device_application(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    def save_override(self):
+        newdata = self._data
+        # For some reason creating a mobile device application wont save the
+        # os_type, which is required! So if it's missing, just add it.
+        if not 'os_type' in newdata['general']:
+            newdata['general']['os_type'] = 'iOS'
+        return newdata
 
 
 class MobileDeviceApplications(Records, metaclass=Singleton):
     singular_class = MobileDeviceApplication
     plural_string = "mobile_device_applications"
-
-    def refresh_records(self):
-        records = self.classic.get_mobile_device_applications()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_mobile_device_applications"
+    create_method = "create_mobile_device_application"
 
     def stub_record(self):
         return {
@@ -1647,217 +1057,91 @@ class MobileDeviceApplications(Records, metaclass=Singleton):
                 "general": {
                     "name": self.random_value(),
                     "version": self.random_value("semver"),
-                    "bundle_id": "edu.utah",
+                    "bundle_id": "utah.edu",
+                    'os_type': 'iOS',
                 }
             }
         }
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_mobile_device_application(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
 
 
 class MobileDeviceCommand(Record):
     plural_class = "MobileDeviceCommands"
     singular_string = "mobile_device_command"
+    refresh_method = "get_mobile_device_command"
 
-    def refresh_data(self):
-        results = self.classic.get_mobile_device_command(self.id)
-        self._data = results[self.singular_string]
 
 class MobileDeviceCommands(Records, metaclass=Singleton):
     singular_class = MobileDeviceCommand
     plural_string = "mobile_device_commands"
-
-    def refresh_records(self):
-        records = self.classic.get_mobile_device_commands()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_mobile_device_command(data)
-        newdata = convert.xml_to_dict(result)
-        pprint(newdata)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_mobile_device_commands"
+    create_method = "create_mobile_device_command"
 
 
 class MobileDeviceConfigurationProfile(Record):
     plural_class = "MobileDeviceConfigurationProfiles"
-    singular_string = "mobile_device_configuration_profile"
-
-    def refresh_data(self):
-        results = self.classic.get_mobile_device_configuration_profile(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_mobile_device_configuration_profile(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_mobile_device_configuration_profile(
-            newdata, id=self.id
-        )
-        self.refresh_data()
-        self.name = self._data["name"]
+    singular_string = "configuration_profile"
+    refresh_method = "get_mobile_device_configuration_profile"
+    delete_method = "delete_mobile_device_configuration_profile"
+    update_method = "update_mobile_device_configuration_profile"
 
 
 class MobileDeviceConfigurationProfiles(Records, metaclass=Singleton):
     singular_class = MobileDeviceConfigurationProfile
     plural_string = "configuration_profiles"
-
-    def refresh_records(self):
-        records = self.classic.get_mobile_device_configuration_profiles()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_mobile_device_configuration_profiles"
+    create_method = "create_mobile_device_configuration_profile"
 
     def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_mobile_device_configuration_profile(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+        return {
+            self.singular_class.singular_string: {
+                "general": {"name": self.random_value()}
+            }
+        }
 
 
 class MobileDeviceEnrollmentProfile(Record):
     plural_class = "MobileDeviceEnrollmentProfiles"
     singular_string = "mobile_device_enrollment_profile"
-
-    def refresh_data(self):
-        results = self.classic.get_mobile_device_enrollment_profile(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_mobile_device_enrollment_profile(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_mobile_device_enrollment_profile(
-            newdata, id=self.id
-        )
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_mobile_device_enrollment_profile"
+    delete_method = "delete_mobile_device_enrollment_profile"
+    update_method = "update_mobile_device_enrollment_profile"
 
 
 class MobileDeviceEnrollmentProfiles(Records, metaclass=Singleton):
     singular_class = MobileDeviceEnrollmentProfile
     plural_string = "mobile_device_enrollment_profiles"
-
-    def refresh_records(self):
-        records = self.classic.get_mobile_device_enrollment_profiles()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_mobile_device_enrollment_profiles"
+    create_method = "create_mobile_device_enrollment_profile"
 
     def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_mobile_device_enrollment_profile(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+        return {
+            self.singular_class.singular_string: {
+                "general": {"name": self.random_value()}
+            }
+        }
 
 
 class MobileDeviceExtensionAttribute(Record):
     plural_class = "MobileDeviceExtensionAttributes"
     singular_string = "mobile_device_extension_attribute"
-
-    def refresh_data(self):
-        results = self.classic.get_mobile_device_extension_attribute(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_mobile_device_extension_attribute(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_mobile_device_extension_attribute(
-            newdata, id=self.id
-        )
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_mobile_device_extension_attribute"
+    delete_method = "delete_mobile_device_extension_attribute"
+    update_method = "update_mobile_device_extension_attribute"
 
 
 class MobileDeviceExtensionAttributes(Records, metaclass=Singleton):
     # http://localhost/mobileDeviceExtensionAttributes.html
     singular_class = MobileDeviceExtensionAttribute
     plural_string = "mobile_device_extension_attributes"
-
-    def refresh_records(self):
-        records = self.classic.get_mobile_device_extension_attributes()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_mobile_device_extension_attribute(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_mobile_device_extension_attributes"
+    create_method = "create_mobile_device_extension_attribute"
 
 
 class MobileDeviceInvitation(Record):
     plural_class = "MobileDeviceInvitations"
     singular_string = "mobile_device_invitation"
-
-    def refresh_data(self):
-        results = self.classic.get_mobile_device_invitation(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_mobile_device_invitation(self.id)
-        self.plural().refresh_records()
+    refresh_method = "get_mobile_device_invitation"
+    delete_method = "delete_mobile_device_invitation"
 
 
 class MobileDeviceInvitations(Records, metaclass=Singleton):
@@ -1867,165 +1151,93 @@ class MobileDeviceInvitations(Records, metaclass=Singleton):
     def refresh_records(self):
         records = self.classic.get_mobile_device_invitations()
         records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+        super().refresh_records2(self.singular_class, records, name_txt="invitation")
 
     def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+        return {self.singular_class.singular_string: {
+            'id': 0,
+            'invitation_type': 'USER_INITIATED_EMAIL'
+        }}
 
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_mobile_device_invitation(data)
+    def create_override(self, data):
+        result = self.classic.create_mobile_device_invitation(data, 0)
         newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+        return newdata[self.singular_class.singular_string]["id"]
 
 
 class MobileDeviceProvisioningProfile(Record):
     plural_class = "MobileDeviceProvisioningProfiles"
     singular_string = "mobile_device_provisioning_profile"
-
-    def refresh_data(self):
-        results = self.classic.get_mobile_device_provisioning_profile(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_mobile_device_provisioning_profile(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_mobile_device_provisioning_profile(
-            newdata, id=self.id
-        )
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_mobile_device_provisioning_profile"
+    delete_method = "delete_mobile_device_provisioning_profile"
+    update_method = "update_mobile_device_provisioning_profile"
 
 
 class MobileDeviceProvisioningProfiles(Records, metaclass=Singleton):
     singular_class = MobileDeviceProvisioningProfile
     plural_string = "mobile_device_provisioning_profiles"
-
-    def refresh_records(self):
-        records = self.classic.get_mobile_device_provisioning_profiles()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_mobile_device_provisioning_profiles"
 
     def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+        import base64
+        uuid = self.random_value('uuid2')
+        payload = f"Your profile here"
+        return {
+            self.singular_class.singular_string: {
+                "name": self.random_value(),
+                "general": {
+                    "display_name": self.random_value(),
+                    "uuid": uuid,
+                    "profile": {
+                        "name": self.random_value(),
+                        "data": base64.b64encode(payload.encode("utf-8"))
 
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_mobile_device_provisioning_profile(data)
+                    }
+                }
+            }
+        }
+
+    def create_override(self, data):
+        result = self.classic.create_mobile_device_provisioning_profile(data, 0)
         newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+        return newdata[self.singular_class.singular_string]["id"]
 
 
 class NetworkSegment(Record):
     plural_class = "NetworkSegments"
     singular_string = "network_segment"
-
-    def refresh_data(self):
-        results = self.classic.get_network_segment(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_network_segment(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_network_segment(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_network_segment"
+    delete_method = "delete_network_segment"
+    update_method = "update_network_segment"
 
 
 class NetworkSegments(Records, metaclass=Singleton):
     singular_class = NetworkSegment
     plural_string = "network_segments"
-
-    def refresh_records(self):
-        records = self.classic.get_network_segments()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
+    refresh_method = "get_network_segments"
+    create_method = "create_network_segment"
 
     def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_network_segment(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+        return {self.singular_class.singular_string: {
+            'name': self.random_value(),
+            'ending_address': '10.0.0.255',
+            'starting_address': '10.0.0.1',
+        }}
 
 
 class OSXConfigurationProfile(Record):
     plural_class = "OSXConfigurationProfiles"
     singular_string = "osx_configuration_profile"
-
-    def refresh_data(self):
-        results = self.classic.get_osx_configuration_profile(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_osx_configuration_profile(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_osx_configuration_profile(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_osx_configuration_profile"
+    delete_method = "delete_osx_configuration_profile"
+    update_method = "update_osx_configuration_profile"
 
 
 class OSXConfigurationProfiles(Records, metaclass=Singleton):
     singular_class = OSXConfigurationProfile
     plural_string = "os_x_configuration_profiles"
-
-    def refresh_records(self):
-        records = self.classic.get_osx_configuration_profiles()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_osx_configuration_profile(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_osx_configuration_profiles"
+    create_method = "create_osx_configuration_profile"
 
 
 def parse_package_name(name):
@@ -2043,23 +1255,15 @@ def parse_package_name(name):
 class Package(Record):
     plural_class = "Packages"
     singular_string = "package"
+    refresh_method = "get_package"
+    delete_method = "delete_package"
+    update_method = "update_package"
 
-    def refresh_data(self):
-        results = self.classic.get_package(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_package(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_package(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    def save_override(self):
+        newdata = self._data
+        if "category" in newdata and newdata["category"] == 'No category assigned':
+            del(selfnewdata["category"])
+        return newdata
 
     @property
     def metadata(self):
@@ -2174,101 +1378,41 @@ class Package(Record):
 class Packages(Records, metaclass=Singleton):
     singular_class = Package
     plural_string = "packages"
+    refresh_method = "get_packages"
+    create_method = "create_package"
 
     groups = {}
     sub_commands = {
         "usage": {"required_args": 0, "args_description": ""},
     }
 
-    def refresh_records(self):
-        records = self.classic.get_packages()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
     def stub_record(self):
+        name = self.random_value()
         return {
             self.singular_class.singular_string: {
-                "allow_uninstalled": False,
-                "category": "No category assigned",
-                "filename": self.random_value(),
-                "fill_existing_users": False,
-                "fill_user_template": False,
-                "hash_type": "MD5",
-                "hash_value": "",
-                "id": 147,
-                "info": "",
-                "install_if_reported_available": "false",
-                "name": self.random_value(),
-                "notes": "",
-                "os_requirements": "",
-                "priority": 10,
-                "reboot_required": False,
-                "reinstall_option": "Do Not Reinstall",
-                "required_processor": "None",
-                "send_notification": False,
-                "switch_with_package": "Do Not Install",
-                "triggering_files": {},
+                "filename": name,
+                "name": name
             }
         }
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_package(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
 
 
 class PatchExternalSource(Record):
     plural_class = "PatchExternalSources"
     singular_string = "patch_external_source"
-
-    def refresh_data(self):
-        results = self.classic.get_patch_external_source(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_patch_external_source(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_patch_external_source(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_patch_external_source"
+    delete_method = "delete_patch_external_source"
+    update_method = "update_patch_external_source"
 
 
 class PatchExternalSources(Records, metaclass=Singleton):
     singular_class = PatchExternalSource
     plural_string = "patch_external_sources"
+    refresh_method = "get_patch_external_sources"
 
-    def refresh_records(self):
-        records = self.classic.get_patch_external_sources()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_patch_external_source(data)
+    def create_override(self, data):
+        result = self.classic.create_patch_external_source(data, 0)
         newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+        return newdata[self.singular_class.singular_string]["id"]
 
 
 class PatchInternalSource(Record):
@@ -2277,26 +1421,20 @@ class PatchInternalSource(Record):
 
     def refresh_data(self):
         results = self.classic.get_patch_internal_source(self.id)
-        pprint(results)
         self._data = results[self.singular_string]
+
 
 class PatchInternalSources(Records, metaclass=Singleton):
     singular_class = PatchInternalSource
     plural_string = "patch_internal_sources"
-
-    def refresh_records(self):
-        records = self.classic.get_patch_internal_sources()
-        records = records[self.plural_string]
-        pprint(records)
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+    refresh_method = "get_patch_internal_sources"
 
 
 class PatchPolicy(Record):
     plural_class = "PatchPolicies"
     singular_string = "patch_policy"
+    delete_method = "delete_patch_policy"
+    update_method = "update_patch_policy"
 
     def refresh_data(self):
         results = self.classic.get_patch_policy(self.id)  # , data_type="xml"
@@ -2305,19 +1443,6 @@ class PatchPolicy(Record):
         print(type(results))
         pprint(results)
         self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_patch_policy(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_patch_policy(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
 
     def set_version_update_during(self, pkg_version):
         change_made = False
@@ -2330,66 +1455,41 @@ class PatchPolicy(Record):
             print(f"Version is already {pkg_version}")
         return change_made
 
-    def save(self):
+    def save_override(self):
         # If you don't delete the self_service_icon then it will error
         #   <Response [409]>: PUT - https://example.com:8443/JSSResource/patchpolicies/id/18:
         #   Conflict: Error: Problem with icon
         #   Couldn't save changed record: <Response [409]>
-        if "self_service_icon" in self.data["user_interaction"]:
-            del self.data["user_interaction"]["self_service_icon"]
-        return super().save()
-
+        # I don't think the self service icon can be modified from the cli, so just delete it
+        if "self_service_icon" in newdata["user_interaction"]:
+            del newdata["user_interaction"]["self_service_icon"]
+        return newdata
 
 class PatchPolicies(Records, metaclass=Singleton):
     singular_class = PatchPolicy
     plural_string = "patch_policies"
+    refresh_method = "get_patch_policies"
+    create_method = "create_patch_policy"
 
     sub_commands = {
         "set_version": {"required_args": 1, "args_description": ""},
     }
 
-    def refresh_records(self):
-        records = self.classic.get_patch_policies()
-        records = records[self.plural_string]
-        pprint(records)
-        super().refresh_records(self.singular_class, records)
-
     def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_patch_policy(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+        return {
+            self.singular_class.singular_string: {
+                  'general': {'name': self.random_value(),},
+                  'software_title_configuration_id': 1,
+            }
+        }
 
 
 class PatchSoftwareTitle(Record):
     plural_class = "PatchSoftwareTitles"
     singular_string = "patch_software_title"
-
-    def refresh_data(self):
-        results = self.classic.get_patch_software_title(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_patch_software_title(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_patch_software_title(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_patch_software_title"
+    delete_method = "delete_patch_software_title"
+    update_method = "update_patch_software_title"
 
     def packages_print_during(self):
         print(self.name)
@@ -2488,6 +1588,8 @@ class PatchSoftwareTitle(Record):
 class PatchSoftwareTitles(Records, metaclass=Singleton):
     singular_class = PatchSoftwareTitle
     plural_string = "patch_software_titles"
+    refresh_method = "get_patch_software_titles"
+    create_method = "create_patch_software_title"
 
     sub_commands = {
         "patchpolicies": {"required_args": 0, "args_description": ""},
@@ -2497,105 +1599,60 @@ class PatchSoftwareTitles(Records, metaclass=Singleton):
         "versions": {"required_args": 0, "args_description": ""},
     }
 
-    def refresh_records(self):
-        records = self.classic.get_patch_software_titles()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
     def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+        name = self.random_value()
+        return {
+            self.singular_class.singular_string: {
+               'name_id': '001',
+               'source_id': '1',
+            }
+        }
 
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_patch_software_title(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    #http://localhost/api/doc/#/patch-software-title-configurations
+    #http://localhost/classicapi/doc/#/patchsoftwaretitles
 
 
 class Peripheral(Record):
     plural_class = "Peripherals"
     singular_string = "peripheral"
-
-    def refresh_data(self):
-        results = self.classic.get_peripheral(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_peripheral(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_peripheral(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_peripheral"
+    delete_method = "delete_peripheral"
+    update_method = "update_peripheral"
 
 
 class Peripherals(Records, metaclass=Singleton):
     singular_class = Peripheral
     plural_string = "peripherals"
-
-    def refresh_records(self):
-        records = self.classic.get_peripherals()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+    refresh_method = "get_peripherals"
 
 
 class PeripheralType(Record):
     plural_class = "PeripheralTypes"
     singular_string = "peripheral_type"
-
-    def refresh_data(self):
-        results = self.classic.get_peripheral_type(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_peripheral_type(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_peripheral_type(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_peripheral_type"
+    delete_method = "delete_peripheral_type"
+    update_method = "update_peripheral_type"
 
 
 class PeripheralTypes(Records, metaclass=Singleton):
     # I have no idea how to view this data in the web interface
     singular_class = PeripheralType
     plural_string = "peripheral_types"
-
-    def refresh_records(self):
-        records = self.classic.get_peripheral_types()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+    refresh_method = "get_peripheral_types"
 
 
 class Policy(Record):
     plural_class = "Policies"
     singular_string = "policy"
+    refresh_method = "get_policy"
+    delete_method = "delete_policy"
+    update_method = "update_policy"
 
-    def refresh_data(self):
-        results = self.classic.get_policy(self.id)
-        self._data = results[self.singular_string]
+    def set_data_name(self, name):
+        self._data["general"]["name"] = name
+
+    def get_data_name(self):
+        return self._data["general"]["name"]
 
     def spreadsheet_print_during(self):
         print(self.spreadsheet())
@@ -2747,6 +1804,8 @@ class Policy(Record):
 class Policies(Records, metaclass=Singleton):
     singular_class = Policy
     plural_string = "policies"
+    refresh_method = "get_policies"
+    create_method = "create_policy"
 
     sub_commands = {
         "promote": {"required_args": 0, "args_description": ""},
@@ -2770,143 +1829,50 @@ class Policies(Records, metaclass=Singleton):
         ]
         print("\t".join(header))
 
-    def refresh_records(self):
-        records = self.classic.get_policies()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
     def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_computer_group(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+        return {
+            self.singular_class.singular_string: {
+                "general": {"name": self.random_value()}}}
 
 
 class Printer(Record):
     plural_class = "Printers"
     singular_string = "printer"
-
-    def refresh_data(self):
-        results = self.classic.get_printer(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_printer(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_printer(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_printer"
+    delete_method = "delete_printer"
+    update_method = "update_printer"
 
 
 class Printers(Records, metaclass=Singleton):
     # http://localhost/printers.html
     singular_class = Printer
     plural_string = "printers"
-
-    def refresh_records(self):
-        records = self.classic.get_printers()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_printer(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_printers"
+    create_method = "create_printer"
 
 
 class RemovableMACAddress(Record):
     plural_class = "RemovableMACAddresses"
     singular_string = "removable_mac_address"
-
-    def refresh_data(self):
-        results = self.classic.get_removable_mac_address(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_removable_mac_address(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_removable_mac_address(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_removable_mac_address"
+    delete_method = "delete_removable_mac_address"
+    update_method = "update_removable_mac_address"
 
 
 class RemovableMACAddresses(Records, metaclass=Singleton):
     # I have no idea how to view this data in the web interface
     singular_class = RemovableMACAddress
     plural_string = "removable_mac_addresses"
-
-    def refresh_records(self):
-        records = self.classic.get_removable_mac_addresses()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_removable_mac_address(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_removable_mac_addresses"
+    create_method = "create_removable_mac_address"
 
 
 class Script(Record):
     plural_class = "Scripts"
     singular_string = "script"
-
-    def refresh_data(self):
-        results = self.classic.get_script(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_script(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_script(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_script"
+    delete_method = "delete_script"
+    update_method = "update_script"
 
     def script_contents_print_during(self):
         try:
@@ -2920,456 +1886,150 @@ class Scripts(Records, metaclass=Singleton):
     # http://localhost/view/settings/computer/scripts
     singular_class = Script
     plural_string = "scripts"
+    refresh_method = "get_scripts"
+    create_method = "create_script"
 
     sub_commands = {
         "script_contents": {"required_args": 0, "args_description": ""},
     }
 
-    def refresh_records(self):
-        records = self.classic.get_scripts()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_script(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
-
 
 class Site(Record):
     plural_class = "Sites"
     singular_string = "site"
-
-    def refresh_data(self):
-        results = self.classic.get_site(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_site(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_site(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_site"
+    delete_method = "delete_site"
+    update_method = "update_site"
 
 
 class Sites(Records, metaclass=Singleton):
     # http://localhost/sites.html
     singular_class = Site
     plural_string = "sites"
-
-    def refresh_records(self):
-        records = self.classic.get_sites()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_site(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_sites"
+    create_method = "create_site"
 
 
 class SoftwareUpdateServer(Record):
     plural_class = "SoftwareUpdateServers"
     singular_string = "update_software_server"
-
-    def refresh_data(self):
-        results = self.classic.get_update_software_server(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_update_software_server(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_software_update_server(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_update_software_server"
+    delete_method = "delete_update_software_server"
+    update_method = "update_software_update_server"
 
 
 class SoftwareUpdateServers(Records, metaclass=Singleton):
     singular_class = SoftwareUpdateServer
     plural_string = "software_update_servers"
-
-    def refresh_records(self):
-        records = self.classic.get_software_update_servers()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_update_software_server(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_software_update_servers"
+    create_method = "create_update_software_server"
 
 
 class User(Record):
     plural_class = "Users"
     singular_string = "user"
-
-    def refresh_data(self):
-        results = self.classic.get_user(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_user(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_user(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_user"
+    delete_method = "delete_user"
+    update_method = "update_user"
 
 
 class Users(Records, metaclass=Singleton):
     # http://localhost/users.html?query=
     singular_class = User
     plural_string = "users"
-
-    def refresh_records(self):
-        records = self.classic.get_users()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_user(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_users"
+    create_method = "create_user"
 
 
 class UserExtensionAttribute(Record):
     plural_class = "UserExtensionAttributes"
     singular_string = "user_extension_attribute"
-
-    def refresh_data(self):
-        results = self.classic.get_user_extension_attribute(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_computer_group(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_user_extension_attribute(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_user_extension_attribute"
+    delete_method = "delete_computer_group"
+    update_method = "update_user_extension_attribute"
 
 
 class UserExtensionAttributes(Records, metaclass=Singleton):
     # http://localhost/userExtensionAttributes.html
     singular_class = UserExtensionAttribute
     plural_string = "user_extension_attributes"
-
-    def refresh_records(self):
-        records = self.classic.get_user_extension_attributes()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_user_extension_attribute(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_user_extension_attributes"
+    create_method = "create_user_extension_attribute"
 
 
 class UserGroup(Record):
     plural_class = "UserGroups"
     singular_string = "user_group"
-
-    def refresh_data(self):
-        results = self.classic.get_user_group(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_user_group(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_user_group(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_user_group"
+    delete_method = "delete_user_group"
+    update_method = "update_user_group"
 
 
 class UserGroups(Records, metaclass=Singleton):
     singular_class = UserGroup
     plural_string = "user_groups"
-
-    def refresh_records(self):
-        records = self.classic.get_user_groups()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_user_group(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_user_groups"
+    create_method = "create_user_group"
 
 
 class VPPAccount(Record):
     plural_class = "VPPAccounts"
     singular_string = "vpp_account"
-
-    def refresh_data(self):
-        results = self.classic.get_vpp_account(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_vpp_account(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_vpp_account(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_vpp_account"
+    delete_method = "delete_vpp_account"
+    update_method = "update_vpp_account"
 
 
 class VPPAccounts(Records, metaclass=Singleton):
     singular_class = VPPAccount
     plural_string = "vpp_accounts"
-
-    def refresh_records(self):
-        records = self.classic.get_vpp_accounts()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_vpp_account(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_vpp_accounts"
+    create_method = "create_vpp_account"
 
 
 class VPPAssignment(Record):
     plural_class = "VPPAssignments"
     singular_string = "vpp_assignment"
-
-    def refresh_data(self):
-        results = self.classic.get_vpp_assignment(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_vpp_assignment(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_vpp_assignment(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_vpp_assignment"
+    delete_method = "delete_vpp_assignment"
+    update_method = "update_vpp_assignment"
 
 
 class VPPAssignments(Records, metaclass=Singleton):
     singular_class = VPPAssignment
     plural_string = "vpp_assignments"
-
-    def refresh_records(self):
-        records = self.classic.get_vpp_assignments()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_vpp_assignment(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_vpp_assignments"
+    create_method = "create_vpp_assignment"
 
 
 class VPPInvitation(Record):
     plural_class = "VPPInvitations"
     singular_string = "vpp_invitation"
-
-    def refresh_data(self):
-        results = self.classic.get_vpp_invitation(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_vpp_invitation(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_vpp_invitation(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_vpp_invitation"
+    delete_method = "delete_vpp_invitation"
+    update_method = "update_vpp_invitation"
 
 
 class VPPInvitations(Records, metaclass=Singleton):
     singular_class = VPPInvitation
     plural_string = "vpp_invitations"
-
-    def refresh_records(self):
-        records = self.classic.get_vpp_invitations()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_vpp_invitation(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_vpp_invitations"
+    create_method = "create_vpp_invitation"
 
 
 class WebHook(Record):
     plural_class = "WebHooks"
     singular_string = "webhook"
-
-    def refresh_data(self):
-        results = self.classic.get_webhook(self.id)
-        self._data = results[self.singular_string]
-
-    def delete(self):
-        results = self.classic.delete_webhook(self.id)
-        self.plural().refresh_records()
-
-    def save(self):
-        if isinstance(self._data, dict):
-            newdata = {singular_string: self._data}
-            newdata = convert.dict_to_xml(newdata)
-            newdata = newdata.encode("utf-8")
-        results = self.classic.update_webhook(newdata, id=self.id)
-        self.refresh_data()
-        self.name = self._data["name"]
+    refresh_method = "get_webhook"
+    delete_method = "delete_webhook"
+    update_method = "update_webhook"
 
 
 class WebHooks(Records, metaclass=Singleton):
     singular_class = WebHook
     plural_string = "webhooks"
-
-    def refresh_records(self):
-        records = self.classic.get_webhooks()
-        records = records[self.plural_string]
-        super().refresh_records(self.singular_class, records)
-
-    def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
-
-    def create(self, data=None):
-        if data is None:
-            data = self.stub_record()
-        if isinstance(data, dict):
-            data = convert.dict_to_xml(data)
-            data = data.encode("utf-8")
-        result = self.classic.create_webhook(data)
-        newdata = convert.xml_to_dict(result)
-        new_id = newdata[self.singular_class.singular_string]["id"]
-        self.refresh_records()
-        return self.recordWithId(new_id)
+    refresh_method = "get_webhooks"
+    create_method = "create_webhook"
 
 
 def jamf_records(cls, name="", exclude=()):

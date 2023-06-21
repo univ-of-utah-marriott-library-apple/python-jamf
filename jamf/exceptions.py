@@ -18,7 +18,8 @@ import html.parser
 class Error(Exception):
     """just passing through"""
 
-    pass
+    def __init__(self, message=None):
+        self.message = message
 
 
 class JamfConfigError(Error):
