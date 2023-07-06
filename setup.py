@@ -41,5 +41,5 @@ setuptools.setup(
         "Development Status :: 4 - Beta",
     ],
     python_requires=">=3.6",
-    install_requires=["requests>=2.24.0", "keyring>=23.0.0"],
+    install_requires=["requests>=2.24.0", "keyring>=23.0.0", "jps_api_wrapper>=1.0.6"],
 )
