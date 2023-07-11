@@ -211,15 +211,19 @@ class Record:
 
     def set_data_name(self, name):
         # Override this when a record name is somewhere other than the root of the dict
-        self._data['name'] = name
+        self._data["name"] = name
 
     def get_data_name(self):
         # Override this when a record name is somewhere other than the root of the dict
-        return self._data['name']
+        return self._data["name"]
 
     def refresh_data(self):
-        results = getattr(self.classic, self.refresh_method)(self.id)
-        self._data = results[self.singular_string]
+        results = getattr(self.classic, self.refresh_method)(self.id, data_type="xml")
+        results = convert.xml_to_dict(results)
+        if len(results) > 0:
+            self._data = results[self.singular_string]
+        else:
+            self._data = None
 
     def refresh(self, *args, **kwargs):
         # For compatibility, deprecated
@@ -235,7 +239,7 @@ class Record:
                     path, placeholder[current], index + 1
                 )
             else:
-                raise NotFound
+                raise exceptions.JamfRecordNotFound
         elif type(placeholder) is list:
             # I'm not sure this is the best way to handle arrays...
             result = []
@@ -251,9 +255,7 @@ class Record:
         return placeholder
 
     def get_path(self, path):
-        if not self._data:
-            self.refresh_data()
-        result = self.get_path_worker(path.split("/"), self._data)
+        result = self.get_path_worker(path.rstrip("/").split("/"), self.data)
         return result
 
     def force_array(self, parent, child_name):
@@ -273,9 +275,7 @@ class Record:
         if len(temp2) > 0:
             placeholder = self.get_path(temp2)
         else:
-            if not self._data:
-                self.refresh_data()
-            placeholder = self._data
+            placeholder = self.data
         if placeholder:
             if endpoint in placeholder:
                 placeholder[endpoint] = value
@@ -344,24 +344,24 @@ class Records:
         return self._records.get(x)
 
     def recordWithName(self, x):
-        stderr(
+        stderr.write(
             "WARNING: recordWithName deprecated, use recordsWithName (it turns "
             "out names are not unique)."
         )
-        names = self.recordsWithName(self, x)[0]
+        names = self.recordsWithName(x)[0]
         if len(names) > 1:
-            stderr(
+            stderr.write(
                 "There is more than one record with the name you are searching "
                 "for! Only the first one is being used."
             )
         return names[0]
 
-    def recordsWithName(self, x):
+    def recordsWithName(self, name):
         if not self._records:
             self.refresh_records()
         found = []
         for record in self._records.values():
-            if x == record.name:
+            if name == record.name:
                 found.append(record)
         return found
 
@@ -399,7 +399,7 @@ class Records:
             try:
                 result = self._records.get(int(x))
             except ValueError:
-                result = self._names.get(x)
+                result = self.recordsWithName(x)
         elif isinstance(x, dict):
             keys = ("id", "jamf_id", "name")
             try:
@@ -471,6 +471,7 @@ class Records:
         return newdata[self.singular_class.singular_string]["id"]
 
     def create(self, data=None):
+        # Do not override this method! Use create_override instead!
         data_array = None
         if data is None:
             data = self.stub_record()
@@ -621,11 +622,11 @@ class Computer(Record):
         plural_cls.computers[self.name] = True
         try:
             apps = self.get_path("software/applications/application/path")
-        except NotFound:
+        except exceptions.JamfRecordNotFound:
             apps = None
         try:
             versions = self.get_path("software/applications/application/version")
-        except NotFound:
+        except exceptions.JamfRecordNotFound:
             versions = None
         if apps:
             for ii, app in enumerate(apps):
@@ -681,9 +682,10 @@ class ComputerExtensionAttribute(Record):
 
     def save_override(self):
         newdata = self._data
-        if 'inventory_display' in newdata and newdata['inventory_display'] == '':
-            del(newdata['inventory_display'])
+        if "inventory_display" in newdata and newdata["inventory_display"] == "":
+            del newdata["inventory_display"]
         return newdata
+
 
 class ComputerExtensionAttributes(Records, metaclass=Singleton):
     # http://localhost/computerExtensionAttributes.html
@@ -856,8 +858,8 @@ class Ebook(Record):
 
     def save_override(self):
         newdata = self._data
-        if 'url' in newdata['general'] and newdata['general']['url'] == '':
-            del(newdata['general']['url'])
+        if "url" in newdata["general"] and newdata["general"]["url"] == "":
+            del newdata["general"]["url"]
         return newdata
 
 
@@ -907,9 +909,10 @@ class JSONWebTokenConfiguration(Record):
 
     def save_override(self):
         newdata = self._data
-        if 'token_expiry' in newdata and newdata['token_expiry'] == 0:
-            del(newdata['token_expiry'])
+        if "token_expiry" in newdata and newdata["token_expiry"] == 0:
+            del newdata["token_expiry"]
         return newdata
+
 
 class JSONWebTokenConfigurations(Records, metaclass=Singleton):
     singular_class = JSONWebTokenConfiguration
@@ -1017,7 +1020,7 @@ class MobileDevices(Records, metaclass=Singleton):
             self.singular_class.singular_string: {
                 "general": {
                     "name": self.random_value(),
-                    "udid": self.random_value('uuid'),
+                    "udid": self.random_value("uuid"),
                 }
             }
         }
@@ -1040,8 +1043,8 @@ class MobileDeviceApplication(Record):
         newdata = self._data
         # For some reason creating a mobile device application wont save the
         # os_type, which is required! So if it's missing, just add it.
-        if not 'os_type' in newdata['general']:
-            newdata['general']['os_type'] = 'iOS'
+        if not "os_type" in newdata["general"]:
+            newdata["general"]["os_type"] = "iOS"
         return newdata
 
 
@@ -1058,7 +1061,7 @@ class MobileDeviceApplications(Records, metaclass=Singleton):
                     "name": self.random_value(),
                     "version": self.random_value("semver"),
                     "bundle_id": "utah.edu",
-                    'os_type': 'iOS',
+                    "os_type": "iOS",
                 }
             }
         }
@@ -1154,10 +1157,12 @@ class MobileDeviceInvitations(Records, metaclass=Singleton):
         super().refresh_records2(self.singular_class, records, name_txt="invitation")
 
     def stub_record(self):
-        return {self.singular_class.singular_string: {
-            'id': 0,
-            'invitation_type': 'USER_INITIATED_EMAIL'
-        }}
+        return {
+            self.singular_class.singular_string: {
+                "id": 0,
+                "invitation_type": "USER_INITIATED_EMAIL",
+            }
+        }
 
     def create_override(self, data):
         result = self.classic.create_mobile_device_invitation(data, 0)
@@ -1180,7 +1185,8 @@ class MobileDeviceProvisioningProfiles(Records, metaclass=Singleton):
 
     def stub_record(self):
         import base64
-        uuid = self.random_value('uuid2')
+
+        uuid = self.random_value("uuid2")
         payload = f"Your profile here"
         return {
             self.singular_class.singular_string: {
@@ -1190,10 +1196,9 @@ class MobileDeviceProvisioningProfiles(Records, metaclass=Singleton):
                     "uuid": uuid,
                     "profile": {
                         "name": self.random_value(),
-                        "data": base64.b64encode(payload.encode("utf-8"))
-
-                    }
-                }
+                        "data": base64.b64encode(payload.encode("utf-8")),
+                    },
+                },
             }
         }
 
@@ -1218,11 +1223,13 @@ class NetworkSegments(Records, metaclass=Singleton):
     create_method = "create_network_segment"
 
     def stub_record(self):
-        return {self.singular_class.singular_string: {
-            'name': self.random_value(),
-            'ending_address': '10.0.0.255',
-            'starting_address': '10.0.0.1',
-        }}
+        return {
+            self.singular_class.singular_string: {
+                "name": self.random_value(),
+                "ending_address": "10.0.0.255",
+                "starting_address": "10.0.0.1",
+            }
+        }
 
 
 class OSXConfigurationProfile(Record):
@@ -1261,8 +1268,8 @@ class Package(Record):
 
     def save_override(self):
         newdata = self._data
-        if "category" in newdata and newdata["category"] == 'No category assigned':
-            del(selfnewdata["category"])
+        if "category" in newdata and newdata["category"] == "No category assigned":
+            del newdata["category"]
         return newdata
 
     @property
@@ -1281,76 +1288,77 @@ class Package(Record):
 
         return self._metadata
 
-    def refresh_related(self):
-        related = {}
-        patchsoftwaretitles = jamf_records(PatchSoftwareTitles)
-        patchsoftwaretitles_definitions = {}
-        for title in patchsoftwaretitles:
-            pkgs = title.get_path("versions/version/package/name")
-            versions = title.get_path("versions/version/software_version")
+    def refresh_patchsoftwaretitles(self, related, patchsoftwaretitles_definitions):
+        for jamf_record in jamf_records(PatchSoftwareTitles):
+            pkgs = jamf_record.get_path("versions/version/package")
+            versions = jamf_record.get_path("versions/version/software_version")
             if pkgs:
                 for ii, pkg in enumerate(pkgs):
                     if pkg is None:
                         continue
-                    if not str(title.id) in patchsoftwaretitles_definitions:
-                        patchsoftwaretitles_definitions[str(title.id)] = {}
-                    patchsoftwaretitles_definitions[str(title.id)][versions[ii]] = pkg
-                    if pkg not in related:
-                        related[pkg] = {"PatchSoftwareTitles": []}
-                    if "PatchSoftwareTitles" not in related[pkg]:
-                        related[pkg]["PatchSoftwareTitles"] = []
-                    temp = title.name + " - " + versions[ii]
-                    related[pkg]["PatchSoftwareTitles"].append(temp)
-        patchpolicies = jamf_records(PatchPolicies)
-        for policy in patchpolicies:
-            patchsoftwaretitle_id = policy.get_path("software_title_configuration_id")
-            parent_pkg_version = policy.get_path("general/target_version")
+                    if not str(jamf_record.id) in patchsoftwaretitles_definitions:
+                        patchsoftwaretitles_definitions[str(jamf_record.id)] = {}
+                    patchsoftwaretitles_definitions[str(jamf_record.id)][versions[ii]] = pkg
+                    temp = related.setdefault(int(pkg['id']), {"PatchSoftwareTitles": []})
+                    temp.setdefault("PatchSoftwareTitles", []).append(jamf_record)
+
+    def refresh_patchpolicies(self, related, patchsoftwaretitles_definitions):
+        for jamf_record in jamf_records(PatchPolicies):
+            patchsoftwaretitle_id = jamf_record.get_path("software_title_configuration_id")
+            parent_pkg_version = jamf_record.get_path("general/target_version")
             if str(patchsoftwaretitle_id) in patchsoftwaretitles_definitions:
                 patch_definitions = patchsoftwaretitles_definitions[
                     str(patchsoftwaretitle_id)
                 ]
                 if parent_pkg_version in patch_definitions:
                     pkg = patch_definitions[parent_pkg_version]
-                    if pkg not in related:
-                        related[pkg] = {"PatchPolicies": []}
-                    if "PatchPolicies" not in related[pkg]:
-                        related[pkg]["PatchPolicies"] = []
-                    related[pkg]["PatchPolicies"].append(policy.name)
-        policies = jamf_records(Policies)
-        for policy in policies:
+                    temp = related.setdefault(int(pkg['id']), {"PatchPolicies": []})
+                    temp.setdefault("PatchPolicies", []).append(jamf_record)
+
+    def refresh_policies(self, related):
+        for jamf_record in jamf_records(Policies):
             try:
-                pkgs = policy.get_path("package_configuration/packages/package/name")
-            except NotFound:
+                pkgs = jamf_record.get_path("package_configuration/packages/package/id")
+            except exceptions.JamfRecordNotFound:
                 pkgs = []
             if pkgs:
                 for pkg in pkgs:
-                    if pkg not in related:
-                        related[pkg] = {"Policies": []}
-                    if "Policies" not in related[pkg]:
-                        related[pkg]["Policies"] = []
-                    related[pkg]["Policies"].append(policy.name)
-        groups = jamf_records(ComputerGroups)
-        for group in groups:
+                    temp = related.setdefault(int(pkg), {"Policies": []})
+                    temp.setdefault("Policies", []).append(jamf_record)
+
+    def refresh_groups(self, related):
+        for jamf_record in jamf_records(ComputerGroups):
             try:
-                criterions = group.get_path("criteria/criterion/value")
-            except NotFound:
+                criterions = jamf_record.get_path("criteria/criterion/value")
+            except exceptions.JamfRecordNotFound:
                 criterions = None
             if criterions:
                 for pkg in criterions:
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
-                        if pkg not in related:
-                            related[pkg] = {"ComputerGroups": []}
-                        if "ComputerGroups" not in related[pkg]:
-                            related[pkg]["ComputerGroups"] = []
-                        related[pkg]["ComputerGroups"].append(group.name)
+                        temp1 = self.plural().recordsWithName(pkg)
+                        if len(temp1) > 1:
+                            raise exceptions.JamfRecordError(f"Too many packages with the name {pkg}.")
+                        elif len(temp1) == 1:
+                            temp = related.setdefault(temp1[0].id, {"ComputerGroups": []})
+                            temp.setdefault("ComputerGroups", []).append(jamf_record)
+                        else:
+                            stderr.write(f"Warning {jamf_record.name} specifies non-existant package: {pkg}")
+
+    def refresh_related(self):
+        related = {}
+        patchsoftwaretitles_definitions = {}
+        self.refresh_patchsoftwaretitles(related, patchsoftwaretitles_definitions)
+        self.refresh_patchpolicies(related, patchsoftwaretitles_definitions)
+        self.refresh_policies(related)
+        self.refresh_groups(related)
         self.__class__._related = related
 
     @property
     def related(self):
         if not hasattr(self.__class__, "_related"):
             self.refresh_related()
-        if self.name in self.__class__._related:
-            return self.__class__._related[self.name]
+        if self.id in self.__class__._related:
+            return self.__class__._related[self.id]
         else:
             return {}
 
@@ -1388,12 +1396,7 @@ class Packages(Records, metaclass=Singleton):
 
     def stub_record(self):
         name = self.random_value()
-        return {
-            self.singular_class.singular_string: {
-                "filename": name,
-                "name": name
-            }
-        }
+        return {self.singular_class.singular_string: {"filename": name, "name": name}}
 
 
 class PatchExternalSource(Record):
@@ -1431,18 +1434,11 @@ class PatchInternalSources(Records, metaclass=Singleton):
 
 
 class PatchPolicy(Record):
-    plural_class = "PatchPolicies"
-    singular_string = "patch_policy"
     delete_method = "delete_patch_policy"
+    plural_class = "PatchPolicies"
+    refresh_method = "get_patch_policy"
+    singular_string = "patch_policy"
     update_method = "update_patch_policy"
-
-    def refresh_data(self):
-        results = self.classic.get_patch_policy(self.id)  # , data_type="xml"
-        # results = convert.xml_to_dict(results)
-        print(results)
-        print(type(results))
-        pprint(results)
-        self._data = results[self.singular_string]
 
     def set_version_update_during(self, pkg_version):
         change_made = False
@@ -1461,9 +1457,11 @@ class PatchPolicy(Record):
         #   Conflict: Error: Problem with icon
         #   Couldn't save changed record: <Response [409]>
         # I don't think the self service icon can be modified from the cli, so just delete it
+        newdata = self._data
         if "self_service_icon" in newdata["user_interaction"]:
             del newdata["user_interaction"]["self_service_icon"]
         return newdata
+
 
 class PatchPolicies(Records, metaclass=Singleton):
     singular_class = PatchPolicy
@@ -1478,8 +1476,10 @@ class PatchPolicies(Records, metaclass=Singleton):
     def stub_record(self):
         return {
             self.singular_class.singular_string: {
-                  'general': {'name': self.random_value(),},
-                  'software_title_configuration_id': 1,
+                "general": {
+                    "name": self.random_value(),
+                },
+                "software_title_configuration_id": 1,
             }
         }
 
@@ -1506,7 +1506,7 @@ class PatchSoftwareTitle(Record):
         for policy in patchpolicies:
             try:
                 policy_id = policy.get_path("software_title_configuration_id")
-            except NotFound:
+            except exceptions.JamfRecordNotFound:
                 policy_id = None
             if str(policy_id) != str(self.id):
                 continue
@@ -1603,8 +1603,8 @@ class PatchSoftwareTitles(Records, metaclass=Singleton):
         name = self.random_value()
         return {
             self.singular_class.singular_string: {
-               'name_id': '001',
-               'source_id': '1',
+                "name_id": "0C6",
+                "source_id": "1",
             }
         }
 
@@ -1832,7 +1832,9 @@ class Policies(Records, metaclass=Singleton):
     def stub_record(self):
         return {
             self.singular_class.singular_string: {
-                "general": {"name": self.random_value()}}}
+                "general": {"name": self.random_value()}
+            }
+        }
 
 
 class Printer(Record):
@@ -1878,7 +1880,7 @@ class Script(Record):
         try:
             printme = self.get_path("script_contents")
             print(printme[0])
-        except NotFound:
+        except exceptions.JamfRecordNotFound:
             printme = None
 
 
