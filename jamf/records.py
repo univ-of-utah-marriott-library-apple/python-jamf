@@ -32,6 +32,7 @@ import os.path
 import random
 import re
 import string
+import warnings
 
 from . import convert, exceptions
 
@@ -281,11 +282,11 @@ class Record:
                 placeholder[endpoint] = value
                 return True
             else:
-                print(f"Error: '{endpoint}' missing from ")
+                stderr.write(f"Error: '{endpoint}' missing from ")
                 pprint(placeholder)
                 return False
         else:
-            print("Error: empty data:")
+            stderr.write("Error: empty data:")
             pprint(placeholder)
             return False
 
@@ -1298,13 +1299,19 @@ class Package(Record):
                         continue
                     if not str(jamf_record.id) in patchsoftwaretitles_definitions:
                         patchsoftwaretitles_definitions[str(jamf_record.id)] = {}
-                    patchsoftwaretitles_definitions[str(jamf_record.id)][versions[ii]] = pkg
-                    temp = related.setdefault(int(pkg['id']), {"PatchSoftwareTitles": []})
+                    patchsoftwaretitles_definitions[str(jamf_record.id)][
+                        versions[ii]
+                    ] = pkg
+                    temp = related.setdefault(
+                        int(pkg["id"]), {"PatchSoftwareTitles": []}
+                    )
                     temp.setdefault("PatchSoftwareTitles", []).append(jamf_record)
 
     def refresh_patchpolicies(self, related, patchsoftwaretitles_definitions):
         for jamf_record in jamf_records(PatchPolicies):
-            patchsoftwaretitle_id = jamf_record.get_path("software_title_configuration_id")
+            patchsoftwaretitle_id = jamf_record.get_path(
+                "software_title_configuration_id"
+            )
             parent_pkg_version = jamf_record.get_path("general/target_version")
             if str(patchsoftwaretitle_id) in patchsoftwaretitles_definitions:
                 patch_definitions = patchsoftwaretitles_definitions[
@@ -1312,7 +1319,7 @@ class Package(Record):
                 ]
                 if parent_pkg_version in patch_definitions:
                     pkg = patch_definitions[parent_pkg_version]
-                    temp = related.setdefault(int(pkg['id']), {"PatchPolicies": []})
+                    temp = related.setdefault(int(pkg["id"]), {"PatchPolicies": []})
                     temp.setdefault("PatchPolicies", []).append(jamf_record)
 
     def refresh_policies(self, related):
@@ -1337,12 +1344,18 @@ class Package(Record):
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
                         temp1 = self.plural().recordsWithName(pkg)
                         if len(temp1) > 1:
-                            raise exceptions.JamfRecordError(f"Too many packages with the name {pkg}.")
+                            raise exceptions.JamfRecordError(
+                                f"Too many packages with the name {pkg}."
+                            )
                         elif len(temp1) == 1:
-                            temp = related.setdefault(temp1[0].id, {"ComputerGroups": []})
+                            temp = related.setdefault(
+                                temp1[0].id, {"ComputerGroups": []}
+                            )
                             temp.setdefault("ComputerGroups", []).append(jamf_record)
                         else:
-                            stderr.write(f"Warning {jamf_record.name} specifies non-existant package: {pkg}")
+                            stderr.write(
+                                f"Warning {jamf_record.name} specifies non-existant package: {pkg}"
+                            )
 
     def refresh_related(self):
         related = {}
@@ -1440,6 +1453,12 @@ class PatchPolicy(Record):
     singular_string = "patch_policy"
     update_method = "update_patch_policy"
 
+    def set_data_name(self, name):
+        self._data["general"]["name"] = name
+
+    def get_data_name(self):
+        return self._data["general"]["name"]
+
     def set_version_update_during(self, pkg_version):
         change_made = False
         cur_ver = self.data["general"]["target_version"]
@@ -1458,8 +1477,16 @@ class PatchPolicy(Record):
         #   Couldn't save changed record: <Response [409]>
         # I don't think the self service icon can be modified from the cli, so just delete it
         newdata = self._data
-        if "self_service_icon" in newdata["user_interaction"]:
+        if (
+            "self_service_icon" in newdata["user_interaction"]
+            and newdata["user_interaction"]["self_service_icon"] is None
+        ):
             del newdata["user_interaction"]["self_service_icon"]
+        if (
+            "self_service_description" in newdata["user_interaction"]
+            and newdata["user_interaction"]["self_service_description"] is None
+        ):
+            del newdata["user_interaction"]["self_service_description"]
         return newdata
 
 
@@ -1482,6 +1509,11 @@ class PatchPolicies(Records, metaclass=Singleton):
                 "software_title_configuration_id": 1,
             }
         }
+
+    def refresh_records(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            super().refresh_records()
 
 
 class PatchSoftwareTitle(Record):
@@ -1594,7 +1626,10 @@ class PatchSoftwareTitles(Records, metaclass=Singleton):
     sub_commands = {
         "patchpolicies": {"required_args": 0, "args_description": ""},
         "packages": {"required_args": 0, "args_description": ""},
-        "set_package_for_version": {"required_args": 2, "args_description": ""},
+        "set_package_for_version": {
+            "required_args": 2,
+            "args_description": "package, version",
+        },
         "set_all_packages": {"required_args": 0, "args_description": ""},
         "versions": {"required_args": 0, "args_description": ""},
     }
@@ -1653,6 +1688,18 @@ class Policy(Record):
 
     def get_data_name(self):
         return self._data["general"]["name"]
+
+    def save_override(self):
+        #   <Response [409]>: ...Retry options are only allowed when using the Once per computer frequency
+        newdata = self._data
+        if "frequency" in newdata["general"] and newdata["general"]["frequency"] != "Once per computer":
+            if "retry_attempts" in newdata["general"]:
+                newdata["general"]["retry_attempts"] = "-1"
+            if "retry_event" in newdata["general"]:
+                newdata["general"]["retry_event"] = "none"
+            if "notify_on_each_failed_retry" in newdata["general"]:
+                newdata["general"]["notify_on_each_failed_retry"] = "false"
+        return newdata
 
     def spreadsheet_print_during(self):
         print(self.spreadsheet())
