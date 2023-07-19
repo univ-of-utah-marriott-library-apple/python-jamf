@@ -132,6 +132,8 @@ class Singleton(type):
 
 
 class Record:
+    plurals = None
+
     def __new__(cls, jamf_id, jamf_name):
         """
         returns existing record if one has been instantiated
@@ -220,7 +222,7 @@ class Record:
 
     def refresh_data(self):
         results = getattr(self.classic, self.refresh_method)(self.id, data_type="xml")
-        results = convert.xml_to_dict(results)
+        results = convert.xml_to_dict(results, self.plurals)
         if len(results) > 0:
             self._data = results[self.singular_string]
         else:
@@ -607,6 +609,8 @@ class Computer(Record):
     refresh_method = "get_computer"
     delete_method = "delete_computer"
     update_method = "update_computer"
+
+    plurals = {"computer": {"hardware": {"storage": []}, "extension_attributes": []}}
 
     def set_data_name(self, name):
         self._data["general"]["name"] = name
