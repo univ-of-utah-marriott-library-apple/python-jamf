@@ -231,14 +231,14 @@ class Record:
         # For compatibility, deprecated
         self.refresh_data(*args, **kwargs)
 
-    def get_path_worker(self, path, placeholder, index=0):
-        current = path[index]
+    def get_path_worker(self, path, placeholder, idx=0):
+        path_part = path[idx]
         if type(placeholder) is dict:
-            if current in placeholder:
-                if index + 1 >= len(path):
-                    return placeholder[current]
+            if path_part in placeholder:
+                if idx + 1 >= len(path):
+                    return placeholder[path_part]
                 placeholder = self.get_path_worker(
-                    path, placeholder[current], index + 1
+                    path, placeholder[path_part], idx + 1
                 )
             else:
                 raise exceptions.JamfRecordNotFound
@@ -246,13 +246,13 @@ class Record:
             # I'm not sure this is the best way to handle arrays...
             result = []
             for item in placeholder:
-                if current in item:
-                    if index + 1 < len(path):
+                if path_part in item:
+                    if idx + 1 < len(path):
                         result.append(
-                            self.get_path_worker(path, item[current], index + 1)
+                            self.get_path_worker(path, item[path_part], idx + 1)
                         )
                     else:
-                        result.append(item[current])
+                        result.append(item[path_part])
             placeholder = result
         return placeholder
 
@@ -271,9 +271,11 @@ class Record:
         return [_data]
 
     def set_path(self, path, value):
-        temp1 = path.split("/")
-        endpoint = temp1.pop()
-        temp2 = "/".join(temp1)
+        path_parts = path.split("/")
+        # Change the data
+        endpoint = path_parts.pop()
+        temp2 = "/".join(path_parts)
+        success = True
         if len(temp2) > 0:
             placeholder = self.get_path(temp2)
         else:
@@ -281,17 +283,17 @@ class Record:
         if placeholder:
             if endpoint in placeholder:
                 placeholder[endpoint] = value
-                return True
             else:
                 # This is here because there are unanswered questions
-                stderr.write(f"Error: '{endpoint}' missing from ")
+                stderr.write(f"Error: '{endpoint}' missing from:")
                 pprint(placeholder)
-                return False
+                success = False
         else:
             # This is here because there are unanswered questions
             stderr.write("Error: empty data:")
             pprint(placeholder)
-            return False
+            success = False
+        return success
 
 
 class RecordsIterator:
