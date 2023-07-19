@@ -201,7 +201,7 @@ class Record:
     def save(self):
         if hasattr(self, "update_method"):
             if isinstance(self._data, dict):
-                data_copy = self.save_override()
+                data_copy = self.save_override(self._data)
                 newdata = {self.singular_string: data_copy}
                 newdata = convert.dict_to_xml(newdata)
                 newdata = newdata.encode("utf-8")
@@ -209,9 +209,9 @@ class Record:
             self.refresh_data()
             self.name = self.get_data_name()
 
-    def save_override(self):
+    def save_override(self, newdata):
         # Override this for records that get errors with empty values when updating
-        return self._data
+        return newdata
 
     def set_data_name(self, name):
         self.set_path(self.name_path, name)
@@ -679,8 +679,7 @@ class ComputerExtensionAttribute(Record):
     delete_method = "delete_computer_extension_attribute"
     update_method = "update_computer_extension_attribute"
 
-    def save_override(self):
-        newdata = self._data
+    def save_override(self, newdata):
         if "inventory_display" in newdata and newdata["inventory_display"] == "":
             del newdata["inventory_display"]
         return newdata
@@ -850,8 +849,7 @@ class Ebook(Record):
     update_method = "update_ebook"
     name_path = "general/name"
 
-    def save_override(self):
-        newdata = self._data
+    def save_override(self, newdata):
         if "url" in newdata["general"] and newdata["general"]["url"] == "":
             del newdata["general"]["url"]
         return newdata
@@ -901,8 +899,7 @@ class JSONWebTokenConfiguration(Record):
     delete_method = "delete_json_web_token_configuration"
     update_method = "update_json_web_token_configuration"
 
-    def save_override(self):
-        newdata = self._data
+    def save_override(self, newdata):
         if "token_expiry" in newdata and newdata["token_expiry"] == 0:
             del newdata["token_expiry"]
         return newdata
@@ -1018,8 +1015,7 @@ class MobileDeviceApplication(Record):
     update_method = "update_mobile_device_application"
     name_path = "general/name"
 
-    def save_override(self):
-        newdata = self._data
+    def save_override(self, newdata):
         # For some reason creating a mobile device application wont save the
         # os_type, which is required! So if it's missing, just add it.
         if not "os_type" in newdata["general"]:
@@ -1245,8 +1241,7 @@ class Package(Record):
     delete_method = "delete_package"
     update_method = "update_package"
 
-    def save_override(self):
-        newdata = self._data
+    def save_override(self, newdata):
         if "category" in newdata and newdata["category"] == "No category assigned":
             del newdata["category"]
         return newdata
@@ -1443,13 +1438,12 @@ class PatchPolicy(Record):
             print(f"Version is already {pkg_version}")
         return change_made
 
-    def save_override(self):
+    def save_override(self, newdata):
         # If you don't delete the self_service_icon then it will error
         #   <Response [409]>: PUT - https://example.com:8443/JSSResource/patchpolicies/id/18:
         #   Conflict: Error: Problem with icon
         #   Couldn't save changed record: <Response [409]>
         # I don't think the self service icon can be modified from the cli, so just delete it
-        newdata = self._data
         if (
             "user_interaction" in newdata
             and "self_service_icon" in newdata["user_interaction"]
@@ -1659,10 +1653,12 @@ class Policy(Record):
     update_method = "update_policy"
     name_path = "general/name"
 
-    def save_override(self):
+    def save_override(self, newdata):
         #   <Response [409]>: ...Retry options are only allowed when using the Once per computer frequency
-        newdata = self._data
-        if "frequency" in newdata["general"] and newdata["general"]["frequency"] != "Once per computer":
+        if (
+            "frequency" in newdata["general"]
+            and newdata["general"]["frequency"] != "Once per computer"
+        ):
             if "retry_attempts" in newdata["general"]:
                 newdata["general"]["retry_attempts"] = "-1"
             if "retry_event" in newdata["general"]:
