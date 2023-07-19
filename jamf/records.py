@@ -117,7 +117,7 @@ def class_name(name, case_sensitive=True):
         for temp in valid_records():
             if name.lower() == temp.lower():
                 return eval(temp)
-    raise exceptions.JamfRecordError(f"{name} is not a valid record.")
+    raise exceptions.JamfUnknownClass(f"{name} is not a valid record.")
 
 
 class Singleton(type):
@@ -1344,8 +1344,8 @@ class Package(Record):
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
                         temp1 = self.plural().recordsWithName(pkg)
                         if len(temp1) > 1:
-                            raise exceptions.JamfRecordError(
-                                f"Too many packages with the name {pkg}."
+                            raise exceptions.JamfAPISurprise(
+                                f"Too many packages with the name {pkg}, this isn't supposed to happen."
                             )
                         elif len(temp1) == 1:
                             temp = related.setdefault(
