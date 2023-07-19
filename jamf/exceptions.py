@@ -56,6 +56,14 @@ class JamfAuthenticationError(JamfConnectionError):
     """Error connecting to the server"""
 
 
+class JamfUnknownClass(Error):
+    """Error, unkwown class"""
+
+
+class JamfAPISurprise(Error):
+    """Error, unkwown class"""
+
+
 # pylint: disable=super-init-not-called
 class APIError(Error):
     """Error in our call"""
