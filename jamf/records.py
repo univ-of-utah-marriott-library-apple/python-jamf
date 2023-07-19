@@ -467,7 +467,7 @@ class Records:
                 record.delete(refresh=False)
             self.refresh_records()
 
-    def create_override(self, data):
+    def create_override(self, data, data_array=None, data_dict=None):
         result = getattr(self.classic, self.create_method)(data)
         newdata = convert.xml_to_dict(result)
         return newdata[self.singular_class.singular_string]["id"]
@@ -475,15 +475,17 @@ class Records:
     def create(self, data=None):
         # Do not override this method! Use create_override instead!
         data_array = None
+        data_dict = None
         if data is None:
             data = self.stub_record()
         elif isinstance(data, list):
             data_array = data
             data = self.stub_record()
         if isinstance(data, dict):
+            data_dict = data
             data = convert.dict_to_xml(data)
             data = data.encode("utf-8")
-        new_id = self.create_override(data)
+        new_id = self.create_override(data, data_array, data_dict)
         self.refresh_records()
         new_rec = self.recordWithId(new_id)
         if data_array is not None:
@@ -810,7 +812,7 @@ class DistributionPoints(Records, metaclass=Singleton):
             }
         }
 
-    def create_override(self, data):
+    def create_override(self, data, data_array=None, data_dict=None):
         result = self.classic.create_distribution_point(data)
         newdata = convert.xml_to_dict(result)
         return newdata["file_share_distribution_point"]["id"]
@@ -1139,7 +1141,7 @@ class MobileDeviceInvitations(Records, metaclass=Singleton):
             }
         }
 
-    def create_override(self, data):
+    def create_override(self, data, data_array=None, data_dict=None):
         result = self.classic.create_mobile_device_invitation(data, 0)
         newdata = convert.xml_to_dict(result)
         return newdata[self.singular_class.singular_string]["id"]
@@ -1177,7 +1179,7 @@ class MobileDeviceProvisioningProfiles(Records, metaclass=Singleton):
             }
         }
 
-    def create_override(self, data):
+    def create_override(self, data, data_array=None, data_dict=None):
         result = self.classic.create_mobile_device_provisioning_profile(data, 0)
         newdata = convert.xml_to_dict(result)
         return newdata[self.singular_class.singular_string]["id"]
@@ -1398,7 +1400,7 @@ class PatchExternalSources(Records, metaclass=Singleton):
     plural_string = "patch_external_sources"
     refresh_method = "get_patch_external_sources"
 
-    def create_override(self, data):
+    def create_override(self, data, data_array=None, data_dict=None):
         result = self.classic.create_patch_external_source(data, 0)
         newdata = convert.xml_to_dict(result)
         return newdata[self.singular_class.singular_string]["id"]
