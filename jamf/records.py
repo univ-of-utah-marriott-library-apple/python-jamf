@@ -201,7 +201,10 @@ class Record:
     def save(self):
         if hasattr(self, "update_method"):
             if isinstance(self._data, dict):
-                data_copy = self.save_override(self._data)
+                if hasattr(self, "changed_data"):
+                    data_copy = self.save_override(self.changed_data)
+                else:
+                    data_copy = self.save_override(self._data)
                 newdata = {self.singular_string: data_copy}
                 newdata = convert.dict_to_xml(newdata)
                 newdata = newdata.encode("utf-8")
@@ -233,26 +236,43 @@ class Record:
 
     def get_path_worker(self, path, placeholder, idx=0):
         path_part = path[idx]
+        search_parts = None
+        if path_part[0] == "[" and path_part[-1] == "]":
+            # Look ahead: Find the next record with a member that equals something
+            search_parts = path_part[1:-1].split("==")
+            path_part = search_parts[0]
         if type(placeholder) is dict:
             if path_part in placeholder:
                 if idx + 1 >= len(path):
                     return placeholder[path_part]
-                placeholder = self.get_path_worker(
-                    path, placeholder[path_part], idx + 1
-                )
+                else:
+                    placeholder = self.get_path_worker(
+                        path, placeholder[path_part], idx + 1
+                    )
             else:
                 raise exceptions.JamfRecordNotFound
         elif type(placeholder) is list:
             # I'm not sure this is the best way to handle arrays...
             result = []
             for item in placeholder:
-                if path_part in item:
+                next_place = None
+                if search_parts is not None:
+                    if (
+                        search_parts[0] in item
+                        and item[search_parts[0]] == search_parts[1]
+                    ):
+                        next_place = item
+                elif path_part in item:
+                    next_place = item[path_part]
+                if next_place is not None:
                     if idx + 1 < len(path):
-                        result.append(
-                            self.get_path_worker(path, item[path_part], idx + 1)
-                        )
+                        more_next = self.get_path_worker(path, next_place, idx + 1)
                     else:
-                        result.append(item[path_part])
+                        more_next = next_place
+                    if search_parts is not None:
+                        result = more_next
+                    else:
+                        result.append(more_next)
             placeholder = result
         return placeholder
 
@@ -272,6 +292,7 @@ class Record:
 
     def set_path(self, path, value):
         path_parts = path.split("/")
+        path_parts_bw = path_parts.copy()
         # Change the data
         endpoint = path_parts.pop()
         temp2 = "/".join(path_parts)
@@ -293,6 +314,32 @@ class Record:
             stderr.write("Error: empty data:")
             pprint(placeholder)
             success = False
+        # Track the changed data
+        if success:
+            # Note, this does not respect arrays!
+            # This should only be used to .save()
+            if "id" in placeholder:
+                sibling = {"id": placeholder["id"]}
+            elif endpoint in placeholder:
+                sibling = {endpoint: placeholder[endpoint]}
+            placeholder = value
+            path_parts_bw.reverse()
+            for path_part in path_parts_bw:
+                if sibling is not None:
+                    newdict = sibling
+                    sibling = None
+                else:
+                    newdict = {}
+                if path_part[0] == "[" and path_part[-1] == "]":
+                    placeholder = [placeholder]
+                else:
+                    newdict.setdefault(path_part, placeholder)
+                    placeholder = newdict
+            if hasattr(self, "changed_data"):
+                new_changed = {**newdict, **self.changed_data}
+                self.changed_data = new_changed
+            else:
+                self.changed_data = newdict
         return success
 
 
