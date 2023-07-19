@@ -354,7 +354,6 @@ class PackageList(list):
 
 
 class Package(package.Package):
-
     _instances = {}
 
     @classmethod
