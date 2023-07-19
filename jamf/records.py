@@ -283,10 +283,12 @@ class Record:
                 placeholder[endpoint] = value
                 return True
             else:
+                # This is here because there are unanswered questions
                 stderr.write(f"Error: '{endpoint}' missing from ")
                 pprint(placeholder)
                 return False
         else:
+            # This is here because there are unanswered questions
             stderr.write("Error: empty data:")
             pprint(placeholder)
             return False
@@ -936,8 +938,6 @@ class LDAPServers(Records, metaclass=Singleton):
     plural_string = "ldap_servers"
     refresh_method = "get_ldap_servers"
     create_method = "create_ldap_server"
-# Can't create a test Server
-# (self, data: str, id: Union[int, str] = 0) -> str:
 
 
 class MacApplication(Record):
@@ -1620,9 +1620,6 @@ class PatchSoftwareTitles(Records, metaclass=Singleton):
                 "source_id": "1",
             }
         }
-
-    #http://localhost/api/doc/#/patch-software-title-configurations
-    #http://localhost/classicapi/doc/#/patchsoftwaretitles
 
 
 class Peripheral(Record):
