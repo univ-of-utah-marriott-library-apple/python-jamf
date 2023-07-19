@@ -133,6 +133,7 @@ class Singleton(type):
 
 class Record:
     plurals = None
+    name_path = "name"
 
     def __new__(cls, jamf_id, jamf_name):
         """
@@ -213,12 +214,10 @@ class Record:
         return self._data
 
     def set_data_name(self, name):
-        # Override this when a record name is somewhere other than the root of the dict
-        self._data["name"] = name
+        self.set_path(self.name_path, name)
 
     def get_data_name(self):
-        # Override this when a record name is somewhere other than the root of the dict
-        return self._data["name"]
+        return self.get_path(self.name_path)
 
     def refresh_data(self):
         results = getattr(self.classic, self.refresh_method)(self.id, data_type="xml")
@@ -609,14 +608,9 @@ class Computer(Record):
     refresh_method = "get_computer"
     delete_method = "delete_computer"
     update_method = "update_computer"
+    name_path = "general/name"
 
     plurals = {"computer": {"hardware": {"storage": []}, "extension_attributes": []}}
-
-    def set_data_name(self, name):
-        self._data["general"]["name"] = name
-
-    def get_data_name(self):
-        return self._data["general"]["name"]
 
     def apps_print_during(self):
         plural_cls = eval(self.cls.plural_class)
@@ -854,12 +848,7 @@ class Ebook(Record):
     refresh_method = "get_ebook"
     delete_method = "delete_ebook"
     update_method = "update_ebook"
-
-    def set_data_name(self, name):
-        self._data["general"]["name"] = name
-
-    def get_data_name(self):
-        return self._data["general"]["name"]
+    name_path = "general/name"
 
     def save_override(self):
         newdata = self._data
@@ -958,12 +947,7 @@ class MacApplication(Record):
     refresh_method = "get_mac_application"
     delete_method = "delete_mac_application"
     update_method = "update_mac_application"
-
-    def set_data_name(self, name):
-        self._data["general"]["name"] = name
-
-    def get_data_name(self):
-        return self._data["general"]["name"]
+    name_path = "general/name"
 
 
 class MacApplications(Records, metaclass=Singleton):
@@ -1005,12 +989,7 @@ class MobileDevice(Record):
     refresh_method = "get_mobile_device"
     delete_method = "delete_mobile_device"
     update_method = "update_mobile_device"
-
-    def set_data_name(self, name):
-        self._data["general"]["name"] = name
-
-    def get_data_name(self):
-        return self._data["general"]["name"]
+    name_path = "general/name"
 
 
 class MobileDevices(Records, metaclass=Singleton):
@@ -1037,12 +1016,7 @@ class MobileDeviceApplication(Record):
     refresh_method = "get_mobile_device_application"
     delete_method = "delete_mobile_device_application"
     update_method = "update_mobile_device_application"
-
-    def set_data_name(self, name):
-        self._data["general"]["name"] = name
-
-    def get_data_name(self):
-        return self._data["general"]["name"]
+    name_path = "general/name"
 
     def save_override(self):
         newdata = self._data
@@ -1456,12 +1430,7 @@ class PatchPolicy(Record):
     refresh_method = "get_patch_policy"
     singular_string = "patch_policy"
     update_method = "update_patch_policy"
-
-    def set_data_name(self, name):
-        self._data["general"]["name"] = name
-
-    def get_data_name(self):
-        return self._data["general"]["name"]
+    name_path = "general/name"
 
     def set_version_update_during(self, pkg_version):
         change_made = False
@@ -1686,12 +1655,7 @@ class Policy(Record):
     refresh_method = "get_policy"
     delete_method = "delete_policy"
     update_method = "update_policy"
-
-    def set_data_name(self, name):
-        self._data["general"]["name"] = name
-
-    def get_data_name(self):
-        return self._data["general"]["name"]
+    name_path = "general/name"
 
     def save_override(self):
         #   <Response [409]>: ...Retry options are only allowed when using the Once per computer frequency
