@@ -61,7 +61,7 @@ class JamfUnknownClass(Error):
 
 
 class JamfAPISurprise(Error):
-    """Error, unkwown class"""
+    """Error, unknown class"""
 
 
 # pylint: disable=super-init-not-called
