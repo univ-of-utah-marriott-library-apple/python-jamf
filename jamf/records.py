@@ -1481,6 +1481,13 @@ class PatchPolicies(Records, metaclass=Singleton):
             }
         }
 
+    def create_override(self, data, data_array=None, data_dict=None):
+        if data_dict is not None:
+            newid = data_dict["patch_policy"]["software_title_configuration_id"]
+        result = getattr(self.classic, self.create_method)(data, newid)
+        newdata = convert.xml_to_dict(result)
+        return newdata[self.singular_class.singular_string]["id"]
+
     def refresh_records(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
