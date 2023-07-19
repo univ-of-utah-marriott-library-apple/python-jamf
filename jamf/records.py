@@ -1451,12 +1451,14 @@ class PatchPolicy(Record):
         # I don't think the self service icon can be modified from the cli, so just delete it
         newdata = self._data
         if (
-            "self_service_icon" in newdata["user_interaction"]
+            "user_interaction" in newdata
+            and "self_service_icon" in newdata["user_interaction"]
             and newdata["user_interaction"]["self_service_icon"] is None
         ):
             del newdata["user_interaction"]["self_service_icon"]
         if (
-            "self_service_description" in newdata["user_interaction"]
+            "user_interaction" in newdata
+            and "self_service_description" in newdata["user_interaction"]
             and newdata["user_interaction"]["self_service_description"] is None
         ):
             del newdata["user_interaction"]["self_service_description"]
