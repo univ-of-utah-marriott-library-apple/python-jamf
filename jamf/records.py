@@ -294,7 +294,7 @@ class Record:
     def set_path(self, path, value):
         path_parts = path.split("/")
         path_parts_bw = path_parts.copy()
-        # Change the data
+        # First change the data
         endpoint = path_parts.pop()
         temp2 = "/".join(path_parts)
         success = True
@@ -1329,7 +1329,6 @@ class Package(Record):
                 self.plural.groups[self._metadata["basename"]] = []
             if self not in self.plural.groups[self._metadata["basename"]]:
                 self.plural.groups[self._metadata["basename"]].append(self)
-
         return self._metadata
 
     def refresh_patchsoftwaretitles(self, related, patchsoftwaretitles_definitions):
