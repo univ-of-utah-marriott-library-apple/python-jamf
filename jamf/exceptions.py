@@ -34,6 +34,10 @@ class JamfRecordNotFound(Error):
     """Record not found"""
 
 
+class JamfRecordInvalidPath(Error):
+    """Record does not contain the path"""
+
+
 class JamfConnectionError(Error):
     """Error connecting to the server"""
 
