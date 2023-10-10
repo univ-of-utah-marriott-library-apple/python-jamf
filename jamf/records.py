@@ -34,7 +34,8 @@ import re
 import string
 import warnings
 
-from . import convert, exceptions
+from . import convert
+from .exceptions import JamfAPISurprise, JamfRecordNotFound, JamfUnknownClass, JamfRecordInvalidPath
 
 from jps_api_wrapper.classic import Classic
 from jps_api_wrapper.pro import Pro
@@ -117,7 +118,7 @@ def class_name(name, case_sensitive=True):
         for temp in valid_records():
             if name.lower() == temp.lower():
                 return eval(temp)
-    raise exceptions.JamfUnknownClass(f"{name} is not a valid record.")
+    raise JamfUnknownClass(f"{name} is not a valid record.")
 
 
 class Singleton(type):
@@ -250,7 +251,7 @@ class Record:
                         path, placeholder[path_part], idx + 1
                     )
             else:
-                raise exceptions.JamfRecordNotFound
+                raise JamfRecordInvalidPath
         elif type(placeholder) is list:
             # I'm not sure this is the best way to handle arrays...
             result = []
@@ -674,11 +675,11 @@ class Computer(Record):
         plural_cls.computers[self.name] = True
         try:
             apps = self.get_path("software/applications/application/path")
-        except exceptions.JamfRecordNotFound:
+        except JamfRecordNotFound:
             apps = None
         try:
             versions = self.get_path("software/applications/application/version")
-        except exceptions.JamfRecordNotFound:
+        except JamfRecordNotFound:
             versions = None
         if apps:
             for ii, app in enumerate(apps):
@@ -1350,7 +1351,7 @@ class Package(Record):
         for jamf_record in jamf_records(Policies):
             try:
                 pkgs = jamf_record.get_path("package_configuration/packages/package/id")
-            except exceptions.JamfRecordNotFound:
+            except JamfRecordInvalidPath:
                 pkgs = []
             if pkgs:
                 for pkg in pkgs:
@@ -1361,14 +1362,14 @@ class Package(Record):
         for jamf_record in jamf_records(ComputerGroups):
             try:
                 criterions = jamf_record.get_path("criteria/criterion/value")
-            except exceptions.JamfRecordNotFound:
+            except JamfRecordNotFound:
                 criterions = None
             if criterions:
                 for pkg in criterions:
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
                         temp1 = self.plural().recordsWithName(pkg)
                         if len(temp1) > 1:
-                            raise exceptions.JamfAPISurprise(
+                            raise JamfAPISurprise(
                                 f"Too many packages with the name {pkg}, this isn't supposed to happen."
                             )
                         elif len(temp1) == 1:
@@ -1565,7 +1566,7 @@ class PatchSoftwareTitle(Record):
         for policy in patchpolicies:
             try:
                 policy_id = policy.get_path("software_title_configuration_id")
-            except exceptions.JamfRecordNotFound:
+            except JamfRecordNotFound:
                 policy_id = None
             if str(policy_id) != str(self.id):
                 continue
@@ -1948,7 +1949,7 @@ class Script(Record):
         try:
             printme = self.get_path("script_contents")
             print(printme[0])
-        except exceptions.JamfRecordNotFound:
+        except JamfRecordNotFound:
             printme = None
 
 
