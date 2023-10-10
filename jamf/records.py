@@ -506,6 +506,11 @@ class Records:
                 + ["."]
                 + random.choices(string.digits, k=2)
             )
+        elif mode == "sn":
+            return "".join(
+                random.choices(string.ascii_uppercase, k=1)
+                + random.choices(string.ascii_uppercase+string.digits, k=11)
+            )
 
     def stub_record(self):
         return {self.singular_class.singular_string: {"name": self.random_value()}}
@@ -1054,6 +1059,7 @@ class MobileDevices(Records, metaclass=Singleton):
                 "general": {
                     "name": self.random_value(),
                     "udid": self.random_value("uuid"),
+                    "serial_number": self.random_value("sn"),
                 }
             }
         }
