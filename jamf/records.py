@@ -1143,6 +1143,16 @@ class MobileDeviceEnrollmentProfile(Record):
     delete_method = "delete_mobile_device_enrollment_profile"
     update_method = "update_mobile_device_enrollment_profile"
     name_path = "general/name"
+    plurals = {
+        "mobile_device_enrollment_profile": {
+            "general": {
+                "description": "",
+                "invitation": "",
+                "name": "",
+                "uuid": "",
+            }
+        }
+    }
 
 
 class MobileDeviceEnrollmentProfiles(Records, metaclass=Singleton):
@@ -1557,6 +1567,13 @@ class PatchSoftwareTitle(Record):
     refresh_method = "get_patch_software_title"
     delete_method = "delete_patch_software_title"
     update_method = "update_patch_software_title"
+    plurals = {
+        "patch_software_title": {
+            "versions": {
+                "version": []
+            }
+        }
+    }
 
     def packages_print_during(self):
         print(self.name)

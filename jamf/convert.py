@@ -31,28 +31,33 @@ def etree_to_dict(elem, plurals):
     plurals2 = None
     is_list = False
     if plurals is not None and elem.tag in plurals:
-        if type(plurals[elem.tag]) is list:
-            is_list = True
-        else:
+        if type(plurals[elem.tag]) is not list:
             plurals2 = plurals[elem.tag]
     children = list(elem)
     if children:
-        defd = defaultdict(list)
+        child_dict = defaultdict(list)
         has_size = False
         for child in children:
             if child.tag == "size":
                 has_size = True
-            dct = etree_to_dict(child, plurals2)
-            for key, val in dct.items():
-                defd[key].append(val)
+            converted = etree_to_dict(child, plurals2)
+            if converted != {'size': '0'}:
+                for key, val in converted.items():
+                    child_dict[key].append(val)
         result = {}
-        for key, val in defd.items():
+        for key, val in child_dict.items():
             #             print(f"{key}, {val[0]}, {type(val[0])}, {has_size}")
             if not is_list:
                 is_list = len(val) > 1 or (has_size and type(val[0]) is dict)
             if elem.tag not in result:
                 result[elem.tag] = {}
-            if is_list:
+            force_str = False
+            if plurals is not None and elem.tag in plurals and key in plurals[elem.tag]:
+                if type(plurals[elem.tag][key]) is list:
+                    is_list = True
+                elif type(plurals[elem.tag][key]) is str:
+                    force_str = True
+            if not force_str and is_list:
                 result[elem.tag][key] = val
             else:
                 result[elem.tag][key] = val[0]
