@@ -2048,6 +2048,15 @@ class UserGroups(Records, metaclass=Singleton):
     refresh_method = "get_user_groups"
     create_method = "create_user_group"
 
+    def stub_record(self):
+        name = self.random_value()
+        return {
+            self.singular_class.singular_string: {
+                "name": self.random_value(),
+                "is_smart": "false",
+            }
+        }
+
 
 class VPPAccount(Record):
     plural_class = "VPPAccounts"
@@ -2062,6 +2071,15 @@ class VPPAccounts(Records, metaclass=Singleton):
     plural_string = "vpp_accounts"
     refresh_method = "get_vpp_accounts"
     create_method = "create_vpp_account"
+
+    def stub_record(self):
+        name = self.random_value()
+        return {
+            self.singular_class.singular_string: {
+                "name": self.random_value(),
+                "service_token": "eyJvcmdOYWadveaz40d2FyZSIsImV4cERhdGUiOiIyMDE3LTA5LTEzVDA5OjQ5OjA5LTA3MDAiLCJ0b2tlbiI6Ik5yVUtPK1RXeityUXQyWFpIeENtd0xxby8ydUFmSFU1NW40V1FTZU8wR1E5eFh4UUZTckVJQjlzbGdYei95WkpaeVZ3SklJbW0rWEhJdGtKM1BEZGRRPT0ifQ==",
+            }
+        }
 
 
 class VPPAssignment(Record):
@@ -2078,6 +2096,17 @@ class VPPAssignments(Records, metaclass=Singleton):
     refresh_method = "get_vpp_assignments"
     create_method = "create_vpp_assignment"
 
+    def stub_record(self):
+        name = self.random_value()
+        return {
+            self.singular_class.singular_string: {
+                "general": {
+                    "name": self.random_value(),
+                    "vpp_admin_account_id": "",
+                }
+            }
+        }
+
 
 class VPPInvitation(Record):
     plural_class = "VPPInvitations"
@@ -2093,6 +2122,19 @@ class VPPInvitations(Records, metaclass=Singleton):
     refresh_method = "get_vpp_invitations"
     create_method = "create_vpp_invitation"
 
+    def stub_record(self):
+        name = self.random_value()
+        return {
+            self.singular_class.singular_string: {
+                "general": {
+                    "name": self.random_value(),
+                    "vpp_account": {
+                        "id": "",
+                    }
+                }
+            }
+        }
+
 
 class WebHook(Record):
     plural_class = "WebHooks"
@@ -2107,6 +2149,16 @@ class WebHooks(Records, metaclass=Singleton):
     plural_string = "webhooks"
     refresh_method = "get_webhooks"
     create_method = "create_webhook"
+
+    def stub_record(self):
+        name = self.random_value()
+        return {
+            self.singular_class.singular_string: {
+                "event": "ComputerAdded",
+                "name": self.random_value(),
+                "url": "http://example.com",
+            }
+        }
 
 
 def jamf_records(cls, name="", exclude=()):
