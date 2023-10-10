@@ -39,6 +39,7 @@ class Server:
                 "No jamf hostname or credentials could be found."
             )
         self.classic = None
+        self.records = records
         try:
             self.classic = Classic(
                 self.config.hostname, self.config.username, self.config.password
@@ -52,5 +53,4 @@ class Server:
         except AuthResponseWasNotValid:
             print("Some error for " + self.config.hostname)
             exit()
-        records.set_classic(self.classic)
-        self.records = records
+        self.records.set_classic(self.classic)
