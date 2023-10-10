@@ -1119,6 +1119,7 @@ class MobileDeviceConfigurationProfile(Record):
     refresh_method = "get_mobile_device_configuration_profile"
     delete_method = "delete_mobile_device_configuration_profile"
     update_method = "update_mobile_device_configuration_profile"
+    name_path = "general/name"
 
 
 class MobileDeviceConfigurationProfiles(Records, metaclass=Singleton):
@@ -1141,6 +1142,7 @@ class MobileDeviceEnrollmentProfile(Record):
     refresh_method = "get_mobile_device_enrollment_profile"
     delete_method = "delete_mobile_device_enrollment_profile"
     update_method = "update_mobile_device_enrollment_profile"
+    name_path = "general/name"
 
 
 class MobileDeviceEnrollmentProfiles(Records, metaclass=Singleton):
@@ -1999,7 +2001,7 @@ class SoftwareUpdateServers(Records, metaclass=Singleton):
     singular_class = SoftwareUpdateServer
     plural_string = "software_update_servers"
     refresh_method = "get_software_update_servers"
-    create_method = "create_update_software_server"
+    create_method = "create_software_update_server"
 
 
 class User(Record):
@@ -2022,7 +2024,7 @@ class UserExtensionAttribute(Record):
     plural_class = "UserExtensionAttributes"
     singular_string = "user_extension_attribute"
     refresh_method = "get_user_extension_attribute"
-    delete_method = "delete_computer_group"
+    delete_method = "delete_user_extension_attribute"
     update_method = "update_user_extension_attribute"
 
 
@@ -2056,6 +2058,16 @@ class UserGroups(Records, metaclass=Singleton):
                 "is_smart": "false",
             }
         }
+
+    def create_override(self, data, data_array=None, data_dict=None):
+        result = getattr(self.classic, self.create_method)(data)
+        if self.debug:
+            print(result)
+        newdata = convert.xml_to_dict(result)
+        if "smart_user_group" in newdata:
+            return newdata["smart_user_group"]["id"]
+        elif "static_user_group" in newdata:
+            return newdata["static_user_group"]["id"]
 
 
 class VPPAccount(Record):
