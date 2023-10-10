@@ -1324,19 +1324,18 @@ class Package(Record):
 
     def refresh_patchsoftwaretitles(self, related, patchsoftwaretitles_definitions):
         for jamf_record in jamf_records(PatchSoftwareTitles):
-            pkgs = jamf_record.get_path("versions/version/package")
-            versions = jamf_record.get_path("versions/version/software_version")
+            pkgs = jamf_record.get_path("versions/version")
             if pkgs:
-                for ii, pkg in enumerate(pkgs):
-                    if pkg is None:
+                for ii, pkg_hash in enumerate(pkgs):
+                    if pkg_hash['package'] is None:
                         continue
                     if not str(jamf_record.id) in patchsoftwaretitles_definitions:
                         patchsoftwaretitles_definitions[str(jamf_record.id)] = {}
                     patchsoftwaretitles_definitions[str(jamf_record.id)][
-                        versions[ii]
-                    ] = pkg
+                        pkg_hash['software_version']
+                    ] = pkg_hash['package']
                     temp = related.setdefault(
-                        int(pkg["id"]), {"PatchSoftwareTitles": []}
+                        int(pkg_hash["package"]["id"]), {"PatchSoftwareTitles": []}
                     )
                     temp.setdefault("PatchSoftwareTitles", []).append(jamf_record)
 
