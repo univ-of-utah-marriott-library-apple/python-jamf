@@ -1,2 +1,3 @@
 requests==2.31.0
 keyring>=23.0.0
+jps_api_wrapper>=1.0.6

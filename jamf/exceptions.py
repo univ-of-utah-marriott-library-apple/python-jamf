@@ -18,7 +18,8 @@ import html.parser
 class Error(Exception):
     """just passing through"""
 
-    pass
+    def __init__(self, message=None):
+        self.message = message
 
 
 class JamfConfigError(Error):
@@ -31,6 +32,10 @@ class JamfNoConnectionError(Error):
 
 class JamfRecordNotFound(Error):
     """Record not found"""
+
+
+class JamfRecordInvalidPath(Error):
+    """Record does not contain the path"""
 
 
 class JamfConnectionError(Error):
@@ -53,6 +58,14 @@ class JamfConnectionError(Error):
 
 class JamfAuthenticationError(JamfConnectionError):
     """Error connecting to the server"""
+
+
+class JamfUnknownClass(Error):
+    """Error, unkwown class"""
+
+
+class JamfAPISurprise(Error):
+    """Error, unknown class"""
 
 
 # pylint: disable=super-init-not-called

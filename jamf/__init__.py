@@ -10,3 +10,4 @@ from . import convert, package, version
 from .admin import JamfAdmin as Admin
 from .api import API
 from .records import *
+from .server import Server

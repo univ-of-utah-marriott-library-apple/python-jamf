@@ -8,15 +8,13 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-10.15, macos-11 ]
-        python-version: [ '3.7', '3.8', '3.9', 'pypy-3.7' ]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12', 'pypy-3.9', 'pypy-3.10' ]
     name: Build on ${{ matrix.os }} using ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Initialize Python 3.7
-        uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -32,24 +30,10 @@ jobs:
           # exit-zero treats all errors as warnings.
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Run Unit Tests
-        run: python -m unittest discover -s tests -p '*_test.py'
+        run: |
+          python -m unittest discover -s tests -p '*_test.py'
+          python tests/test_records.py
         env:
           JAMF_HOSTNAME: ${{ secrets.JAMF_HOSTNAME }}
           JAMF_USERNAME: ${{ secrets.JAMF_USERNAME }}
           JAMF_PASSWORD: ${{ secrets.JAMF_PASSWORD }}
-  codeql:
-    name: Run CodeQL
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Initialize Python 3.7
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v1
-        with:
-          languages: python
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v1

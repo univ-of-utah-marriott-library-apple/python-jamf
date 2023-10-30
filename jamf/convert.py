@@ -21,30 +21,43 @@ class Error(Exception):
     pass
 
 
-def etree_to_dict(elem):
+def etree_to_dict(elem, plurals):
     """
     converts xml.cElementTree to python dict
     adapted from: https://stackoverflow.com/a/10077069/12020818
     removed attribute support
     """
     result = {elem.tag: None}
+    plurals2 = None
+    is_list = False
+    if plurals is not None and elem.tag in plurals:
+        if type(plurals[elem.tag]) is not list:
+            plurals2 = plurals[elem.tag]
     children = list(elem)
     if children:
-        defd = defaultdict(list)
+        child_dict = defaultdict(list)
         has_size = False
         for child in children:
             if child.tag == "size":
                 has_size = True
-            dct = etree_to_dict(child)
-            for key, val in dct.items():
-                defd[key].append(val)
+            converted = etree_to_dict(child, plurals2)
+            if converted != {"size": "0"}:
+                for key, val in converted.items():
+                    child_dict[key].append(val)
         result = {}
-        for key, val in defd.items():
+        for key, val in child_dict.items():
             #             print(f"{key}, {val[0]}, {type(val[0])}, {has_size}")
-            is_array = len(val) > 1 or (has_size and type(val[0]) is dict)
+            if not is_list:
+                is_list = len(val) > 1 or (has_size and type(val[0]) is dict)
             if elem.tag not in result:
                 result[elem.tag] = {}
-            if is_array:
+            force_str = False
+            if plurals is not None and elem.tag in plurals and key in plurals[elem.tag]:
+                if type(plurals[elem.tag][key]) is list:
+                    is_list = True
+                elif type(plurals[elem.tag][key]) is str:
+                    force_str = True
+            if not force_str and is_list:
                 result[elem.tag][key] = val
             else:
                 result[elem.tag][key] = val[0]
@@ -80,10 +93,10 @@ def dict_to_xml(data):
     return xml_str
 
 
-def xml_to_dict(xml_string):
+def xml_to_dict(xml_string, plurals=None):
     """
     Convert xml string to python dict
     :returns:  dict
     """
     root = ElementTree.XML(xml_string)
-    return etree_to_dict(root)
+    return etree_to_dict(root, plurals)

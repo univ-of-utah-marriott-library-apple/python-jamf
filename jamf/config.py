@@ -192,4 +192,6 @@ def prompt_hostname():
         hostname = input("Hostname (don't forget https:// and :8443): ")
         if hostname.startswith("https://") or hostname.startswith("http://"):
             valid = True
+    while hostname[-1] == "/":
+        hostname = hostname[:-1]
     return hostname
