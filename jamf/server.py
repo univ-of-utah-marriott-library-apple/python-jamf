@@ -21,6 +21,7 @@ class Server:
         username=None,
         password=None,
         prompt=False,
+        debug=False,
     ):
         """ """
         self.config = config_obj or config.Config(
@@ -39,6 +40,7 @@ class Server:
                 "No jamf hostname or credentials could be found."
             )
         self.classic = None
+        self.debug = debug
         self.records = records
         try:
             self.classic = Classic(
@@ -54,3 +56,4 @@ class Server:
             print("Some error for " + self.config.hostname)
             exit()
         self.records.set_classic(self.classic)
+        self.records.set_debug(debug)

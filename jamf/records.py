@@ -2219,3 +2219,7 @@ def categories(name="", exclude=()):
 def set_classic(classic):
     Record.classic = classic
     Records.classic = classic
+
+def set_debug(debug):
+    Record.debug = debug
+    Records.debug = debug
