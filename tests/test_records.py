@@ -2,8 +2,9 @@
 
 # https://developer.jamf.com/jamf-pro/
 
-from pprint import pprint
 from os import environ
+from pprint import pprint
+
 from jamf import server
 
 HOSTNAME = "http://localhost"
@@ -49,12 +50,10 @@ valid_records = (
     "MobileDeviceConfigurationProfiles",
     "MobileDeviceEnrollmentProfiles",
     "WebHooks",
-
     ######################################################################################
     # Requires setup
     "PatchPolicies",
     "PatchSoftwareTitles",
-
     ######################################################################################
     # Who knows
     # "BYOProfiles",
@@ -90,8 +89,10 @@ def get_creds():
         password = PASSWORD
     return (hostname, username, password)
 
+
 hostname, username, password = get_creds()
 jps = server.Server(debug=True, hostname=hostname, username=username, password=password)
+
 
 def print_one(item):
     # Print one

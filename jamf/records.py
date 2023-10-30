@@ -23,8 +23,6 @@ __date__ = "2020-09-21"
 __version__ = "0.4.6"
 
 
-from pprint import pprint
-from sys import stderr
 import copy
 import json
 import logging
@@ -33,13 +31,20 @@ import random
 import re
 import string
 import warnings
-
-from . import convert
-from .exceptions import JamfAPISurprise, JamfRecordNotFound, JamfUnknownClass, JamfRecordInvalidPath
+from pprint import pprint
+from sys import stderr
 
 from jps_api_wrapper.classic import Classic
 from jps_api_wrapper.pro import Pro
 from jps_api_wrapper.request_builder import RequestConflict
+
+from . import convert
+from .exceptions import (
+    JamfAPISurprise,
+    JamfRecordInvalidPath,
+    JamfRecordNotFound,
+    JamfUnknownClass,
+)
 
 __all__ = (
     "AdvancedComputerSearches",
@@ -509,7 +514,7 @@ class Records:
         elif mode == "sn":
             return "".join(
                 random.choices(string.ascii_uppercase, k=1)
-                + random.choices(string.ascii_uppercase+string.digits, k=11)
+                + random.choices(string.ascii_uppercase + string.digits, k=11)
             )
 
     def stub_record(self):
@@ -1336,13 +1341,13 @@ class Package(Record):
             pkgs = jamf_record.get_path("versions/version")
             if pkgs:
                 for ii, pkg_hash in enumerate(pkgs):
-                    if pkg_hash['package'] is None:
+                    if pkg_hash["package"] is None:
                         continue
                     if not str(jamf_record.id) in patchsoftwaretitles_definitions:
                         patchsoftwaretitles_definitions[str(jamf_record.id)] = {}
                     patchsoftwaretitles_definitions[str(jamf_record.id)][
-                        pkg_hash['software_version']
-                    ] = pkg_hash['package']
+                        pkg_hash["software_version"]
+                    ] = pkg_hash["package"]
                     temp = related.setdefault(
                         int(pkg_hash["package"]["id"]), {"PatchSoftwareTitles": []}
                     )
@@ -1566,13 +1571,7 @@ class PatchSoftwareTitle(Record):
     refresh_method = "get_patch_software_title"
     delete_method = "delete_patch_software_title"
     update_method = "update_patch_software_title"
-    plurals = {
-        "patch_software_title": {
-            "versions": {
-                "version": []
-            }
-        }
-    }
+    plurals = {"patch_software_title": {"versions": {"version": []}}}
 
     def packages_print_during(self):
         print(self.name)
@@ -2157,7 +2156,7 @@ class VPPInvitations(Records, metaclass=Singleton):
                     "name": self.random_value(),
                     "vpp_account": {
                         "id": "",
-                    }
+                    },
                 }
             }
         }
@@ -2219,6 +2218,7 @@ def categories(name="", exclude=()):
 def set_classic(classic):
     Record.classic = classic
     Records.classic = classic
+
 
 def set_debug(debug):
     Record.debug = debug

@@ -41,7 +41,7 @@ def etree_to_dict(elem, plurals):
             if child.tag == "size":
                 has_size = True
             converted = etree_to_dict(child, plurals2)
-            if converted != {'size': '0'}:
+            if converted != {"size": "0"}:
                 for key, val in converted.items():
                     child_dict[key].append(val)
         result = {}

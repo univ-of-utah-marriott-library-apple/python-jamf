@@ -1,9 +1,9 @@
-from jps_api_wrapper.classic import Classic
 from jamf_auth import (
-    JamfAuthException,
     AuthResponseConnectionError,
     AuthResponseWasNotValid,
+    JamfAuthException,
 )
+from jps_api_wrapper.classic import Classic
 
 from . import config, exceptions, records
 
