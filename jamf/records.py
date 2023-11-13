@@ -1400,7 +1400,7 @@ class Package(Record):
                             temp.setdefault("ComputerGroups", []).append(jamf_record)
                         else:
                             stderr.write(
-                                f"Warning {jamf_record.name} specifies non-existant package: {pkg}"
+                                f"Warning {jamf_record.name} specifies non-existant package: {pkg}\n"
                             )
 
     def refresh_related(self):
