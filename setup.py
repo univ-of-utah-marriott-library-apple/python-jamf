@@ -1,7 +1,7 @@
 import os
 import re
 import subprocess
-import re
+
 import setuptools
 
 jamf_version = (
