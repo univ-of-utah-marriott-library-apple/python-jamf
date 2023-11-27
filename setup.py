@@ -1,6 +1,6 @@
 import os
 import subprocess
-
+import re
 import setuptools
 
 jamf_version = (
@@ -8,12 +8,23 @@ jamf_version = (
     .stdout.decode("utf-8")
     .strip()
 )
-# assert "." in jamf_version
 
-assert os.path.isfile("jamf/version.py")
+try:
+    jamf_version = re.match("^[^-]*", jamf_version).group(0)
+except:
+    print("No version found")
+
+#print(jamf_version.fullmatch)
+
+print(jamf_version)
+
+# assert "." in jamf_version
+assert os.path.isfile("python_jamf/version.py")
 if jamf_version != "":
-    with open("jamf/VERSION", "w", encoding="utf-8") as fh:
+    with open("python_jamf/VERSION", "w", encoding="utf-8") as fh:
         fh.write(f"{jamf_version}\n")
+
+    print(jamf_version)
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -29,7 +40,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/univ-of-utah-marriott-library-apple/python-jamf",
     packages=setuptools.find_packages(),
-    package_data={"jamf": ["*.json", "VERSION"]},
+    package_data={"python_jamf": ["*.json", "VERSION"]},
     include_package_data=True,
     entry_points={"console_scripts": ["conf-python-jamf=jamf.setconfig:main"]},
     classifiers=[
