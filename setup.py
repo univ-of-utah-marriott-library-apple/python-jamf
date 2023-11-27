@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import re
 import setuptools
@@ -13,8 +14,6 @@ try:
     jamf_version = re.match("^[^-]*", jamf_version).group(0)
 except:
     print("No version found")
-
-#print(jamf_version.fullmatch)
 
 print(jamf_version)
 
