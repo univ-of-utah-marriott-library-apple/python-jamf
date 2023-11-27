@@ -1,6 +1,7 @@
 import os
-import subprocess
 import re
+import subprocess
+
 import setuptools
 
 jamf_version = (
@@ -14,7 +15,7 @@ try:
 except:
     print("No version found")
 
-#print(jamf_version.fullmatch)
+# print(jamf_version.fullmatch)
 
 print(jamf_version)
 
