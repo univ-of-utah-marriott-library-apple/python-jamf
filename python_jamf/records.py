@@ -202,6 +202,7 @@ class Record:
             if isinstance(self._data, dict):
                 if hasattr(self, "changed_data"):
                     data_copy = self.save_override(self.changed_data)
+                    del self.changed_data
                 else:
                     data_copy = self.save_override(self._data)
                 newdata = {self.singular_string: data_copy}
