@@ -23,20 +23,13 @@ __date__ = "2020-09-21"
 __version__ = "0.4.6"
 
 
-import copy
-import json
 import logging
-import os.path
 import random
 import re
 import string
 import warnings
 from pprint import pprint
 from sys import stderr
-
-from jps_api_wrapper.classic import Classic
-from jps_api_wrapper.pro import Pro
-from jps_api_wrapper.request_builder import RequestConflict
 
 from . import convert
 from .exceptions import (
@@ -200,7 +193,7 @@ class Record:
 
     def delete(self, refresh=True):
         if hasattr(self, "delete_method"):
-            results = getattr(self.classic, self.delete_method)(self.id)
+            getattr(self.classic, self.delete_method)(self.id)
             if refresh:
                 self.plural().refresh_records()
 
@@ -214,7 +207,7 @@ class Record:
                 newdata = {self.singular_string: data_copy}
                 newdata = convert.dict_to_xml(newdata)
                 newdata = newdata.encode("utf-8")
-            results = getattr(self.classic, self.update_method)(newdata, id=self.id)
+            getattr(self.classic, self.update_method)(newdata, id=self.id)
             self.refresh_data()
             self.name = self.get_data_name()
 
@@ -1081,7 +1074,7 @@ class MobileDeviceApplication(Record):
     def save_override(self, newdata):
         # For some reason creating a mobile device application wont save the
         # os_type, which is required! So if it's missing, just add it.
-        if not "os_type" in newdata["general"]:
+        if "os_type" not in newdata["general"]:
             newdata["general"]["os_type"] = "iOS"
         return newdata
 
@@ -1237,7 +1230,7 @@ class MobileDeviceProvisioningProfiles(Records, metaclass=Singleton):
         import base64
 
         uuid = self.random_value("uuid2")
-        payload = f"Your profile here"
+        payload = "Your profile here"
         return {
             self.singular_class.singular_string: {
                 "name": self.random_value(),
@@ -2065,7 +2058,6 @@ class UserGroups(Records, metaclass=Singleton):
     create_method = "create_user_group"
 
     def stub_record(self):
-        name = self.random_value()
         return {
             self.singular_class.singular_string: {
                 "name": self.random_value(),
@@ -2099,7 +2091,6 @@ class VPPAccounts(Records, metaclass=Singleton):
     create_method = "create_vpp_account"
 
     def stub_record(self):
-        name = self.random_value()
         return {
             self.singular_class.singular_string: {
                 "name": self.random_value(),
@@ -2123,7 +2114,6 @@ class VPPAssignments(Records, metaclass=Singleton):
     create_method = "create_vpp_assignment"
 
     def stub_record(self):
-        name = self.random_value()
         return {
             self.singular_class.singular_string: {
                 "general": {
@@ -2149,7 +2139,6 @@ class VPPInvitations(Records, metaclass=Singleton):
     create_method = "create_vpp_invitation"
 
     def stub_record(self):
-        name = self.random_value()
         return {
             self.singular_class.singular_string: {
                 "general": {
@@ -2177,7 +2166,6 @@ class WebHooks(Records, metaclass=Singleton):
     create_method = "create_webhook"
 
     def stub_record(self):
-        name = self.random_value()
         return {
             self.singular_class.singular_string: {
                 "event": "ComputerAdded",
