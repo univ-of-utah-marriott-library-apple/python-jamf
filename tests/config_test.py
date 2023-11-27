@@ -15,6 +15,7 @@ import unittest
 from os import path, remove
 
 import keyring
+
 from python_jamf.config import Config
 from python_jamf.exceptions import JamfConfigError
 
