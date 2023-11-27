@@ -74,7 +74,7 @@ def test(config_path):
     try:
         api = jamf.API(config_path=config_path)
     except jamf.exceptions.JamfConfigError:
-        sys.stderr.write(f"Could not read config preferences, have you set them yet?\n")
+        sys.stderr.write("Could not read config preferences, have you set them yet?\n")
         exit(1)
     try:
         print(api.get("accounts"))
@@ -87,7 +87,7 @@ def print_config(config_path):
     try:
         conf = jamf.config.Config(prompt=False, config_path=config_path)
     except jamf.exceptions.JamfConfigError:
-        sys.stderr.write(f"Could not read config preferences, have you set them yet?\n")
+        sys.stderr.write("Could not read config preferences, have you set them yet?\n")
         exit(1)
     print(conf.config_path)
     print(conf.hostname)

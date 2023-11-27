@@ -1679,7 +1679,6 @@ class PatchSoftwareTitles(Records, metaclass=Singleton):
     }
 
     def stub_record(self):
-        name = self.random_value()
         return {
             self.singular_class.singular_string: {
                 "name_id": "0C6",
