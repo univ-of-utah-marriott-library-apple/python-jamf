@@ -15,8 +15,8 @@ import unittest
 from os import path, remove
 
 import keyring
-from jamf.config import Config
-from jamf.exceptions import JamfConfigError
+from python_jamf.config import Config
+from python_jamf.exceptions import JamfConfigError
 
 TOKEN_KEY = "python-jamf-token"
 EXPIRE_KEY = "python-jamf-expires"
