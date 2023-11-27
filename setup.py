@@ -15,15 +15,10 @@ try:
 except:
     print("No version found")
 
-print(jamf_version)
-
-# assert "." in jamf_version
 assert os.path.isfile("python_jamf/version.py")
 if jamf_version != "":
     with open("python_jamf/VERSION", "w", encoding="utf-8") as fh:
         fh.write(f"{jamf_version}\n")
-
-    print(jamf_version)
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
