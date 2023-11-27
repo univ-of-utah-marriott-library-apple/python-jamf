@@ -14,7 +14,7 @@ import pathlib
 import shutil
 import unittest
 
-from jamf import package
+from python_jamf import package
 
 # location for temporary files created with tests
 LOCATION = pathlib.Path(__file__).parent

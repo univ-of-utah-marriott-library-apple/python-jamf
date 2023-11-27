@@ -4,7 +4,7 @@
 
 import unittest
 
-from jamf import convert
+from python_jamf import convert
 
 patchpolicies = """<?xml version="1.0" encoding="UTF-8"?>
 <patch_available_titles>

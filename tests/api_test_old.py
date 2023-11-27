@@ -16,7 +16,7 @@ import random
 import string
 import unittest
 
-from jamf import api, exceptions
+from python_jamf import api, exceptions
 
 HOSTNAME = "http://localhost"
 USERNAME = "python-jamf"

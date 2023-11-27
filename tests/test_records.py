@@ -5,7 +5,7 @@
 from os import environ
 from pprint import pprint
 
-from jamf import server
+from python_jamf import server
 
 HOSTNAME = "http://localhost"
 USERNAME = "python-jamf"
