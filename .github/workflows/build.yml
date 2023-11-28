@@ -32,7 +32,8 @@ jobs:
       - name: Run Unit Tests
         run: |
           python -m unittest discover -s tests -p '*_test.py'
-          python tests/test_records.py
+          cp tests/test_records.py .
+          python test_records.py
         env:
           JAMF_HOSTNAME: ${{ secrets.JAMF_HOSTNAME }}
           JAMF_USERNAME: ${{ secrets.JAMF_USERNAME }}
