@@ -97,7 +97,7 @@ jps = server.Server(debug=True, hostname=hostname, username=username, password=p
 
 def print_one(item):
     # Print one
-    sleep 1;
+    sleep(1)
     print("---------------")
     print(f"Print one - {item}")
     pprint(item)
