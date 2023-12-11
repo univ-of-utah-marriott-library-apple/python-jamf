@@ -8,8 +8,8 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ macos-latest ]
-        python-version: [ '3.12', ]
+        os: [ ubuntu-latest, macos-latest ]
+        python-version: [ '3.8', '3.12', 'pypy-3.10' ]
     name: Build on ${{ matrix.os }} using ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     steps:
