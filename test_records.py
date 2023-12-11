@@ -141,7 +141,7 @@ def print_all(objType):
         pprint(item)
         # Check if item contains the "data" attribute
         if hasattr(item, "data"):
-        sleep(1)
+            sleep(1)
             pprint(item.data)
 
 
