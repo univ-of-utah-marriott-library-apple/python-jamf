@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
-## [0.9.0] -- 2023-11-06
+## [0.9.0] -- 2023-12-11
 
 The biggest change is renaming jamf to python_jamf.
 The second biggest change is switching from api.py to jps_api_wrapper (https://pypi.org/project/jps-api-wrapper/).
