@@ -12,6 +12,8 @@ once it reaches 1.0.
 The biggest change is renaming jamf to python_jamf.
 The second biggest change is switching from api.py to jps_api_wrapper (https://pypi.org/project/jps-api-wrapper/).
 
+**Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.8.3...0.9.0
+
 General
 
 ### Changed
