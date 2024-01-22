@@ -72,8 +72,8 @@ class Parser:
 
 def test(config_path):
     try:
-        api = jamf.API(config_path=config_path)
-    except jamf.exceptions.JamfConfigError:
+        api = python_jamf.API(config_path=config_path)
+    except python_jamf.exceptions.JamfConfigError:
         sys.stderr.write("Could not read config preferences, have you set them yet?\n")
         exit(1)
     try:
@@ -86,7 +86,7 @@ def test(config_path):
 def print_config(config_path):
     try:
         conf = python_jamf.config.Config(prompt=False, config_path=config_path)
-    except jamf.exceptions.JamfConfigError:
+    except python_jamf.exceptions.JamfConfigError:
         sys.stderr.write("Could not read config preferences, have you set them yet?\n")
         exit(1)
     print(conf.config_path)
@@ -99,7 +99,7 @@ def print_config(config_path):
 
 
 def revoke_token(config_path):
-    api = jamf.API(config_path=config_path)
+    api = python_jamf.API(config_path=config_path)
     api.revoke_token()
 
 
