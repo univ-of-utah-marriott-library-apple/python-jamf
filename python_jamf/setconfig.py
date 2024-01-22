@@ -25,9 +25,9 @@ class Parser:
     def __init__(self):
         myplatform = platform.system()
         if myplatform == "Darwin":
-            default_pref = jamf.config.MACOS_PREFS_TILDA
+            default_pref = python_jamf.config.MACOS_PREFS_TILDA
         elif myplatform == "Linux":
-            default_pref = jamf.config.LINUX_PREFS_TILDA
+            default_pref = python_jamf.config.LINUX_PREFS_TILDA
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument(
             "-H", "--hostname", help="specify hostname (default: prompt)"
@@ -85,7 +85,7 @@ def test(config_path):
 
 def print_config(config_path):
     try:
-        conf = jamf.config.Config(prompt=False, config_path=config_path)
+        conf = python_jamf.config.Config(prompt=False, config_path=config_path)
     except jamf.exceptions.JamfConfigError:
         sys.stderr.write("Could not read config preferences, have you set them yet?\n")
         exit(1)
@@ -107,7 +107,7 @@ def interactive(args, config_path):
     if args.hostname:
         hostname = args.hostname
     else:
-        hostname = jamf.config.prompt_hostname()
+        hostname = python_jamf.config.prompt_hostname()
     if args.user:
         user = args.user
     else:
@@ -116,7 +116,7 @@ def interactive(args, config_path):
         passwd = args.passwd
     else:
         passwd = getpass.getpass()
-    conf = jamf.config.Config(
+    conf = python_jamf.config.Config(
         hostname=hostname,
         username=user,
         password=passwd,
@@ -136,11 +136,11 @@ def setconfig(argv):
     else:
         myplatform = platform.system()
         if myplatform == "Darwin":
-            default_pref = jamf.config.MACOS_PREFS_TILDA
+            default_pref = python_jamf.config.MACOS_PREFS_TILDA
         elif myplatform == "Linux":
-            default_pref = jamf.config.LINUX_PREFS_TILDA
+            default_pref = python_jamf.config.LINUX_PREFS_TILDA
         config_path = default_pref
-    config_path = jamf.config.resolve_config_path(config_path)
+    config_path = python_jamf.config.resolve_config_path(config_path)
     if args.test:
         test(config_path)
     elif args.print:
