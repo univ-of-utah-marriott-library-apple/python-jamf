@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
+## [0.9.1] -- 2024-01-22
+
+**Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.0...0.9.1
+
+### Fixed
+- setconfig.py: renamed jamf to python_jamf
+- GitHub Action: switched it to python 11 instead of 12
+- records.py: jctl osxconfigurationprofiles -l generated error. Fixed it.
+
 ## [0.9.0] -- 2023-12-11
 
 The biggest change is renaming jamf to python_jamf.
