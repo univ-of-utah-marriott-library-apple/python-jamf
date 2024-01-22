@@ -1279,7 +1279,7 @@ class NetworkSegments(Records, metaclass=Singleton):
 class OSXConfigurationProfile(Record):
     plural_class = "OSXConfigurationProfiles"
     singular_string = "os_x_configuration_profile"
-    #singular_string = "osx_configuration_profile" error: `jctl osxconfigurationprofiles -l`
+    # singular_string = "osx_configuration_profile" error: `jctl osxconfigurationprofiles -l`
     refresh_method = "get_osx_configuration_profile"
     delete_method = "delete_osx_configuration_profile"
     update_method = "update_osx_configuration_profile"
