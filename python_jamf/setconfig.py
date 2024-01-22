@@ -18,7 +18,7 @@ import logging
 import platform
 import sys
 
-import jamf
+import python_jamf
 
 
 class Parser:
