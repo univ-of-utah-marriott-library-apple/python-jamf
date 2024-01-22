@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ macos-latest ]
-        python-version: [ '3.12', ]
+        python-version: [ '3.11', ]
     name: Build on ${{ matrix.os }} using ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     steps:
