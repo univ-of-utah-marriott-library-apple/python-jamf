@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
+## [0.9.3] -- 2024-01-23
+
+**Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.2...0.9.3
+
+### Added
+- exceptions.py: JamfRecordInvalidPath prints bad path
+- records.py: prints bad path
+
 ## [0.9.2] -- 2024-01-23
 
 **Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.1...0.9.2

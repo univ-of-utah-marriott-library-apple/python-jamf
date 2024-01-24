@@ -9,7 +9,7 @@ __author__ = "James Reynolds"
 __email__ = "reynolds@biology.utah.edu"
 __copyright__ = "Copyright (c) 2022 University of Utah"
 __license__ = "MIT"
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 import html.parser
 
