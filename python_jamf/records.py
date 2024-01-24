@@ -1381,8 +1381,8 @@ class Package(Record):
             except JamfRecordNotFound:
                 criterions = None
             for criteria in criterions:
-                if criteria['name'] == 'Packages Installed By Casper':
-                    pkg = criteria['value']
+                if criteria["name"] == "Packages Installed By Casper":
+                    pkg = criteria["value"]
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
                         temp1 = self.plural().recordsWithName(pkg)
                         if len(temp1) > 1:
@@ -1398,7 +1398,6 @@ class Package(Record):
                             stderr.write(
                                 f"Warning {jamf_record.name} specifies non-existant package: {pkg}\n"
                             )
-
 
     def refresh_related(self):
         related = {}
