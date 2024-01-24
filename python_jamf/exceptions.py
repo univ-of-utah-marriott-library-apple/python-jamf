@@ -37,6 +37,12 @@ class JamfRecordNotFound(Error):
 class JamfRecordInvalidPath(Error):
     """Record does not contain the path"""
 
+    def __init__(self, message=None):
+        self.message = message
+
+    def __str__(self):
+        return f"{self.message}"
+
 
 class JamfConnectionError(Error):
     """Error connecting to the server"""

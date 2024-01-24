@@ -250,7 +250,7 @@ class Record:
                         path, placeholder[path_part], idx + 1
                     )
             else:
-                raise JamfRecordInvalidPath
+                raise JamfRecordInvalidPath(f"Path not found {path} ('{path_part}' missing)")
         elif type(placeholder) is list:
             # I'm not sure this is the best way to handle arrays...
             result = []
