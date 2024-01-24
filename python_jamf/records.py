@@ -1377,11 +1377,12 @@ class Package(Record):
     def refresh_groups(self, related):
         for jamf_record in jamf_records(ComputerGroups):
             try:
-                criterions = jamf_record.get_path("criteria/criterion/value")
+                criterions = jamf_record.get_path("criteria/criterion")
             except JamfRecordNotFound:
                 criterions = None
-            if criterions:
-                for pkg in criterions:
+            for criteria in criterions:
+                if criteria['name'] == 'Packages Installed By Casper':
+                    pkg = criteria['value']
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
                         temp1 = self.plural().recordsWithName(pkg)
                         if len(temp1) > 1:
@@ -1397,6 +1398,7 @@ class Package(Record):
                             stderr.write(
                                 f"Warning {jamf_record.name} specifies non-existant package: {pkg}\n"
                             )
+
 
     def refresh_related(self):
         related = {}
