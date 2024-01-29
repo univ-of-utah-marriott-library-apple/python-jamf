@@ -36,7 +36,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     package_data={"python_jamf": ["*.json", "VERSION"]},
     include_package_data=True,
-    entry_points={"console_scripts": ["conf-python-jamf=jamf.setconfig:main"]},
+    entry_points={"console_scripts": ["conf-python-jamf=python_jamf.setconfig:main"]},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
