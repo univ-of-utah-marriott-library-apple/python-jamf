@@ -1380,7 +1380,7 @@ class Package(Record):
         for jamf_record in jamf_records(ComputerGroups):
             try:
                 criterions = jamf_record.get_path("criteria/criterion")
-            except JamfRecordNotFound:
+            except (JamfRecordNotFound, JamfRecordInvalidPath):
                 criterions = None
             for criteria in criterions:
                 if criteria["name"] == "Packages Installed By Casper":
