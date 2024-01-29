@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Tests for jamf.config
+Tests for python_jamf.config
 """
 
 __author__ = "James Reynolds"
