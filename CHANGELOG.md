@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
-## [0.9.4] -- 2024-01-23
+## [0.9.4] -- 2024-01-29
 
 **Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.3...0.9.4
 
