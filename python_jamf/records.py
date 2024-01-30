@@ -1381,7 +1381,7 @@ class Package(Record):
             try:
                 criterions = jamf_record.get_path("criteria/criterion")
             except (JamfRecordNotFound, JamfRecordInvalidPath):
-                criterions = None
+                criterions = []
             for criteria in criterions:
                 if criteria["name"] == "Packages Installed By Casper":
                     pkg = criteria["value"]
