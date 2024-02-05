@@ -184,7 +184,7 @@ class API(metaclass=Singleton):
         self.session.headers.update({"Accept": "application/xml"})
         url = f"{self.hostname}/JSSResource/{endpoint}"
         response = self._submit_request(self.session, method, url, data, raw)
-        convert_data = convert.xml_to_dict(response.text,plurals)
+        convert_data = convert.xml_to_dict(response.text, plurals)
         self.log.debug("converted data: %s", convert_data)
         return convert_data
 
