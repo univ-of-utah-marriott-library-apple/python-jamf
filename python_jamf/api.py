@@ -179,16 +179,16 @@ class API(metaclass=Singleton):
         # return successful response data (usually: {'id': jssid})
         return response
 
-    def _crud(self, method, endpoint, data=None, raw=False):
+    def _crud(self, method, endpoint, data=None, raw=False, plurals=None):
         self._set_session_auth()
         self.session.headers.update({"Accept": "application/xml"})
         url = f"{self.hostname}/JSSResource/{endpoint}"
         response = self._submit_request(self.session, method, url, data, raw)
-        convert_data = convert.xml_to_dict(response.text)
+        convert_data = convert.xml_to_dict(response.text,plurals)
         self.log.debug("converted data: %s", convert_data)
         return convert_data
 
-    def get(self, endpoint, raw=False):
+    def get(self, endpoint, raw=False, plurals=None):
         """
         Get JSS information
 
@@ -197,7 +197,7 @@ class API(metaclass=Singleton):
 
         :returns <dict|requests.Response>:
         """
-        return self._crud("get", endpoint, None, raw)
+        return self._crud("get", endpoint, None, raw, plurals=plurals)
 
     def post(self, endpoint, data, raw=False):
         """
