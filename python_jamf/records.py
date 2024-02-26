@@ -1312,6 +1312,10 @@ class Package(Record):
     refresh_method = "get_package"
     delete_method = "delete_package"
     update_method = "update_package"
+    should_refresh_patchsoftwaretitles = True
+    should_refresh_patchpolicies = True
+    should_refresh_policies = True
+    should_refresh_groups = True
 
     def save_override(self, newdata):
         if "category" in newdata and newdata["category"] == "No category assigned":
@@ -1404,10 +1408,14 @@ class Package(Record):
     def refresh_related(self):
         related = {}
         patchsoftwaretitles_definitions = {}
-        self.refresh_patchsoftwaretitles(related, patchsoftwaretitles_definitions)
-        self.refresh_patchpolicies(related, patchsoftwaretitles_definitions)
-        self.refresh_policies(related)
-        self.refresh_groups(related)
+        if self.should_refresh_patchsoftwaretitles:
+            self.refresh_patchsoftwaretitles(related, patchsoftwaretitles_definitions)
+        if self.should_refresh_patchpolicies:
+            self.refresh_patchpolicies(related, patchsoftwaretitles_definitions)
+        if self.should_refresh_policies:
+            self.refresh_policies(related)
+        if self.should_refresh_groups:
+            self.refresh_groups(related)
         self.__class__._related = related
 
     @property
@@ -1428,15 +1436,15 @@ class Package(Record):
         if "Policies" in related:
             print("  Policies")
             for x in related["Policies"]:
-                print("    " + x)
+                print("    " + str(x))
         if "ComputerGroups" in related:
             print("  ComputerGroups")
             for x in related["ComputerGroups"]:
-                print("    " + x)
+                print("    " + str(x))
         if "PatchPolicies" in related:
             print("  PatchPolicies")
             for x in related["PatchPolicies"]:
-                print("    " + x)
+                print("    " + str(x))
         print()
 
 
