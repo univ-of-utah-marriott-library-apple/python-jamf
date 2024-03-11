@@ -537,9 +537,12 @@ class Records:
         if data is None:
             data = self.stub_record()
         elif isinstance(data, list):
+            # Data is an array, which means each item needs to be changed
+            # after the fact (I think)
             data_array = data
             data = self.stub_record()
         if isinstance(data, dict):
+            # Convert data to xml
             data_dict = data
             data = convert.dict_to_xml(data)
             data = data.encode("utf-8")
@@ -547,8 +550,9 @@ class Records:
         self.refresh_records()
         new_rec = self.recordWithId(new_id)
         if data_array is not None:
+            # When the data is an array, it means each item was passed in
+            # and needs to be changed after the fact.
             new_rec.set_data_name(data_array[0])
-            # add more here..
             new_rec.save()
         return new_rec
 
@@ -707,7 +711,10 @@ class Computers(Records, metaclass=Singleton):
     def stub_record(self):
         return {
             self.singular_class.singular_string: {
-                "general": {"name": self.random_value()}
+                "general": {
+                    "name": self.random_value(),
+                    "remote_management": {"managed": "true"},
+                }
             }
         }
 
