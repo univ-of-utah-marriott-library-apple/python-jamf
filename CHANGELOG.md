@@ -7,6 +7,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
+
+
+
+## [0.9.7] -- 2024-03-11
+
+**Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.6...0.9.7
+
+### Fixed
+- config.py: fixed the self.hostname 'fix' added to 0.9.6
+- records.py
+  - usage_print_during: fix print bug
+  - Add should_refresh_X to control behavior
+  - Computers.stub_record adds managed:true
+
 ## [0.9.6] -- 2024-02-05
 
 **Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.5...0.9.6
