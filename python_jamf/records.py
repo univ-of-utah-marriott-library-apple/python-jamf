@@ -514,7 +514,7 @@ class Records:
             )
 
     def stub_record(self):
-        return {self.singular_class.singular_string: {"name": self.random_value()}}
+        return {"name": self.random_value()}
 
     def delete(self, ids, feedback=False):
         if hasattr(self.singular_class, "delete_method"):
@@ -543,8 +543,8 @@ class Records:
             data = self.stub_record()
         if isinstance(data, dict):
             # Convert data to xml
-            data_dict = data
-            data = convert.dict_to_xml(data)
+            data_dict = {self.singular_class.singular_string: data}
+            data = convert.dict_to_xml(data_dict)
             data = data.encode("utf-8")
         new_id = self.create_override(data, data_array, data_dict)
         self.refresh_records()
@@ -710,11 +710,9 @@ class Computers(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "general": {
-                    "name": self.random_value(),
-                    "remote_management": {"managed": "true"},
-                }
+            "general": {
+                "name": self.random_value(),
+                "remote_management": {"managed": "true"},
             }
         }
 
@@ -778,10 +776,8 @@ class ComputerGroups(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "is_smart": True,
-                "name": self.random_value(),
-            }
+            "is_smart": True,
+            "name": self.random_value(),
         }
 
 
@@ -829,10 +825,8 @@ class DirectoryBindings(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "name": self.random_value(),
-                "type": "Active Directory",
-            }
+            "name": self.random_value(),
+            "type": "Active Directory",
         }
 
 
@@ -867,14 +861,12 @@ class DistributionPoints(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "name": self.random_value(),
-                "read_only_password_sha256": "********************",
-                "read_only_username": self.random_value(),
-                "read_write_password_sha256": "********************",
-                "read_write_username": self.random_value(),
-                "share_name": self.random_value(),
-            }
+            "name": self.random_value(),
+            "read_only_password_sha256": "********************",
+            "read_only_username": self.random_value(),
+            "read_write_password_sha256": "********************",
+            "read_write_username": self.random_value(),
+            "share_name": self.random_value(),
         }
 
     def create_override(self, data, data_array=None, data_dict=None):
@@ -900,11 +892,9 @@ class DockItems(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "name": self.random_value(),
-                "path": "/",
-                "type": "Folder",
-            }
+            "name": self.random_value(),
+            "path": "/",
+            "type": "Folder",
         }
 
 
@@ -929,11 +919,7 @@ class Ebooks(Records, metaclass=Singleton):
     create_method = "create_ebook"
 
     def stub_record(self):
-        return {
-            self.singular_class.singular_string: {
-                "general": {"name": self.random_value()}
-            }
-        }
+        return {"general": {"name": self.random_value()}}
 
 
 class Ibeacon(Record):
@@ -952,10 +938,8 @@ class Ibeacons(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "name": self.random_value(),
-                "uuid": self.random_value("uuid"),
-            }
+            "name": self.random_value(),
+            "uuid": self.random_value("uuid"),
         }
 
 
@@ -980,11 +964,9 @@ class JSONWebTokenConfigurations(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "name": self.random_value(),
-                "encryption_key": self.random_value(),
-                "token_expiry": 1,
-            }
+            "name": self.random_value(),
+            "encryption_key": self.random_value(),
+            "token_expiry": 1,
         }
 
 
@@ -1020,13 +1002,11 @@ class MacApplications(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "general": {
-                    "name": self.random_value(),
-                    "version": self.random_value("semver"),
-                    "bundle_id": "edu.utah",
-                    "url": "https://apps.apple.com/us/app/fake-data/id123456789",
-                }
+            "general": {
+                "name": self.random_value(),
+                "version": self.random_value("semver"),
+                "bundle_id": "edu.utah",
+                "url": "https://apps.apple.com/us/app/fake-data/id123456789",
             }
         }
 
@@ -1063,12 +1043,10 @@ class MobileDevices(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "general": {
-                    "name": self.random_value(),
-                    "udid": self.random_value("uuid"),
-                    "serial_number": self.random_value("sn"),
-                }
+            "general": {
+                "name": self.random_value(),
+                "udid": self.random_value("uuid"),
+                "serial_number": self.random_value("sn"),
             }
         }
 
@@ -1097,13 +1075,11 @@ class MobileDeviceApplications(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "general": {
-                    "name": self.random_value(),
-                    "version": self.random_value("semver"),
-                    "bundle_id": "utah.edu",
-                    "os_type": "iOS",
-                }
+            "general": {
+                "name": self.random_value(),
+                "version": self.random_value("semver"),
+                "bundle_id": "utah.edu",
+                "os_type": "iOS",
             }
         }
 
@@ -1137,11 +1113,7 @@ class MobileDeviceConfigurationProfiles(Records, metaclass=Singleton):
     create_method = "create_mobile_device_configuration_profile"
 
     def stub_record(self):
-        return {
-            self.singular_class.singular_string: {
-                "general": {"name": self.random_value()}
-            }
-        }
+        return {"general": {"name": self.random_value()}}
 
 
 class MobileDeviceEnrollmentProfile(Record):
@@ -1170,11 +1142,7 @@ class MobileDeviceEnrollmentProfiles(Records, metaclass=Singleton):
     create_method = "create_mobile_device_enrollment_profile"
 
     def stub_record(self):
-        return {
-            self.singular_class.singular_string: {
-                "general": {"name": self.random_value()}
-            }
-        }
+        return {"general": {"name": self.random_value()}}
 
 
 class MobileDeviceExtensionAttribute(Record):
@@ -1211,10 +1179,8 @@ class MobileDeviceInvitations(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "id": 0,
-                "invitation_type": "USER_INITIATED_EMAIL",
-            }
+            "id": 0,
+            "invitation_type": "USER_INITIATED_EMAIL",
         }
 
     def create_override(self, data, data_array=None, data_dict=None):
@@ -1242,17 +1208,15 @@ class MobileDeviceProvisioningProfiles(Records, metaclass=Singleton):
         uuid = self.random_value("uuid2")
         payload = "Your profile here"
         return {
-            self.singular_class.singular_string: {
-                "name": self.random_value(),
-                "general": {
-                    "display_name": self.random_value(),
-                    "uuid": uuid,
-                    "profile": {
-                        "name": self.random_value(),
-                        "data": base64.b64encode(payload.encode("utf-8")),
-                    },
+            "name": self.random_value(),
+            "general": {
+                "display_name": self.random_value(),
+                "uuid": uuid,
+                "profile": {
+                    "name": self.random_value(),
+                    "data": base64.b64encode(payload.encode("utf-8")),
                 },
-            }
+            },
         }
 
     def create_override(self, data, data_array=None, data_dict=None):
@@ -1277,11 +1241,9 @@ class NetworkSegments(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "name": self.random_value(),
-                "ending_address": "10.0.0.255",
-                "starting_address": "10.0.0.1",
-            }
+            "name": self.random_value(),
+            "ending_address": "10.0.0.255",
+            "starting_address": "10.0.0.1",
         }
 
 
@@ -1468,7 +1430,7 @@ class Packages(Records, metaclass=Singleton):
 
     def stub_record(self):
         name = self.random_value()
-        return {self.singular_class.singular_string: {"filename": name, "name": name}}
+        return {"filename": name, "name": name}
 
 
 class PatchExternalSource(Record):
@@ -1557,12 +1519,10 @@ class PatchPolicies(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "general": {
-                    "name": self.random_value(),
-                },
-                "software_title_configuration_id": 1,
-            }
+            "general": {
+                "name": self.random_value(),
+            },
+            "software_title_configuration_id": 1,
         }
 
     def create_override(self, data, data_array=None, data_dict=None):
@@ -1699,10 +1659,8 @@ class PatchSoftwareTitles(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "name_id": "0C6",
-                "source_id": "1",
-            }
+            "name_id": "0C6",
+            "source_id": "1",
         }
 
 
@@ -1933,11 +1891,7 @@ class Policies(Records, metaclass=Singleton):
         print("\t".join(header))
 
     def stub_record(self):
-        return {
-            self.singular_class.singular_string: {
-                "general": {"name": self.random_value()}
-            }
-        }
+        return {"general": {"name": self.random_value()}}
 
 
 class Printer(Record):
@@ -2078,10 +2032,8 @@ class UserGroups(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "name": self.random_value(),
-                "is_smart": "false",
-            }
+            "name": self.random_value(),
+            "is_smart": "false",
         }
 
     def create_override(self, data, data_array=None, data_dict=None):
@@ -2111,10 +2063,8 @@ class VPPAccounts(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "name": self.random_value(),
-                "service_token": "eyJvcmdOYWadveaz40d2FyZSIsImV4cERhdGUiOiIyMDE3LTA5LTEzVDA5OjQ5OjA5LTA3MDAiLCJ0b2tlbiI6Ik5yVUtPK1RXeityUXQyWFpIeENtd0xxby8ydUFmSFU1NW40V1FTZU8wR1E5eFh4UUZTckVJQjlzbGdYei95WkpaeVZ3SklJbW0rWEhJdGtKM1BEZGRRPT0ifQ==",
-            }
+            "name": self.random_value(),
+            "service_token": "eyJvcmdOYWadveaz40d2FyZSIsImV4cERhdGUiOiIyMDE3LTA5LTEzVDA5OjQ5OjA5LTA3MDAiLCJ0b2tlbiI6Ik5yVUtPK1RXeityUXQyWFpIeENtd0xxby8ydUFmSFU1NW40V1FTZU8wR1E5eFh4UUZTckVJQjlzbGdYei95WkpaeVZ3SklJbW0rWEhJdGtKM1BEZGRRPT0ifQ==",
         }
 
 
@@ -2134,11 +2084,9 @@ class VPPAssignments(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "general": {
-                    "name": self.random_value(),
-                    "vpp_admin_account_id": "",
-                }
+            "general": {
+                "name": self.random_value(),
+                "vpp_admin_account_id": "",
             }
         }
 
@@ -2159,13 +2107,11 @@ class VPPInvitations(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "general": {
-                    "name": self.random_value(),
-                    "vpp_account": {
-                        "id": "",
-                    },
-                }
+            "general": {
+                "name": self.random_value(),
+                "vpp_account": {
+                    "id": "",
+                },
             }
         }
 
@@ -2186,11 +2132,9 @@ class WebHooks(Records, metaclass=Singleton):
 
     def stub_record(self):
         return {
-            self.singular_class.singular_string: {
-                "event": "ComputerAdded",
-                "name": self.random_value(),
-                "url": "http://example.com",
-            }
+            "event": "ComputerAdded",
+            "name": self.random_value(),
+            "url": "http://example.com",
         }
 
 
