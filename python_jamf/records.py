@@ -1772,7 +1772,10 @@ class Policy(Record):
         _text += "\t"
 
         # Packages
-        if self.data["package_configuration"]["packages"]["size"] != "0":
+        if (
+            "packages" in self.data["package_configuration"]
+            and self.data["package_configuration"]["packages"]["size"] != "0"
+        ):
             for a in self.force_array(
                 self.data["package_configuration"]["packages"], "package"
             ):
@@ -1780,7 +1783,7 @@ class Policy(Record):
         _text += "\t"
 
         # Printers
-        if self.data["printers"]["size"] != "0":
+        if "size" in self.data["printers"] and self.data["printers"]["size"] != "0":
             for a in self.force_array(self.data["printers"], "printer"):
                 _text += a["name"]
 
@@ -1788,7 +1791,7 @@ class Policy(Record):
         _text += "\t"
 
         # Scripts
-        if self.data["scripts"]["size"] != "0":
+        if "scripts" in self.data and self.data["scripts"]["size"] != "0":
             for a in self.force_array(self.data["scripts"], "script"):
                 _text += a["name"]
         _text += "\t"
@@ -1804,7 +1807,10 @@ class Policy(Record):
         ###############
 
         # Account Maintenance
-        if self.data["account_maintenance"]["accounts"]["size"] != "0":
+        if (
+            "accounts" in self.data["account_maintenance"]
+            and self.data["account_maintenance"]["accounts"]["size"] != "0"
+        ):
             for a in self.force_array(
                 self.data["account_maintenance"]["accounts"], "account"
             ):
@@ -1817,7 +1823,7 @@ class Policy(Record):
         _text += "\t"
 
         # Dock Items
-        if self.data["dock_items"]["size"] != "0":
+        if "dock_items" in self.data and self.data["dock_items"]["size"] != "0":
             _text += self.data["dock_items"]["size"]
         _text += "\t"
 
