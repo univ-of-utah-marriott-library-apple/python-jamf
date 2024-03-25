@@ -7,8 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
+## [0.9.8] -- 2024-03-25
 
+**Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.7...0.9.8
 
+### Fixed
+- records.py: auto-fill the self.singular_class.singular_string requirement for create method (required removing it from all sub_records)
+- records.py: policy subcommand spreadsheet: check for missing keys (jctl issue 37)
 
 ## [0.9.7] -- 2024-03-11
 
