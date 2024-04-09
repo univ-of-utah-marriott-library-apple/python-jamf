@@ -1941,8 +1941,7 @@ class Script(Record):
 
     def script_contents_print_during(self):
         try:
-            printme = self.get_path("script_contents")
-            print(printme[0])
+            print(self.get_path("script_contents"))
         except JamfRecordNotFound:
             printme = None
 
