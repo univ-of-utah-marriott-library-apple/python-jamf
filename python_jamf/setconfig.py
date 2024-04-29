@@ -102,13 +102,12 @@ def print_config(config_path):
         sys.stderr.write("Could not read config preferences, have you set them yet?\n")
         exit(1)
     print(conf.config_path)
-    auth_type = ""
     if conf.client:
-        print(f"API Client Authentication")
+        print("API Client Authentication")
         username_type = "Client ID"
         password_type = "Client Secret"
     else:
-        print(f"User Authentication")
+        print("User Authentication")
         username_type = "Username"
         password_type = "Password"
     print(f"Hostname: {conf.hostname}")
