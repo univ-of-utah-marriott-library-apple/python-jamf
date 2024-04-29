@@ -20,6 +20,7 @@ class Server:
         hostname=None,
         username=None,
         password=None,
+        client=None,
         prompt=False,
         debug=False,
     ):
@@ -29,12 +30,14 @@ class Server:
             hostname=hostname,
             username=username,
             password=password,
+            client=client,
             prompt=prompt,
         )
         if (
             not self.config.hostname
             and not self.config.username
             and not self.config.password
+            and not self.config.client
         ):
             raise exceptions.JamfConfigError(
                 "No jamf hostname or credentials could be found."
@@ -44,7 +47,7 @@ class Server:
         self.records = records
         try:
             self.classic = Classic(
-                self.config.hostname, self.config.username, self.config.password
+                self.config.hostname, self.config.username, self.config.password, client=self.config.client
             )
         except AuthResponseConnectionError:
             print("Could not connect to " + self.config.hostname)

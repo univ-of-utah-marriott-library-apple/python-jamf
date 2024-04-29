@@ -30,16 +30,19 @@ class Parser:
             default_pref = python_jamf.config.LINUX_PREFS_TILDA
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument(
-            "-H", "--hostname", help="specify hostname (default: prompt)"
+            "-H", "--hostname", help="Specify hostname (default: prompt)"
         )
         self.parser.add_argument(
-            "-u", "--user", help="specify username (default: prompt)"
+            "-u", "--user", help="Specify username/Client ID (default: prompt)"
         )
         self.parser.add_argument(
-            "-p", "--passwd", help="specify password (default: prompt)"
+            "-p", "--passwd", help="Specify password/Client secret (default: prompt)"
         )
         self.parser.add_argument(
             "-r", "--revoke-token", action="store_true", help="Revoke Bearer token"
+        )
+        self.parser.add_argument(
+            "-c", "--client", help="Use API Client Auth instead of user auth (yes|true|1 or no|false|0, default is ask)"
         )
         self.parser.add_argument(
             "-C",
@@ -47,13 +50,13 @@ class Parser:
             dest="path",
             metavar="PATH",
             default=default_pref,
-            help=f"specify config file (default {default_pref})",
+            help=f"Specify config file (default {default_pref})",
         )
         self.parser.add_argument(
             "-P",
             "--print",
             action="store_true",
-            help="print existing config profile (except password!)",
+            help="Print existing config profile (except password/client secret!)",
         )
         self.parser.add_argument(
             "-t",
@@ -67,17 +70,22 @@ class Parser:
         :param argv:    list of arguments to parse
         :returns:       argparse.NameSpace object
         """
-        return self.parser.parse_args(argv)
+        args = self.parser.parse_args(argv)
+        if args.client:
+            if args.client not in ["0", "no", "false", "1", "yes", "true"]:
+                sys.stderr.write("API Client Auth must be one of these vaules: yes, true, 1, no, false, or 0.\n")
+                exit(1)
+        return args
 
 
 def test(config_path):
     try:
-        api = python_jamf.API(config_path=config_path)
+        jps = python_jamf.server.Server(config_path=config_path)
     except python_jamf.exceptions.JamfConfigError:
         sys.stderr.write("Could not read config preferences, have you set them yet?\n")
         exit(1)
     try:
-        print(api.get("accounts"))
+        print(jps.classic.get_accounts())
         print("Connection successful")
     except SystemExit as error:
         print(f"Connection failed, check your settings\n{error}")
@@ -90,12 +98,21 @@ def print_config(config_path):
         sys.stderr.write("Could not read config preferences, have you set them yet?\n")
         exit(1)
     print(conf.config_path)
-    print(conf.hostname)
-    print(conf.username)
-    if conf.password:
-        print("Password is set")
+    auth_type = ""
+    if conf.client:
+        print(f"API Client Authentication")
+        username_type = "Client ID"
+        password_type = "Client Secret"
     else:
-        print("Password is not set")
+        print(f"User Authentication")
+        username_type = "Username"
+        password_type = "Password"
+    print(f"Hostname: {conf.hostname}")
+    print(f"{username_type}: {conf.username}")
+    if conf.password:
+        print(f"{password_type} is set")
+    else:
+        print(f"{password_type} is not set")
 
 
 def revoke_token(config_path):
@@ -108,18 +125,33 @@ def interactive(args, config_path):
         hostname = args.hostname
     else:
         hostname = python_jamf.config.prompt_hostname()
+    if args.client is not None:
+        if args.client in ["0", "no", "false"]:
+            client = False
+        if args.client in ["1", "yes", "true"]:
+            client = True
+    else:
+        client = python_jamf.config.prompt_userauth()
+    if client:
+        username_type = "Client ID"
+        password_type = "Client Secret"
+    else:
+        username_type = "Username"
+        password_type = "Password"
     if args.user:
         user = args.user
     else:
-        user = input("username: ")
+        user = input(f"{username_type}: ")
+
     if args.passwd:
         passwd = args.passwd
     else:
-        passwd = getpass.getpass()
+        passwd = getpass.getpass(prompt=f"{password_type}: ")
     conf = python_jamf.config.Config(
         hostname=hostname,
         username=user,
         password=passwd,
+        client=client,
         prompt=False,
         config_path=config_path,
     )

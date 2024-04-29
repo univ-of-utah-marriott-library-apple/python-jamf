@@ -38,6 +38,7 @@ class Config:
         hostname=None,
         username=None,
         password=None,
+        client=None,
         prompt=False,
     ):
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
@@ -45,6 +46,7 @@ class Config:
         self.hostname = hostname
         self.username = username
         self.password = password
+        self.client = client
         self.config_path = resolve_config_path(config_path)
         if not self.hostname and not self.username and not self.password:
             self.load()
@@ -56,6 +58,12 @@ class Config:
                 raise JamfConfigError(
                     "Config failed to obtain a hostname and prompt is off."
                 )
+        if self.client is None:
+            if self.prompt:
+                self.client = prompt_userauth()
+            else:
+                stderr.write("No pref for API Client Auth and prompt is off. Using username and password auth.\n")
+                self.client = False
         if not self.username:
             if self.prompt:
                 self.username = input("Username: ")
@@ -99,11 +107,16 @@ easy way to access the system keyring service from python. It can be used with
 the macOS Keychain and Linux KWallet.
 
 Please delete the the configuration at {self.config_path} and recreate it using
-the "./jamf/setconfig.py" script.
+the "conf-python-jamf" script.
 """
                     raise JamfConfigError(cmessage)
                 self.hostname = prefs["JSSHostname"]
                 self.username = prefs["Username"]
+                if "APIClientAuth" in prefs:
+                    self.client = prefs["APIClientAuth"]
+                else:
+                    stderr.write("No pref for API Client Auth. Please recreate your prefs to add it.\n")
+                    self.client = False
                 self.password = keyring.get_password(self.hostname, self.username)
             elif "JSS_URL" in prefs:
                 self.hostname = prefs["JSS_URL"]
@@ -117,7 +130,7 @@ the "./jamf/setconfig.py" script.
 
     def save(self):
         keyring.set_password(self.hostname, self.username, self.password)
-        data = {"JSSHostname": self.hostname, "Username": self.username}
+        data = {"JSSHostname": self.hostname, "Username": self.username, "APIClientAuth": self.client}
         self.log.info(f"saving: {self.config_path}")
         fptr = open(self.config_path, "wb")
         plistlib.dump(data, fptr)
@@ -195,3 +208,13 @@ def prompt_hostname():
     while hostname[-1] == "/":
         hostname = hostname[:-1]
     return hostname
+
+
+def prompt_userauth():
+    valid = False
+    while not valid:
+        client = input("User Auth [0] or API Client Auth [1]: ")
+        if client == "0" or client == "no"  or client == "false":
+            return False
+        if client == "1" or client == "yes"  or client == "true":
+            return True
