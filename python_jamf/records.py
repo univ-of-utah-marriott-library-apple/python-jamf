@@ -1943,7 +1943,7 @@ class Script(Record):
         try:
             print(self.get_path("script_contents"))
         except JamfRecordNotFound:
-            printme = None
+            pass
 
 
 class Scripts(Records, metaclass=Singleton):
