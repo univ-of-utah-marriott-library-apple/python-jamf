@@ -42,7 +42,9 @@ class Parser:
             "-r", "--revoke-token", action="store_true", help="Revoke Bearer token"
         )
         self.parser.add_argument(
-            "-c", "--client", help="Use API Client Auth instead of user auth (yes|true|1 or no|false|0, default is ask)"
+            "-c",
+            "--client",
+            help="Use API Client Auth instead of user auth (yes|true|1 or no|false|0, default is ask)",
         )
         self.parser.add_argument(
             "-C",
@@ -73,7 +75,9 @@ class Parser:
         args = self.parser.parse_args(argv)
         if args.client:
             if args.client not in ["0", "no", "false", "1", "yes", "true"]:
-                sys.stderr.write("API Client Auth must be one of these vaules: yes, true, 1, no, false, or 0.\n")
+                sys.stderr.write(
+                    "API Client Auth must be one of these vaules: yes, true, 1, no, false, or 0.\n"
+                )
                 exit(1)
         return args
 

@@ -62,7 +62,9 @@ class Config:
             if self.prompt:
                 self.client = prompt_userauth()
             else:
-                stderr.write("No pref for API Client Auth and prompt is off. Using username and password auth.\n")
+                stderr.write(
+                    "No pref for API Client Auth and prompt is off. Using username and password auth.\n"
+                )
                 self.client = False
         if not self.username:
             if self.prompt:
@@ -115,7 +117,9 @@ the "conf-python-jamf" script.
                 if "APIClientAuth" in prefs:
                     self.client = prefs["APIClientAuth"]
                 else:
-                    stderr.write("No pref for API Client Auth. Please recreate your prefs to add it.\n")
+                    stderr.write(
+                        "No pref for API Client Auth. Please recreate your prefs to add it.\n"
+                    )
                     self.client = False
                 self.password = keyring.get_password(self.hostname, self.username)
             elif "JSS_URL" in prefs:
@@ -130,7 +134,11 @@ the "conf-python-jamf" script.
 
     def save(self):
         keyring.set_password(self.hostname, self.username, self.password)
-        data = {"JSSHostname": self.hostname, "Username": self.username, "APIClientAuth": self.client}
+        data = {
+            "JSSHostname": self.hostname,
+            "Username": self.username,
+            "APIClientAuth": self.client,
+        }
         self.log.info(f"saving: {self.config_path}")
         fptr = open(self.config_path, "wb")
         plistlib.dump(data, fptr)
@@ -214,7 +222,7 @@ def prompt_userauth():
     valid = False
     while not valid:
         client = input("User Auth [0] or API Client Auth [1]: ")
-        if client == "0" or client == "no"  or client == "false":
+        if client == "0" or client == "no" or client == "false":
             return False
-        if client == "1" or client == "yes"  or client == "true":
+        if client == "1" or client == "yes" or client == "true":
             return True

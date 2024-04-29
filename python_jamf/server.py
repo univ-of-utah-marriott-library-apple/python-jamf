@@ -47,7 +47,10 @@ class Server:
         self.records = records
         try:
             self.classic = Classic(
-                self.config.hostname, self.config.username, self.config.password, client=self.config.client
+                self.config.hostname,
+                self.config.username,
+                self.config.password,
+                client=self.config.client,
             )
         except AuthResponseConnectionError:
             print("Could not connect to " + self.config.hostname)
