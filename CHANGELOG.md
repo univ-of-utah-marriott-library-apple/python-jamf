@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
+## [0.9.9] -- 2024-05-06
+
+**Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.8...0.9.9
+
+### Added
+
+- add api client auth support
+
+### Fixed
+
+- test_records: fix change to the way data was handled.
+- setconfig: fix style
+- records.py: fix jctl scripts -S script_contents
+
+Note: there will be a 0.9.10 and above because we're not ready to go 1.0 yet.
+
 ## [0.9.8] -- 2024-03-25
 
 **Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.7...0.9.8

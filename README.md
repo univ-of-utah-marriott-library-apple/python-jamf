@@ -125,37 +125,7 @@ If you have additional questions, or need more help getting started, post a ques
 
 ### Releases
 
-#### :new: [python-jamf - 0.8.2](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/releases/tag/0.8.2)
-
-- Much better error reporting when there's a connection failure to the server
-- Checks for "http://" or "https://" when setting a hostname and when connecting to a server
-- Added `conf-python-jamf -r` to remove the bearer token saved in the keychain
-- Unified server connection code
-- Replaced all `exit(1)` with `raise SystemExit`
-- pre-commit updated to 4.3.0
-- GitHub action updated action names
-- Updated README
-
-#### [python-jamf - 0.8.1](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/releases/tag/0.8.1)
-
-- This release includes the xml array fix described [here](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/blob/07378f0397744f52af54dbadb798e057d5e0c6cf/README.md#known-breaking-changes-on-the-roadmap).
-
-#### [python-jamf - 0.7.5](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/releases/tag/0.7.5)
-
-- Fixed trigger_logout removal from policies triggers
-- Fixed bearer token bug
-- Lots of automated reformatting and cleaning up
-- Adds pre-commit
-
-Thank you homebysix for your contributions.
-
-#### [python-jamf - 0.7.4](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/releases/tag/0.7.4-af4107c6)
-
- - Bearer token support
- - Fixed bug when creating records (shallow vs deep copy)
- - Fixed version in setup.py bug
- - Removed jamfnet from main docker-compose and move it to it's own file
- - Support smb mounting on linux
+Please see the [Changelog](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/blob/main/CHANGELOG.md) for all release notes.
 
 Thank you yairf-s1 and pythoninthegrass for your contributions.
 
