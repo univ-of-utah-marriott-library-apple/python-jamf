@@ -164,8 +164,8 @@ def pre_patch_policy(objType):
         pgkVer["package"] = {"id": pkgItem.data["id"], "name": pkgItem.data["name"]}
         pstItem.save()
     data = objType.stub_record()
-    data["patch_policy"]["software_title_configuration_id"] = pstItem.data["id"]
-    data["patch_policy"]["general"]["target_version"] = pgkVer["software_version"]
+    data["software_title_configuration_id"] = pstItem.data["id"]
+    data["general"]["target_version"] = pgkVer["software_version"]
     pprint(data)
     return data
 
