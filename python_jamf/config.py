@@ -117,9 +117,6 @@ the "conf-python-jamf" script.
                 if "APIClientAuth" in prefs:
                     self.client = prefs["APIClientAuth"]
                 else:
-                    stderr.write(
-                        "No pref for API Client Auth. Please recreate your prefs to add it.\n"
-                    )
                     self.client = False
                 self.password = keyring.get_password(self.hostname, self.username)
             elif "JSS_URL" in prefs:
