@@ -170,7 +170,7 @@ class API(metaclass=Singleton):
             if response.status_code == 401:
                 raise exceptions.JamfAuthenticationError(response, "Bad auth")
             elif response.status_code == 404:
-                raise exceptions.JamfRecordNotFound(response, "Not Found")
+                raise exceptions.JamfRecordNotFound("Not Found")
             else:
                 raise exceptions.JamfConnectionError(
                     response, f"Error: {response.status_code}"
