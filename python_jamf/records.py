@@ -1704,7 +1704,8 @@ class Policy(Record):
     def save_override(self, newdata):
         #   <Response [409]>: ...Retry options are only allowed when using the Once per computer frequency
         if (
-            "frequency" in newdata["general"]
+            "general" in newdata
+            and "frequency" in newdata["general"]
             and newdata["general"]["frequency"] != "Once per computer"
         ):
             if "retry_attempts" in newdata["general"]:
