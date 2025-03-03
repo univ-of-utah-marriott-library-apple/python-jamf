@@ -49,11 +49,11 @@ computers = jps.records.Computers()
 if "test" not in computers:
     # Create the record (record is auto-saved)
     test_computer = jps.records.Computers().create({'general':{'name': 'test'}})
-    safe_to_delete = True
+    safe_to_delete = True # Remember that we created the record and delete it later
 else:
     # Get the existing record
     results = computers.recordsWithName("test")
-    safe_to_delete = False
+    safe_to_delete = False # Don't delete the record later
 
     # Note, it's possible to create computers with the same name using the API, so you
     # must work with multiple records
