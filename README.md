@@ -35,38 +35,53 @@ Note, python-jamf can work with unsupported Jamf records, it just isn't as easy 
 
 This is just a quick example of the power and ease-of-use of python-jamf. The following code prints the last_contact_time from all computer records, from a computer record with the ID of 1, a computer record named "Jimmy's Mac", and computer records that match a regex. Then, it searches for a computer by name and if it exists then it changes the name. Lastly, it shows how to delete and create records.
 
-	import python_jamf
-	for computer in jamf.Computers(): # Retreive the data from the server
-		print(computer.data["general"]["last_contact_time"])
+```
+from python_jamf import server
 
-	computers = jamf.Computers()      # Use the data retrieved above, don't re-download
-	computers.refresh()               # Re-download the records from the server
+jps = server.Server()
 
-	if "1" in computers:
-	    print(computers.recordWithId(1).data['general']['last_contact_time'])
+# Get all the computer records.
+computers = jps.records.Computers()
 
-	if "Jimmy's Mac" in computers:
-	    print(computers.recordWithName("Jimmy's Mac").data['general']['last_contact_time'])
+# for a list of all record types, see the wiki
+# https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki#supported-jamf-records
 
-	for computer in computers.recordsWithRegex("J[ia]m[myes]{2}'s? Mac"): # Matches Jimmy's, James', and James's
-		print(computer.data["general"]["last_contact_time"])
+if "test" not in computers:
+    # Create the record (record is auto-saved)
+    test_computer = jps.records.Computers().create({'general':{'name': 'test'}})
+    safe_to_delete = True
+else:
+    # Get the existing record
+    results = computers.recordsWithName("test")
+    safe_to_delete = False
 
-	computer = computers.recordWithName("James's Mac)
-	if computer:
-		computer.refresh()            # Re-download the record from the server
-		computer.data['general']['name'] = "James' Mac"
-		computer.save()
+    # Note, it's possible to create computers with the same name using the API, so you
+    # must work with multiple records
+    if results > 0:
+        # Just take the first one (because multiple records is probably unintended)
+        test_computer = results[0]
 
-	# Delete a record
+# Change the name and then save
+test_computer.data["general"]["name"] = "test2"
+test_computer.save()
 
-	computer = computers.recordWithName("Richard's Mac)
-	if computer:
-		computer.delete()
+# Print the whole record
+print(test_computer.data)
 
-	# Create a record (2 ways)
+# Search by regex
+for computer in computers.recordsWithRegex("tes"):
+    print(f"{computer.data['general']['name']} has id {computer.data['general']['id']}")
+    last_id = computer.data['general']['id']
 
-	comp1 = computers.createNewRecord("computer1") # This really is a short-cut for the next line.
-	comp2 = jamf.records.Computer(0, "computer2")
+if safe_to_delete:
+    # Delete a record by id (DANGER ZONE!)
+    last_test_computer = computers.recordWithId(last_id)
+    if last_test_computer:
+        print(f"Deleting id {last_id}")
+        last_test_computer.delete() # delete is instant, no need to save
+else:
+    print("This script didn't create the test record, so it's not going to delete it")
+```
 
 A few notes. You can replace `jamf.Computers()` with `jamf.Policies()` or any supported record type.
 
