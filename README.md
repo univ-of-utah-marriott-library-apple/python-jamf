@@ -83,7 +83,7 @@ else:
     print("This script didn't create the test record, so it's not going to delete it")
 ```
 
-A few notes. You can replace `jamf.Computers()` with `jamf.Policies()` or any supported record type.
+All supported record types are accessed like this: `jps.records.Computers()`, `jps.records.Policies()`, `jps.records.Packages()`, etc.
 
 ## Quick Start
 
