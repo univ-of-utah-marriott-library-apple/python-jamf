@@ -49,11 +49,11 @@ computers = jps.records.Computers()
 if "test" not in computers:
     # Create the record (record is auto-saved)
     test_computer = jps.records.Computers().create({'general':{'name': 'test'}})
-    safe_to_delete = True # Remember that we created the record and delete it later
+    record_to_delete = test_computer
 else:
     # Get the existing record
     results = computers.recordsWithName("test")
-    safe_to_delete = False # Don't delete the record later
+    record_to_delete = None
 
     # Note, it's possible to create computers with the same name using the API, so you
     # must work with multiple records
@@ -73,14 +73,15 @@ for computer in computers.recordsWithRegex("tes"):
     print(f"{computer.data['general']['name']} has id {computer.data['general']['id']}")
     last_id = computer.data['general']['id']
 
-if safe_to_delete:
-    # Delete a record by id (DANGER ZONE!)
-    last_test_computer = computers.recordWithId(last_id)
-    if last_test_computer:
-        print(f"Deleting id {last_id}")
-        last_test_computer.delete() # delete is instant, no need to save
-else:
-    print("This script didn't create the test record, so it's not going to delete it")
+# Search by ID
+last_result = computers.recordWithId(last_id)
+if last_result:
+    print(f"{last_result.data['general']['name']} has id {computer.data['general']['id']}")
+
+# If this script created a record, delete it
+if record_to_delete:
+    print(f"Deleting record created by this script")
+    record_to_delete.delete() # delete is instant, no need to save
 ```
 
 All supported record types are accessed like this: `jps.records.Computers()`, `jps.records.Policies()`, `jps.records.Packages()`, etc.
