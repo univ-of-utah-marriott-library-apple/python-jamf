@@ -5,31 +5,25 @@ _Programmatic Automation, Access & Control of Jamf Pro_
 
 ## Introduction
 
-`python-jamf` is a Python 3 module to access the Jamf Pro Classic API. The Classic API is the primary tool for programmatic access to data on a Jamf Pro server to allow integrations with other utilities or systems. The concept behind it is to have a class or simply a collection of data (variables) and methods (functions) that maps directly to the API (https://example.com:8443/api).
-
-The `python-jamf` API class doesn't hide anything from you. It handles the URL requests, authentication, and converts between XML/JSON to Python dictionaries/lists.
-
-The `python-jamf` module also provides undocumented access to Jamf Admin functionality used for uploading items to Jamf Distribution Points.
+`python-jamf` is a Python 3 module to access the Jamf Pro Classic API. The Classic API is a tool for programmatic access to data on a Jamf Pro server to allow integrations with other utilities or systems. The concept behind it is to have a class or simply a collection of data (variables) and methods (functions) that maps directly to the API (https://example.com:8443/api).
 
 ![python_jamf workflow](https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki/images/python_jamf_workflow.png)
 
 ### What are `python-jamf` and `jctl`?
 
-Originally, it was a "patch" project that was focused on patch management including installer package management, patch management, including assigning package to patch definition, updating versions, version release branching (i.e. development, testing, production), and scripting and automation. Later, it was split into two projects, `python-jamf`, which is a python library that connects to a Jamf Pro server using Jamf Pro Classic API, including keychain support for Jamf Pro credentials via [keyring](https://github.com/jaraco/keyring) python project, support for [PyPi](https://pypi.org/project/python-jamf/) to support pip installation and currently supports 56 Jamf Pro record types which will expand in number as the project continues.
+Originally, it was a "patch" project that was focused on patch management including installer package management, patch management, including assigning package to patch definition, updating versions, version release branching (i.e. development, testing, production), and scripting and automation. Later, it was split into two projects. The main project, `python-jamf`, is a python library that allows [CRUD](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete) operations on about 50 Jamf records using Jamf Pro Classic API and [jps-api-wrapper](https://pypi.org/project/jps-api-wrapper/). It includes keychain support for Jamf Pro credentials using the [keyring](https://github.com/jaraco/keyring) library. You can install python-jamf using [PyPi](https://pypi.org/project/python-jamf/).
 
-The second project, `jctl`,  is a command-line tool that uses the `python-jamf` library to select objects to create, delete, print and update. It allows performing Jamf Pro repetitive tasks quickly and provides options not available in the web GUI. It is similar to SQL statements, but far less complex. And recently added [PyPi](https://pypi.org/project/https://pypi.org/project/jctl//) to support pip installation.
-
-Please check out the [jctl github page](https://github.com/univ-of-utah-marriott-library-apple/jctl) for more information.
+The second project, `jctl`,  is a tool that exposes the `python-jamf` CRUD operations to the command line, allowing you to incorporate the tasks in any script, including BASH. It allows performing Jamf Pro repetitive tasks quickly and provides options not available in the web GUI. It is also available from [PyPi](https://pypi.org/project/https://pypi.org/project/jctl/). Please check out the [jctl github page](https://github.com/univ-of-utah-marriott-library-apple/jctl) for more information.
 
 ### Supported Jamf Records
 
-Currently, the `python-jamf` supports about 50 Jamf records like Buildings, Categories, Computers, OSXConfigurationProfiles, and Policies for example.
+Currently, the `python-jamf` supports about 50 Jamf records like Buildings, Categories, Computers, OSXConfigurationProfiles, and Policies for example. The records that `python-jamf` support are very similar and so the code that works with them is almost identical. That means that if learn how to work with one record type, you now know how to work with almost all of them.
 
-Each record is a singleton Python object, but they are generic and most functionality comes from the parent Record class. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the data() method. All lists of records are singleton subclasses of the Records class.
+Each record is a generic Python object and most functionality comes from the parent Record class. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the data() method. All lists of records are subclasses of the Records class.
 
-By being singleton classes, you perform one fetch to the server for each list or record. This prevents multiple fetches for the same object. All changes you make are local until you save or refresh the object.
+Except for create and delete, all changes you make are local until you save or refresh the object.
 
-Note, python-jamf can work with unsupported Jamf records, it just isn't as easy as the next section shows.
+To work with Jamf records that we don't support yet, it's best to use the [jps-api-wrapper](https://pypi.org/project/jps-api-wrapper/) library directly.
 
 ### Quick Example
 
