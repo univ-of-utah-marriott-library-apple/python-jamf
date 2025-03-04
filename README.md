@@ -33,7 +33,7 @@ Note, python-jamf can work with unsupported Jamf records, it just isn't as easy 
 
 ### Quick Example
 
-This is just a quick example of the power and ease-of-use of python-jamf. The following code prints the last_contact_time from all computer records, from a computer record with the ID of 1, a computer record named "Jimmy's Mac", and computer records that match a regex. Then, it searches for a computer by name and if it exists then it changes the name. Lastly, it shows how to delete and create records.
+This is just a quick example of the power and ease-of-use of python-jamf. The following code creates a computer record, changes the new record's name, then shows some examples of how to find records, then deletes the record created by the script.
 
 ```python
 from python_jamf import server
