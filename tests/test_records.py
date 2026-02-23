@@ -2,14 +2,20 @@
 
 # https://developer.jamf.com/jamf-pro/
 
+import sys
 from os import environ
+from pathlib import Path
 from pprint import pprint
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from python_jamf import server
 
-HOSTNAME = "http://localhost"
-USERNAME = "python-jamf"
-PASSWORD = "secret"
+JAMF_HOSTNAME = "http://localhost"
+JAMF_USERNAME = "python-jamf"
+JAMF_PASSWORD = "secret"
 
 # valid_records = server.records.valid_records()
 valid_records = (
@@ -52,8 +58,8 @@ valid_records = (
     "WebHooks",
     ######################################################################################
     # Requires setup
-    "PatchPolicies",
-    "PatchSoftwareTitles",
+    #"PatchPolicies",
+    #"PatchSoftwareTitles",
     ######################################################################################
     # Who knows
     # "BYOProfiles",
@@ -78,15 +84,15 @@ def get_creds():
     if "JAMF_HOSTNAME" in environ:
         hostname = environ["JAMF_HOSTNAME"]
     else:
-        hostname = HOSTNAME
+        hostname = JAMF_HOSTNAME
     if "JAMF_USERNAME" in environ:
         username = environ["JAMF_USERNAME"]
     else:
-        username = USERNAME
+        username = JAMF_USERNAME
     if "JAMF_PASSWORD" in environ:
         password = environ["JAMF_PASSWORD"]
     else:
-        password = PASSWORD
+        password = JAMF_PASSWORD
     return (hostname, username, password)
 
 
