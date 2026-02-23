@@ -13,7 +13,7 @@ __version__ = "1.3.0"
 import getpass
 import logging
 import plistlib
-from datetime import datetime
+from datetime import datetime, timezone
 from os import path, remove
 from sys import stderr
 
@@ -62,9 +62,6 @@ class Config:
             if self.prompt:
                 self.client = prompt_userauth()
             else:
-                stderr.write(
-                    "No pref for API Client Auth and prompt is off. Using username and password auth.\n"
-                )
                 self.client = False
         if not self.username:
             if self.prompt:
@@ -148,8 +145,11 @@ the "conf-python-jamf" script.
         if self.token and expires:
             try:
                 expires = expires[:-1]  # remove the Z because in case there's no "."
-                deadline = datetime.strptime(expires.split(".")[0], "%Y-%m-%dT%H:%M:%S")
-                if deadline > datetime.utcnow():
+                deadline = datetime.strptime(
+                    expires.split(".")[0],
+                    "%Y-%m-%dT%H:%M:%S"
+                ).replace(tzinfo=timezone.utc)
+                if deadline > datetime.now(timezone.utc):
                     self.expired = True
             except ValueError as e:
                 stderr.write(
