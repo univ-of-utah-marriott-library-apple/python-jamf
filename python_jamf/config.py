@@ -66,46 +66,68 @@ class Config:
         """
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.prompt = prompt
-        self.hostname = hostname
-        self.username = username
-        self.password = password
+        self._hostname = hostname
+        self._username = username
+        self._password = password
         self.client = client
         self.config_path = resolve_config_path(config_path)
-        if not self.hostname and not self.username and not self.password:
+        if not self._hostname and not self._username and not self._password:
             self.load()
         # Prompt for any missing prefs
-        if not self.hostname:
+        if not self._hostname:
             if self.prompt:
-                self.hostname = prompt_hostname()
-            else:
-                raise JamfConfigError(
-                    "Config failed to obtain a hostname and prompt is off."
-                )
+                self._hostname = prompt_hostname()
         if self.client is None:
             if self.prompt:
                 self.client = prompt_userauth()
             else:
                 self.client = False
-        if not self.username:
+        if not self._username:
             if self.prompt:
-                self.username = input("Username: ")
-            else:
-                raise JamfConfigError(
-                    "Config failed to obtain a username and prompt is off."
-                )
-        if not self.password:
+                self._username = input("Username: ")
+        if not self._password:
             if self.prompt:
-                self.password = getpass.getpass()
-            else:
-                raise JamfConfigError(
-                    "Config failed to obtain a password and prompt is off."
-                )
-        if not self.hostname.startswith("https://") and not self.hostname.startswith(
+                self._password = getpass.getpass()
+
+    @property
+    def hostname(self):
+        if not self._hostname:
+            raise JamfConfigError("Config failed to obtain a hostname.")
+        if not self._hostname.startswith("https://") and not self._hostname.startswith(
             "http://"
         ):
             raise JamfConfigError(
-                f"Hostname ({self.hostname}) does not start with 'https://' or 'http://'"
+                f"Hostname ({self._hostname}) does not start with 'https://' or 'http://'"
             )
+        return self._hostname
+
+    @hostname.setter
+    def hostname(self, value):
+        self._hostname = value
+
+    @property
+    def username(self):
+        if not self._username:
+            raise JamfConfigError("Config failed to obtain a username.")
+        return self._username
+
+    @username.setter
+    def username(self, value):
+        self._username = value
+
+    @property
+    def password(self):
+        if not self._password:
+            raise JamfConfigError("Config failed to obtain a password.")
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        self._password = value
+
+    @property
+    def has_password(self):
+        return bool(self._password)
 
     def load(self):
         """
@@ -256,32 +278,76 @@ def resolve_config_path(config_path=None):
     return config_path
 
 
-def prompt_hostname():
+def prompt_hostname(existing_hostname=None):
     """
     Interactively prompt the user for the Jamf Pro hostname.
 
     :return: Validated hostname string.
     """
-    valid = False
-    while not valid:
-        hostname = input("Hostname (don't forget https:// and :8443): ")
+    while True:
+        if existing_hostname is None:
+            message = "don't forget https:// and :8443"
+        else:
+            message = existing_hostname
+        hostname = input(f"Hostname ({message}): ").strip()
+        if existing_hostname and hostname == "":
+            hostname = existing_hostname
         if hostname.startswith("https://") or hostname.startswith("http://"):
-            valid = True
+            break
     while hostname[-1] == "/":
         hostname = hostname[:-1]
     return hostname
 
 
-def prompt_userauth():
+def prompt_userauth(existing_client=None):
     """
     Interactively prompt the user for the authentication type.
 
     :return: Boolean (True for API Client Auth, False for User Auth).
     """
-    valid = False
-    while not valid:
-        client = input("User Auth [0] or API Client Auth [1]: ")
-        if client == "0" or client == "no" or client == "false":
+    while True:
+        if existing_client is None:
+            prompt = "User Auth [0] or API Client Auth [1]: "
+        else:
+            default = "1" if existing_client else "0"
+            prompt = f"User Auth [0] or API Client Auth [1] (default {default}): "
+        client = input(prompt).strip().lower()
+        if existing_client is not None and client == "":
+            return existing_client
+        if client in ["0", "no", "false"]:
             return False
-        if client == "1" or client == "yes" or client == "true":
+        if client in ["1", "yes", "true"]:
             return True
+
+
+def prompt_username(existing_username=None, username_type="Username"):
+    """
+    Interactively prompt the user for a username or client ID.
+
+    :return: Username string (or existing value if user enters blank).
+    """
+    if existing_username:
+        message = existing_username
+    else:
+        message = None
+    prompt = f"{username_type}: " if message is None else f"{username_type} ({message}): "
+    username = input(prompt).strip()
+    if existing_username and username == "":
+        return existing_username
+    return username
+
+
+def prompt_password(existing_password=None, password_type="Password"):
+    """
+    Interactively prompt the user for a password or client secret.
+
+    :return: Password string (or existing value if user enters blank).
+    """
+    if existing_password is None:
+        prompt = f"{password_type}: "
+    else:
+        prompt = f"{password_type} (leave blank to keep existing): "
+    password = getpass.getpass(prompt=prompt)
+    if existing_password is not None and password == "":
+        return existing_password
+    return password

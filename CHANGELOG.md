@@ -7,56 +7,77 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
-## [0.10.0] -- 2026-02-23
+## [0.10.0] -- 2026-02-24
 
 Attack of the AI
 
+## [0.10.1] -- 2026-02-24
+
 ### Added
 
-- Added support for Jamf Pro API (`Pro` client) alongside Classic API in `Server`.
-- Added per-server, context-aware record caching via `Server.records()` and internal `_context_id`.
-- Added new exceptions:
+* Added support for Jamf Pro API (`Pro` client) alongside Classic API in `Server`.
+* Added per-server, context-aware record caching via `Server.records()` and internal `_context_id`.
+* Added new exceptions:
 
-  - `JamfPatchNotEnabled`
-  - `JamfAuthorizationError`
-- Added `Computer` methods for Pro API operations:
+  * `JamfPatchNotEnabled`
+  * `JamfAuthorizationError`
+* Added `Computer` methods for Pro API operations:
 
-  - `create_mdm_command()`
-  - `get_recovery_lock_password()`
-  - `set_recovery_lock_password()`
-- Added `PatchSoftwareTitles.create_override()` with proper handling when Patch is not enabled.
-- Added comprehensive module, class, and method docstrings across `config` and `setconfig`.
+  * `create_mdm_command()`
+  * `get_recovery_lock_password()`
+  * `set_recovery_lock_password()`
+* Added `PatchSoftwareTitles.create_override()` with proper handling when Patch is not enabled.
+* Added comprehensive module, class, and method docstrings across `config` and `setconfig`.
+* Added new configuration helper functions:
+
+  * `prompt_username()`
+  * `prompt_password()`
+* Added `Config.has_password` read-only property.
+* Added support for default/blank input handling in interactive prompts.
+* Moved console scripts:
+
+  * `jctl`
+  * `pkgctl`
 
 ### Changed
 
-- Refactored `Record` and `Records` to be context-aware instead of using the `Singleton` metaclass.
+* Refactored `Record` and `Records` to be context-aware instead of using the `Singleton` metaclass.
 
-  - Instances are now cached per `context_id` instead of globally.
-  - Collections must be constructed with a Classic client.
-- Replaced global `set_classic()` and `set_debug()` helpers with per-`Server` configuration.
-- `jamf_records()` now requires a Classic client and supports `pro`, `debug`, and `context_id` parameters.
-- `categories()` updated to support client/context parameters.
-- `Server` now raises connection/authentication exceptions instead of calling `exit()`.
-- Updated CLI utility (`setconfig`) to use direct module imports and improved configuration handling.
-- Updated tests to use environment-based credentials and per-server record access.
-- Replaced some `print()` calls with logger usage in records logic.
-- Improved error handling during `refresh_records()` to properly surface authorization errors.
+  * Instances are now cached per `context_id` instead of globally.
+  * Collections must be constructed with a Classic client.
+* Refactored `Config` to use private attributes (`_hostname`, `_username`, `_password`) with property accessors.
+* `hostname`, `username`, and `password` are now validated via property getters.
+* Replaced global `set_classic()` and `set_debug()` helpers with per-`Server` configuration.
+* `jamf_records()` now requires a Classic client and supports `pro`, `debug`, and `context_id` parameters.
+* `categories()` updated to support client/context parameters.
+* Server now raises connection/authentication exceptions instead of calling `exit()`.
+* Interactive prompt functions (`prompt_hostname`, `prompt_userauth`) now support existing/default values.
+* CLI entry point for `conf-python-jamf` moved to `python_jamf.cli.conf_python_jamf:main`.
+* `python_jamf/setconfig.py` replaced with a backward-compatible import shim.
+* Updated CLI utility (`setconfig`) to use direct module imports and improved configuration handling.
+* Updated tests to use environment-based credentials and per-server record access.
+* Replaced some `print()` calls with logger usage in records logic.
+* Improved error handling during `refresh_records()` to properly surface authorization errors.
+* `JamfRecordNotFound` is now raised with a single message argument instead of including the HTTP response object.
 
 ### Fixed
 
-- Fixed typo in `JamfUnknownClass` docstring.
-- Corrected package criterion string to `"Packages Installed by Jamf Pro"`.
-- Fixed related-record caching to be stored per collection instance rather than at class level.
-- Improved handling of plural references within `Record` instances.
+* Fixed typo in `JamfUnknownClass` docstring.
+* Corrected package criterion string to `"Packages Installed by Jamf Pro"`.
+* Fixed related-record caching to be stored per collection instance rather than at class level.
+* Improved handling of plural references within `Record` instances.
 
 ### Removed
 
-- Removed `Singleton` metaclass from all `Records` subclasses.
-- Removed `set_classic()` and `set_debug()` global configuration helpers.
+* Removed `Singleton` metaclass from all `Records` subclasses.
+* Removed `set_classic()` and `set_debug()` global configuration helpers.
+* Removed direct CLI implementation in `python_jamf/setconfig.py` (moved to `python_jamf.cli.conf_python_jamf`).
+* Removed `jctl` from `.gitignore`.
+* `api.py` — this is the last version that will include this file. Please migrate away from it if you are using it.
 
 ### Breaking Changes
 
-- `Records` collections are no longer singletons and must be accessed via:
+* `Records` collections are no longer singletons and must be accessed via:
 
   ```python
   jps = Server(...)
@@ -64,12 +85,11 @@ Attack of the AI
   ```
 
   or constructed with an explicit Classic client.
-- `jamf_records()` now requires a `classic` argument and will raise `ValueError` if omitted.
-- Code that relied on global record state or module-level client injection must be updated to use `Server.records()`.
-
-### REMOVAL NOTICE
-
-- api.py, This is the last version that will include this file. Please migrate off of it if you are using it!
+* `jamf_records()` now requires a `classic` argument and will raise `ValueError` if omitted.
+* Code that relied on global record state or module-level client injection must be updated to use `Server.records()`.
+* Accessing `Config.hostname`, `Config.username`, or `Config.password` now raises `JamfConfigError` if the value is unset.
+* `JamfRecordNotFound` no longer receives the HTTP `response` object in its constructor when raised from the API layer.
+* The console script target for `conf-python-jamf` has changed internally; direct imports of the old module path should be updated.
 
 ## [0.9.9] -- 2024-05-06
 
