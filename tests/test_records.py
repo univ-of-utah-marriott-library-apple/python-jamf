@@ -13,10 +13,6 @@ if str(REPO_ROOT) not in sys.path:
 
 from python_jamf import server
 
-JAMF_HOSTNAME = "http://localhost"
-JAMF_USERNAME = "python-jamf"
-JAMF_PASSWORD = "secret"
-
 # valid_records = server.records.valid_records()
 valid_records = (
     # Done
@@ -57,11 +53,11 @@ valid_records = (
     "MobileDeviceEnrollmentProfiles",
     "WebHooks",
     ######################################################################################
-    # Requires setup
+    ## Requires setup
     #"PatchPolicies",
     #"PatchSoftwareTitles",
     ######################################################################################
-    # Who knows
+    ## Who knows
     # "BYOProfiles",
     # "LDAPServers",
     # "ManagedPreferenceProfiles",
@@ -77,27 +73,18 @@ valid_records = (
     # "VPPInvitations",
 )
 
-pprint(valid_records)
 
-
-def get_creds():
-    if "JAMF_HOSTNAME" in environ:
-        hostname = environ["JAMF_HOSTNAME"]
-    else:
-        hostname = JAMF_HOSTNAME
-    if "JAMF_USERNAME" in environ:
-        username = environ["JAMF_USERNAME"]
-    else:
-        username = JAMF_USERNAME
-    if "JAMF_PASSWORD" in environ:
-        password = environ["JAMF_PASSWORD"]
-    else:
-        password = JAMF_PASSWORD
+def get_creds(hostname_env, username_env, password_env):
+    hostname = None
+    username = None
+    password = None
+    if hostname_env in environ:
+        hostname = environ[hostname_env]
+    if username_env in environ:
+        username = environ[username_env]
+    if password_env in environ:
+        password = environ[password_env]
     return (hostname, username, password)
-
-
-hostname, username, password = get_creds()
-jps = server.Server(debug=True, hostname=hostname, username=username, password=password)
 
 
 def print_one(item):
@@ -135,9 +122,12 @@ def create(objType, data=None):
 
 def print_all(objType):
     # Print all
-    print("---------------")
-    print(f"Print all - {objType}")
+    first_time = True
     for item in objType:
+        if first_time:
+            print("---------------")
+            print(f"Print all - {objType}")
+            first_time = False
         print("---------------")
         pprint(item)
         # Check if item contains the "data" attribute
@@ -145,9 +135,9 @@ def print_all(objType):
             pprint(item.data)
 
 
-def pre_patch_policy(objType):
+def pre_patch_policy(jps, objType):
     print("Creating a PatchSoftwareTitle first!")
-    pstObj = server.records.PatchSoftwareTitles()
+    pstObj = jps.records("PatchSoftwareTitles")
     pstItem = None
     try:
         pstItem = create(pstObj)
@@ -162,7 +152,7 @@ def pre_patch_policy(objType):
     pgkVer = pstItem.data["versions"]["version"][0]
     if pgkVer["package"] is None:
         print("Creating a Package first!")
-        pkgObj = getattr(server.records, "Packages")()
+        pkgObj = jps.records("Packages")
         pkgItem = create(pkgObj)
         if pkgItem is None:
             print("Failed to create Package!")
@@ -176,49 +166,69 @@ def pre_patch_policy(objType):
     return data
 
 
-def post_patch_policy():
-    pstObj = server.records.PatchSoftwareTitles()
+def post_patch_policy(jps):
+    pstObj = jps.records("PatchSoftwareTitles")
     pstItem = pstObj.recordsWithName("Bare Bones BBEdit")[0]
     delete(pstItem)
 
 
 def main():
-    for valid_record in valid_records:
-        print("------------------------------------------------")
-        print(valid_record)
-        objType = getattr(server.records, valid_record)()
-        print_all(objType)
-        data = None
+    pprint(valid_records)
 
-        if hasattr(objType, "create_method"):
-            if valid_record == "PatchPolicies":
-                data = pre_patch_policy(objType)
+    print("------------------------------------------------")
 
-            pprint(data)
-            item = create(objType, data)
+    servers = []
+    for env_var_names in [
+        ["JAMF_HOSTNAME", "JAMF_USERNAME", "JAMF_PASSWORD"],
+        #["JAMF_HOSTNAME2", "JAMF_USERNAME2", "JAMF_PASSWORD2"],
+    ]:
+        hostname, username, password = get_creds(env_var_names[0], env_var_names[1], env_var_names[2])
+        print(hostname, username)
+        if password is not None and password != "":
+            print("Password is set")
+            jps = server.Server(debug=True, hostname=hostname, username=username, password=password)
+            servers.append(jps)
 
-            if item is not None:
-                pprint(item)
-                pprint(item.data)
+    for jps in servers:
+        print("------------------------------------------------------------------------------------------")
+        print(f"Server: {jps.config.hostname}")
+        for valid_record in valid_records:
+            print("-----------------------------------------")
+            print(valid_record)
 
-                item = objType.recordWithId(item.id)
-                print_one(item)
+            objType = jps.records(valid_record)
+            print(objType)
+            print_all(objType)
+            data = None
+            if hasattr(objType, "create_method"):
+                if valid_record == "PatchPolicies":
+                    data = pre_patch_policy(jps, objType)
 
-                update(item)
+                pprint(data)
+                item = create(objType, data)
 
-                item = objType.recordWithId(item.id)
-                print_one(item)
+                if item is not None:
+                    pprint(item)
+                    pprint(item.data)
 
-                delete(item)
+                    item = objType.recordWithId(item.id)
+                    print_one(item)
 
-            else:
-                print("Failed to create!")
-                exit()
+                    update(item)
 
-            if valid_record == "PatchPolicies":
-                post_patch_policy()
+                    item = objType.recordWithId(item.id)
+                    print_one(item)
 
-        print_all(objType)
+                    delete(item)
+
+                else:
+                    print("Failed to create!")
+                    exit()
+
+                if valid_record == "PatchPolicies":
+                    post_patch_policy(jps)
+
+            print_all(objType)
 
 
 if __name__ == "__main__":

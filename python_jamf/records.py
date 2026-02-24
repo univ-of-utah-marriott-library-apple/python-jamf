@@ -34,6 +34,7 @@ from sys import stderr
 from . import convert
 from .exceptions import (
     JamfAPISurprise,
+    JamfPatchNotEnabled,
     JamfRecordInvalidPath,
     JamfRecordNotFound,
     JamfUnknownClass,
@@ -119,39 +120,49 @@ def class_name(name, case_sensitive=True):
     raise JamfUnknownClass(f"{name} is not a valid record.")
 
 
-class Singleton(type):
-    """allows us to share a single object"""
-
-    _instances = {}
-
-    def __call__(cls, *a, **kw):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*a, **kw)
-        return cls._instances[cls]
-
-
 class Record:
     plurals = None
     name_path = "name"
 
-    def __new__(cls, jamf_id, jamf_name):
+    def __new__(
+        cls,
+        jamf_id,
+        jamf_name,
+        classic=None,
+        pro=None,
+        debug=False,
+        context_id="global",
+        plural=None,
+    ):
         """
         returns existing record if one has been instantiated
         """
         if not hasattr(cls, "_instances"):
             cls._instances = {}
+        if context_id not in cls._instances:
+            cls._instances[context_id] = {}
+        context_instances = cls._instances[context_id]
         jamf_id = int(jamf_id)
-        if jamf_id not in cls._instances:
+        if jamf_id not in context_instances:
             rec = super(Record, cls).__new__(cls)
             rec.id = jamf_id
             rec.name = jamf_name
             rec._data = {}
-            rec.plural = eval(cls.plural_class)
+            rec.plural = plural
             rec.cls = cls
+            rec.classic = classic
+            rec.pro = pro
+            rec.debug = debug
+            rec.context_id = context_id
             if jamf_id != 0:
-                cls._instances[jamf_id] = rec
+                context_instances[jamf_id] = rec
         else:
-            rec = cls._instances[jamf_id]
+            rec = context_instances[jamf_id]
+            rec.classic = classic
+            rec.pro = pro
+            rec.debug = debug
+            rec.context_id = context_id
+            rec.plural = plural
         return rec
 
     def __eq__(self, x):
@@ -194,8 +205,8 @@ class Record:
     def delete(self, refresh=True):
         if hasattr(self, "delete_method"):
             getattr(self.classic, self.delete_method)(self.id)
-            if refresh:
-                self.plural().refresh_records()
+            if refresh and self.plural:
+                self.plural.refresh_records()
 
     def save(self):
         if hasattr(self, "update_method"):
@@ -368,9 +379,23 @@ class Records:
         rec.cls = cls
         return rec
 
-    def __init__(self, classic=None):
+    def __init__(self, classic=None, pro=None, debug=False, context_id="global"):
+        if classic is None:
+            raise ValueError(
+                "Records collections must be constructed with a Classic client."
+            )
         self.log = logging.getLogger(f"{__name__}.Records")
+        self.classic = classic
+        self.pro = pro
+        self.debug = debug
+        self.context_id = context_id
         self._records = {}
+        if hasattr(self, "groups"):
+            self.groups = {}
+        if hasattr(self, "app_list"):
+            self.app_list = {}
+        if hasattr(self, "computers"):
+            self.computers = {}
 
     def __iter__(self):
         return RecordsIterator(self)
@@ -430,9 +455,13 @@ class Records:
         return found
 
     def refresh_records(self):
-        records = getattr(self.classic, self.refresh_method)()
-        records = records[self.plural_string]
-        self.refresh_records2(self.singular_class, records)
+        try:
+            records = getattr(self.classic, self.refresh_method)()
+            records = records[self.plural_string]
+            self.refresh_records2(self.singular_class, records)
+        except JamfAuthorizationError:
+            self.log("Permission denied")
+            raise
 
     def refresh_records2(
         self, singular_class=Record, records=None, id_txt="id", name_txt="name"
@@ -440,7 +469,15 @@ class Records:
         self._records = {}
         if records is not None and not ("size" in records and records["size"] == 0):
             for d in records:
-                c = singular_class(d[id_txt], d[name_txt])
+                c = singular_class(
+                    d[id_txt],
+                    d[name_txt],
+                    classic=self.classic,
+                    pro=self.pro,
+                    debug=self.debug,
+                    context_id=self.context_id,
+                    plural=self,
+                )
                 c.plural_class = self.cls
                 self._records.setdefault(c.id, c)
 
@@ -521,7 +558,7 @@ class Records:
             for recid in ids:
                 record = self.recordWithId(recid)
                 if feedback:
-                    print(f"Deleting record: {record}")
+                    self.log(f"Deleting record: {record}")
                 record.delete(refresh=False)
             self.refresh_records()
 
@@ -565,7 +602,7 @@ class AdvancedComputerSearch(Record):
     update_method = "update_advanced_computer_search"
 
 
-class AdvancedComputerSearches(Records, metaclass=Singleton):
+class AdvancedComputerSearches(Records):
     singular_class = AdvancedComputerSearch
     plural_string = "advanced_computer_searches"
     refresh_method = "get_advanced_computer_searches"
@@ -580,7 +617,7 @@ class AdvancedMobileDeviceSearch(Record):
     update_method = "update_advanced_mobile_device_search"
 
 
-class AdvancedMobileDeviceSearches(Records, metaclass=Singleton):
+class AdvancedMobileDeviceSearches(Records):
     # http://localhost/mobileDevices.html
     singular_class = AdvancedMobileDeviceSearch
     plural_string = "advanced_mobile_device_searches"
@@ -596,7 +633,7 @@ class AdvancedUserSearch(Record):
     update_method = "update_advanced_user_search"
 
 
-class AdvancedUserSearches(Records, metaclass=Singleton):
+class AdvancedUserSearches(Records):
     # http://localhost/users.html
     singular_class = AdvancedUserSearch
     plural_string = "advanced_user_searches"
@@ -612,7 +649,7 @@ class Building(Record):
     update_method = "update_building"
 
 
-class Buildings(Records, metaclass=Singleton):
+class Buildings(Records):
     # http://localhost/view/settings/network/buildings
     singular_class = Building
     plural_string = "buildings"
@@ -627,7 +664,7 @@ class BYOProfile(Record):
     update_method = "update_byo_profile"
 
 
-class BYOProfiles(Records, metaclass=Singleton):
+class BYOProfiles(Records):
     singular_class = BYOProfile
     plural_string = "byoprofiles"
     refresh_method = "get_byo_profiles"
@@ -642,7 +679,7 @@ class Category(Record):
     update_method = "update_category"
 
 
-class Categories(Records, metaclass=Singleton):
+class Categories(Records):
     # http://localhost/categories.html
     singular_class = Category
     plural_string = "categories"
@@ -658,7 +695,7 @@ class Class(Record):
     update_method = "update_class"
 
 
-class Classes(Records, metaclass=Singleton):
+class Classes(Records):
     # http://localhost/classes.html
     singular_class = Class
     plural_string = "classes"
@@ -677,12 +714,12 @@ class Computer(Record):
     plurals = {"computer": {"hardware": {"storage": []}, "extension_attributes": []}}
 
     def apps_print_during(self):
-        plural_cls = eval(self.cls.plural_class)
-        if not hasattr(plural_cls, "app_list"):
-            plural_cls.app_list = {}
-        if not hasattr(plural_cls, "computers"):
-            plural_cls.computers = {}
-        plural_cls.computers[self.name] = True
+        plural_obj = self.plural
+        if not hasattr(plural_obj, "app_list"):
+            plural_obj.app_list = {}
+        if not hasattr(plural_obj, "computers"):
+            plural_obj.computers = {}
+        plural_obj.computers[self.name] = True
         try:
             apps = self.get_path("software/applications/application/path")
         except JamfRecordNotFound:
@@ -694,14 +731,59 @@ class Computer(Record):
         if apps:
             for ii, app in enumerate(apps):
                 ver = versions[ii]
-                if app not in plural_cls.app_list:
-                    plural_cls.app_list[app] = {}
-                if ver not in plural_cls.app_list[app]:
-                    plural_cls.app_list[app][ver] = {}
-                plural_cls.app_list[app][ver][self.name] = True
+                if app not in plural_obj.app_list:
+                    plural_obj.app_list[app] = {}
+                if ver not in plural_obj.app_list[app]:
+                    plural_obj.app_list[app][ver] = {}
+                plural_obj.app_list[app][ver][self.name] = True
+
+    def create_mdm_command(self, data: dict) -> dict:
+        """
+        Create and queue an MDM command with given JSON data
+
+        :param data:
+            JSON data to create the MDM command with. For syntax information
+            view `Jamf's documentation.
+            <https://developer.jamf.com/jamf-pro/reference/post_v2-mdm-commands>`__
+
+        :returns: New MDM command information in JSON
+        """
+        return self.pro.create_mdm_command(data)
+
+    def get_recovery_lock_password(self):
+        """
+        Returns a computers recovery lock password by ID in JSON
+
+        :returns: Recovery lock password in JSON
+        """
+        return self.server.pro.get_computer_inventory_recovery_lock_password(self.id)
+
+    def set_recovery_lock_password(self, new_password):
+        """
+        """
+        try:
+            inventory = self.server.pro.get_computer_inventory(self.id)
+            management_id = inventory['general']['managementId']
+        except:
+            raise JamfRecordInvalidPath(
+                "Computer record is missing management_id; refresh data and ensure the device is managed."
+            )
+        newdata = {
+            "clientData": [
+                {
+                    "managementId": str(management_id),
+                    "clientType": "COMPUTER"
+                }
+            ],
+            "commandData": {
+                "commandType": "SET_RECOVERY_LOCK",
+                "newPassword": new_password
+            }
+        }
+        return self.server.pro.create_mdm_command(newdata)
 
 
-class Computers(Records, metaclass=Singleton):
+class Computers(Records):
     # http://localhost/computers.html?queryType=COMPUTERS&query=
     singular_class = Computer
     plural_string = "computers"
@@ -750,7 +832,7 @@ class ComputerExtensionAttribute(Record):
         return newdata
 
 
-class ComputerExtensionAttributes(Records, metaclass=Singleton):
+class ComputerExtensionAttributes(Records):
     # http://localhost/computerExtensionAttributes.html
     singular_class = ComputerExtensionAttribute
     plural_string = "computer_extension_attributes"
@@ -766,7 +848,7 @@ class ComputerGroup(Record):
     update_method = "update_computer_group"
 
 
-class ComputerGroups(Records, metaclass=Singleton):
+class ComputerGroups(Records):
     # http://localhost/smartComputerGroups.html
     # http://localhost/staticComputerGroups.html
     singular_class = ComputerGroup
@@ -787,7 +869,7 @@ class ComputerReport(Record):
     refresh_method = "get_computer_report"
 
 
-class ComputerReports(Records, metaclass=Singleton):
+class ComputerReports(Records):
     singular_class = ComputerReport
     plural_string = "computer_reports"
     refresh_method = "get_computer_reports"
@@ -801,7 +883,7 @@ class Department(Record):
     update_method = "update_department"
 
 
-class Departments(Records, metaclass=Singleton):
+class Departments(Records):
     # http://localhost/departments.html
     singular_class = Department
     plural_string = "departments"
@@ -817,7 +899,7 @@ class DirectoryBinding(Record):
     update_method = "update_directory_binding"
 
 
-class DirectoryBindings(Records, metaclass=Singleton):
+class DirectoryBindings(Records):
     singular_class = DirectoryBinding
     plural_string = "directory_bindings"
     refresh_method = "get_directory_bindings"
@@ -838,7 +920,7 @@ class DiskEncryptionConfiguration(Record):
     update_method = "update_disk_encryption_configuration"
 
 
-class DiskEncryptionConfigurations(Records, metaclass=Singleton):
+class DiskEncryptionConfigurations(Records):
     # http://localhost/diskEncryptions.html
     singular_class = DiskEncryptionConfiguration
     plural_string = "disk_encryption_configurations"
@@ -854,7 +936,7 @@ class DistributionPoint(Record):
     update_method = "update_distribution_point"
 
 
-class DistributionPoints(Records, metaclass=Singleton):
+class DistributionPoints(Records):
     singular_class = DistributionPoint
     plural_string = "distribution_points"
     refresh_method = "get_distribution_points"
@@ -883,7 +965,7 @@ class DockItem(Record):
     update_method = "update_dock_item"
 
 
-class DockItems(Records, metaclass=Singleton):
+class DockItems(Records):
     # http://localhost/dockItems.html
     singular_class = DockItem
     plural_string = "dock_items"
@@ -912,7 +994,7 @@ class Ebook(Record):
         return newdata
 
 
-class Ebooks(Records, metaclass=Singleton):
+class Ebooks(Records):
     singular_class = Ebook
     plural_string = "ebooks"
     refresh_method = "get_ebooks"
@@ -930,7 +1012,7 @@ class Ibeacon(Record):
     update_method = "update_ibeacon_region"
 
 
-class Ibeacons(Records, metaclass=Singleton):
+class Ibeacons(Records):
     singular_class = Ibeacon
     plural_string = "ibeacons"
     refresh_method = "get_ibeacon_regions"
@@ -956,7 +1038,7 @@ class JSONWebTokenConfiguration(Record):
         return newdata
 
 
-class JSONWebTokenConfigurations(Records, metaclass=Singleton):
+class JSONWebTokenConfigurations(Records):
     singular_class = JSONWebTokenConfiguration
     plural_string = "json_web_token_configurations"
     refresh_method = "get_json_web_token_configurations"
@@ -978,7 +1060,7 @@ class LDAPServer(Record):
     update_method = "update_ldap_server"
 
 
-class LDAPServers(Records, metaclass=Singleton):
+class LDAPServers(Records):
     singular_class = LDAPServer
     plural_string = "ldap_servers"
     refresh_method = "get_ldap_servers"
@@ -994,7 +1076,7 @@ class MacApplication(Record):
     name_path = "general/name"
 
 
-class MacApplications(Records, metaclass=Singleton):
+class MacApplications(Records):
     singular_class = MacApplication
     plural_string = "mac_applications"
     refresh_method = "get_mac_applications"
@@ -1019,7 +1101,7 @@ class ManagedPreferenceProfile(Record):
     update_method = "update_managed_preference_profile"
 
 
-class ManagedPreferenceProfiles(Records, metaclass=Singleton):
+class ManagedPreferenceProfiles(Records):
     singular_class = ManagedPreferenceProfile
     plural_string = "managed_preference_profiles"
     refresh_method = "get_managed_preference_profiles"
@@ -1034,7 +1116,7 @@ class MobileDevice(Record):
     name_path = "general/name"
 
 
-class MobileDevices(Records, metaclass=Singleton):
+class MobileDevices(Records):
     # http://localhost/mobileDevices.html?queryType=MOBILE_DEVICES&query=
     singular_class = MobileDevice
     plural_string = "mobile_devices"
@@ -1067,7 +1149,7 @@ class MobileDeviceApplication(Record):
         return newdata
 
 
-class MobileDeviceApplications(Records, metaclass=Singleton):
+class MobileDeviceApplications(Records):
     singular_class = MobileDeviceApplication
     plural_string = "mobile_device_applications"
     refresh_method = "get_mobile_device_applications"
@@ -1090,7 +1172,7 @@ class MobileDeviceCommand(Record):
     refresh_method = "get_mobile_device_command"
 
 
-class MobileDeviceCommands(Records, metaclass=Singleton):
+class MobileDeviceCommands(Records):
     singular_class = MobileDeviceCommand
     plural_string = "mobile_device_commands"
     refresh_method = "get_mobile_device_commands"
@@ -1106,7 +1188,7 @@ class MobileDeviceConfigurationProfile(Record):
     name_path = "general/name"
 
 
-class MobileDeviceConfigurationProfiles(Records, metaclass=Singleton):
+class MobileDeviceConfigurationProfiles(Records):
     singular_class = MobileDeviceConfigurationProfile
     plural_string = "configuration_profiles"
     refresh_method = "get_mobile_device_configuration_profiles"
@@ -1135,7 +1217,7 @@ class MobileDeviceEnrollmentProfile(Record):
     }
 
 
-class MobileDeviceEnrollmentProfiles(Records, metaclass=Singleton):
+class MobileDeviceEnrollmentProfiles(Records):
     singular_class = MobileDeviceEnrollmentProfile
     plural_string = "mobile_device_enrollment_profiles"
     refresh_method = "get_mobile_device_enrollment_profiles"
@@ -1153,7 +1235,7 @@ class MobileDeviceExtensionAttribute(Record):
     update_method = "update_mobile_device_extension_attribute"
 
 
-class MobileDeviceExtensionAttributes(Records, metaclass=Singleton):
+class MobileDeviceExtensionAttributes(Records):
     # http://localhost/mobileDeviceExtensionAttributes.html
     singular_class = MobileDeviceExtensionAttribute
     plural_string = "mobile_device_extension_attributes"
@@ -1168,7 +1250,7 @@ class MobileDeviceInvitation(Record):
     delete_method = "delete_mobile_device_invitation"
 
 
-class MobileDeviceInvitations(Records, metaclass=Singleton):
+class MobileDeviceInvitations(Records):
     singular_class = MobileDeviceInvitation
     plural_string = "mobile_device_invitations"
 
@@ -1197,7 +1279,7 @@ class MobileDeviceProvisioningProfile(Record):
     update_method = "update_mobile_device_provisioning_profile"
 
 
-class MobileDeviceProvisioningProfiles(Records, metaclass=Singleton):
+class MobileDeviceProvisioningProfiles(Records):
     singular_class = MobileDeviceProvisioningProfile
     plural_string = "mobile_device_provisioning_profiles"
     refresh_method = "get_mobile_device_provisioning_profiles"
@@ -1233,7 +1315,7 @@ class NetworkSegment(Record):
     update_method = "update_network_segment"
 
 
-class NetworkSegments(Records, metaclass=Singleton):
+class NetworkSegments(Records):
     singular_class = NetworkSegment
     plural_string = "network_segments"
     refresh_method = "get_network_segments"
@@ -1256,7 +1338,7 @@ class OSXConfigurationProfile(Record):
     update_method = "update_osx_configuration_profile"
 
 
-class OSXConfigurationProfiles(Records, metaclass=Singleton):
+class OSXConfigurationProfiles(Records):
     singular_class = OSXConfigurationProfile
     plural_string = "os_x_configuration_profiles"
     refresh_method = "get_osx_configuration_profiles"
@@ -1307,7 +1389,13 @@ class Package(Record):
         return self._metadata
 
     def refresh_patchsoftwaretitles(self, related, patchsoftwaretitles_definitions):
-        for jamf_record in jamf_records(PatchSoftwareTitles):
+        for jamf_record in jamf_records(
+            PatchSoftwareTitles,
+            classic=self.classic,
+            pro=self.pro,
+            debug=self.debug,
+            context_id=self.context_id,
+        ):
             pkgs = jamf_record.get_path("versions/version")
             if pkgs:
                 for ii, pkg_hash in enumerate(pkgs):
@@ -1324,7 +1412,13 @@ class Package(Record):
                     temp.setdefault("PatchSoftwareTitles", []).append(jamf_record)
 
     def refresh_patchpolicies(self, related, patchsoftwaretitles_definitions):
-        for jamf_record in jamf_records(PatchPolicies):
+        for jamf_record in jamf_records(
+            PatchPolicies,
+            classic=self.classic,
+            pro=self.pro,
+            debug=self.debug,
+            context_id=self.context_id,
+        ):
             patchsoftwaretitle_id = jamf_record.get_path(
                 "software_title_configuration_id"
             )
@@ -1339,7 +1433,13 @@ class Package(Record):
                     temp.setdefault("PatchPolicies", []).append(jamf_record)
 
     def refresh_policies(self, related):
-        for jamf_record in jamf_records(Policies):
+        for jamf_record in jamf_records(
+            Policies,
+            classic=self.classic,
+            pro=self.pro,
+            debug=self.debug,
+            context_id=self.context_id,
+        ):
             try:
                 pkgs = jamf_record.get_path("package_configuration/packages/package/id")
             except JamfRecordInvalidPath:
@@ -1350,16 +1450,22 @@ class Package(Record):
                     temp.setdefault("Policies", []).append(jamf_record)
 
     def refresh_groups(self, related):
-        for jamf_record in jamf_records(ComputerGroups):
+        for jamf_record in jamf_records(
+            ComputerGroups,
+            classic=self.classic,
+            pro=self.pro,
+            debug=self.debug,
+            context_id=self.context_id,
+        ):
             try:
                 criterions = jamf_record.get_path("criteria/criterion")
             except (JamfRecordNotFound, JamfRecordInvalidPath):
                 criterions = []
             for criteria in criterions:
-                if criteria["name"] == "Packages Installed By Casper":
+                if criteria["name"] == "Packages Installed by Jamf Pro":
                     pkg = criteria["value"]
                     if pkg and re.search(".pkg|.zip|.dmg", pkg[-4:]):
-                        temp1 = self.plural().recordsWithName(pkg)
+                        temp1 = self.plural.recordsWithName(pkg)
                         if len(temp1) > 1:
                             raise JamfAPISurprise(
                                 f"Too many packages with the name {pkg}, this isn't supposed to happen."
@@ -1385,14 +1491,14 @@ class Package(Record):
             self.refresh_policies(related)
         if self.should_refresh_groups:
             self.refresh_groups(related)
-        self.__class__._related = related
+        self.plural._related = related
 
     @property
     def related(self):
-        if not hasattr(self.__class__, "_related"):
+        if not hasattr(self.plural, "_related"):
             self.refresh_related()
-        if self.id in self.__class__._related:
-            return self.__class__._related[self.id]
+        if self.id in self.plural._related:
+            return self.plural._related[self.id]
         else:
             return {}
 
@@ -1417,7 +1523,7 @@ class Package(Record):
         print()
 
 
-class Packages(Records, metaclass=Singleton):
+class Packages(Records):
     singular_class = Package
     plural_string = "packages"
     refresh_method = "get_packages"
@@ -1441,7 +1547,7 @@ class PatchExternalSource(Record):
     update_method = "update_patch_external_source"
 
 
-class PatchExternalSources(Records, metaclass=Singleton):
+class PatchExternalSources(Records):
     singular_class = PatchExternalSource
     plural_string = "patch_external_sources"
     refresh_method = "get_patch_external_sources"
@@ -1461,7 +1567,7 @@ class PatchInternalSource(Record):
         self._data = results[self.singular_string]
 
 
-class PatchInternalSources(Records, metaclass=Singleton):
+class PatchInternalSources(Records):
     singular_class = PatchInternalSource
     plural_string = "patch_internal_sources"
     refresh_method = "get_patch_internal_sources"
@@ -1507,7 +1613,7 @@ class PatchPolicy(Record):
         return newdata
 
 
-class PatchPolicies(Records, metaclass=Singleton):
+class PatchPolicies(Records):
     singular_class = PatchPolicy
     plural_string = "patch_policies"
     refresh_method = "get_patch_policies"
@@ -1557,7 +1663,13 @@ class PatchSoftwareTitle(Record):
 
     def patchpolicies_print_during(self):
         print(self.name)
-        patchpolicies = jamf_records(PatchPolicies)
+        patchpolicies = jamf_records(
+            PatchPolicies,
+            classic=self.classic,
+            pro=self.pro,
+            debug=self.debug,
+            context_id=self.context_id,
+        )
         for policy in patchpolicies:
             try:
                 policy_id = policy.get_path("software_title_configuration_id")
@@ -1592,7 +1704,13 @@ class PatchSoftwareTitle(Record):
             "Zoom Client for Meetings": r"Zoom-%VERSION%.pkg",
         }
         change_made = False
-        packages = jamf_records(Packages)
+        packages = jamf_records(
+            Packages,
+            classic=self.classic,
+            pro=self.pro,
+            debug=self.debug,
+            context_id=self.context_id,
+        )
         versions = self.data["versions"]["version"]
         if not type(versions) is list:
             versions = [versions]
@@ -1640,7 +1758,7 @@ class PatchSoftwareTitle(Record):
                 print(f" {version['software_version']}: -")
 
 
-class PatchSoftwareTitles(Records, metaclass=Singleton):
+class PatchSoftwareTitles(Records):
     singular_class = PatchSoftwareTitle
     plural_string = "patch_software_titles"
     refresh_method = "get_patch_software_titles"
@@ -1657,6 +1775,17 @@ class PatchSoftwareTitles(Records, metaclass=Singleton):
         "versions": {"required_args": 0, "args_description": ""},
     }
 
+    def create_override(self, data, data_array=None, data_dict=None):
+        try:
+            result = getattr(self.classic, self.create_method)(data)
+        except Exception as e:
+            if len(e.args) > 0 and "Error: Patch has not been enabled" in e.args[0]:
+                raise JamfPatchNotEnabled("Error: Patch has not been enabled")
+            else:
+                raise
+        newdata = convert.xml_to_dict(result)
+        return newdata[self.singular_class.singular_string]["id"]
+
     def stub_record(self):
         return {
             "name_id": "0C6",
@@ -1672,7 +1801,7 @@ class Peripheral(Record):
     update_method = "update_peripheral"
 
 
-class Peripherals(Records, metaclass=Singleton):
+class Peripherals(Records):
     singular_class = Peripheral
     plural_string = "peripherals"
     refresh_method = "get_peripherals"
@@ -1686,7 +1815,7 @@ class PeripheralType(Record):
     update_method = "update_peripheral_type"
 
 
-class PeripheralTypes(Records, metaclass=Singleton):
+class PeripheralTypes(Records):
     # I have no idea how to view this data in the web interface
     singular_class = PeripheralType
     plural_string = "peripheral_types"
@@ -1836,7 +1965,13 @@ class Policy(Record):
             return True
         my_packages = self.data["package_configuration"]["packages"]["package"]
 
-        all_packages = jamf_records(Packages)
+        all_packages = jamf_records(
+            Packages,
+            classic=self.classic,
+            pro=self.pro,
+            debug=self.debug,
+            context_id=self.context_id,
+        )
         print(self.name)
         made_change = False
         for my_package in my_packages:
@@ -1869,7 +2004,7 @@ class Policy(Record):
             self.save()
 
 
-class Policies(Records, metaclass=Singleton):
+class Policies(Records):
     singular_class = Policy
     plural_string = "policies"
     refresh_method = "get_policies"
@@ -1909,7 +2044,7 @@ class Printer(Record):
     update_method = "update_printer"
 
 
-class Printers(Records, metaclass=Singleton):
+class Printers(Records):
     # http://localhost/printers.html
     singular_class = Printer
     plural_string = "printers"
@@ -1925,7 +2060,7 @@ class RemovableMACAddress(Record):
     update_method = "update_removable_mac_address"
 
 
-class RemovableMACAddresses(Records, metaclass=Singleton):
+class RemovableMACAddresses(Records):
     # I have no idea how to view this data in the web interface
     singular_class = RemovableMACAddress
     plural_string = "removable_mac_addresses"
@@ -1947,7 +2082,7 @@ class Script(Record):
             pass
 
 
-class Scripts(Records, metaclass=Singleton):
+class Scripts(Records):
     # http://localhost/view/settings/computer/scripts
     singular_class = Script
     plural_string = "scripts"
@@ -1967,7 +2102,7 @@ class Site(Record):
     update_method = "update_site"
 
 
-class Sites(Records, metaclass=Singleton):
+class Sites(Records):
     # http://localhost/sites.html
     singular_class = Site
     plural_string = "sites"
@@ -1983,7 +2118,7 @@ class SoftwareUpdateServer(Record):
     update_method = "update_software_update_server"
 
 
-class SoftwareUpdateServers(Records, metaclass=Singleton):
+class SoftwareUpdateServers(Records):
     singular_class = SoftwareUpdateServer
     plural_string = "software_update_servers"
     refresh_method = "get_software_update_servers"
@@ -1998,7 +2133,7 @@ class User(Record):
     update_method = "update_user"
 
 
-class Users(Records, metaclass=Singleton):
+class Users(Records):
     # http://localhost/users.html?query=
     singular_class = User
     plural_string = "users"
@@ -2014,7 +2149,7 @@ class UserExtensionAttribute(Record):
     update_method = "update_user_extension_attribute"
 
 
-class UserExtensionAttributes(Records, metaclass=Singleton):
+class UserExtensionAttributes(Records):
     # http://localhost/userExtensionAttributes.html
     singular_class = UserExtensionAttribute
     plural_string = "user_extension_attributes"
@@ -2030,7 +2165,7 @@ class UserGroup(Record):
     update_method = "update_user_group"
 
 
-class UserGroups(Records, metaclass=Singleton):
+class UserGroups(Records):
     singular_class = UserGroup
     plural_string = "user_groups"
     refresh_method = "get_user_groups"
@@ -2061,7 +2196,7 @@ class VPPAccount(Record):
     update_method = "update_vpp_account"
 
 
-class VPPAccounts(Records, metaclass=Singleton):
+class VPPAccounts(Records):
     singular_class = VPPAccount
     plural_string = "vpp_accounts"
     refresh_method = "get_vpp_accounts"
@@ -2082,7 +2217,7 @@ class VPPAssignment(Record):
     update_method = "update_vpp_assignment"
 
 
-class VPPAssignments(Records, metaclass=Singleton):
+class VPPAssignments(Records):
     singular_class = VPPAssignment
     plural_string = "vpp_assignments"
     refresh_method = "get_vpp_assignments"
@@ -2105,7 +2240,7 @@ class VPPInvitation(Record):
     update_method = "update_vpp_invitation"
 
 
-class VPPInvitations(Records, metaclass=Singleton):
+class VPPInvitations(Records):
     singular_class = VPPInvitation
     plural_string = "vpp_invitations"
     refresh_method = "get_vpp_invitations"
@@ -2130,7 +2265,7 @@ class WebHook(Record):
     update_method = "update_webhook"
 
 
-class WebHooks(Records, metaclass=Singleton):
+class WebHooks(Records):
     singular_class = WebHook
     plural_string = "webhooks"
     refresh_method = "get_webhooks"
@@ -2144,7 +2279,15 @@ class WebHooks(Records, metaclass=Singleton):
         }
 
 
-def jamf_records(cls, name="", exclude=()):
+def jamf_records(
+    cls,
+    name="",
+    exclude=(),
+    classic=None,
+    pro=None,
+    debug=False,
+    context_id="global",
+):
     """
     Get Jamf Records
 
@@ -2154,13 +2297,21 @@ def jamf_records(cls, name="", exclude=()):
 
     :returns:  list of dicts: [{'id': jamf_id, 'name': name}, ...]
     """
+    if classic is None:
+        raise ValueError(
+            "jamf_records requires a Classic client. Construct records via Server."
+        )
     # exclude specified records by full name
-    included = [c for c in cls() if c.name not in exclude]
+    included = [
+        c
+        for c in cls(classic=classic, pro=pro, debug=debug, context_id=context_id)
+        if c.name not in exclude
+    ]
     # NOTE: empty string ('') always in all other strings
     return [c for c in included if name in c.name]
 
 
-def categories(name="", exclude=()):
+def categories(name="", exclude=(), classic=None, pro=None, debug=False, context_id="global"):
     """
     Get Jamf Categories
 
@@ -2169,14 +2320,12 @@ def categories(name="", exclude=()):
 
     :returns:  list of dicts: [{'id': jamf_id, 'name': name}, ...]
     """
-    return jamf_records(Categories, name, exclude)
-
-
-def set_classic(classic):
-    Record.classic = classic
-    Records.classic = classic
-
-
-def set_debug(debug):
-    Record.debug = debug
-    Records.debug = debug
+    return jamf_records(
+        Categories,
+        name,
+        exclude,
+        classic=classic,
+        pro=pro,
+        debug=debug,
+        context_id=context_id,
+    )

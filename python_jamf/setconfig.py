@@ -2,7 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-Jamf Config
+Jamf Config Utility
+
+This module provides a command-line utility for managing the python-jamf
+configuration. It allows users to set up, test, print, and manage authentication
+credentials and API tokens for Jamf Pro server connections.
 """
 
 __author__ = "Sam Forester"
@@ -18,16 +22,26 @@ import logging
 import platform
 import sys
 
-import python_jamf
+from python_jamf import config
+from python_jamf import exceptions
+from python_jamf import server
 
 
 class Parser:
+    """
+    Command-line argument parser for the Jamf Config utility.
+    """
+
     def __init__(self):
+        """
+        Initialize the parser with supported arguments and platform-specific defaults.
+        """
         myplatform = platform.system()
+        default_pref = ""
         if myplatform == "Darwin":
-            default_pref = python_jamf.config.MACOS_PREFS_TILDA
+            default_pref = config.MACOS_PREFS_TILDA
         elif myplatform == "Linux":
-            default_pref = python_jamf.config.LINUX_PREFS_TILDA
+            default_pref = config.LINUX_PREFS_TILDA
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument(
             "-H", "--hostname", help="Specify hostname (default: prompt)"
@@ -69,8 +83,10 @@ class Parser:
 
     def parse(self, argv):
         """
-        :param argv:    list of arguments to parse
-        :returns:       argparse.NameSpace object
+        Parse the provided command-line arguments.
+
+        :param argv: list of arguments to parse
+        :returns: argparse.Namespace object
         """
         args = self.parser.parse_args(argv)
         if args.client:
@@ -83,9 +99,14 @@ class Parser:
 
 
 def test(config_path):
+    """
+    Test the connection to the Jamf server using the specified configuration.
+
+    :param config_path: Path to the configuration file.
+    """
     try:
-        jps = python_jamf.server.Server(config_path=config_path)
-    except python_jamf.exceptions.JamfConfigError:
+        jps = server.Server(config_path=config_path)
+    except exceptions.JamfConfigError:
         sys.stderr.write("Could not read config preferences, have you set them yet?\n")
         exit(1)
     try:
@@ -96,9 +117,14 @@ def test(config_path):
 
 
 def print_config(config_path):
+    """
+    Print the current configuration (excluding sensitive credentials).
+
+    :param config_path: Path to the configuration file.
+    """
     try:
-        conf = python_jamf.config.Config(prompt=False, config_path=config_path)
-    except python_jamf.exceptions.JamfConfigError:
+        conf = config.Config(prompt=False, config_path=config_path)
+    except exceptions.JamfConfigError:
         sys.stderr.write("Could not read config preferences, have you set them yet?\n")
         exit(1)
     print(conf.config_path)
@@ -119,28 +145,43 @@ def print_config(config_path):
 
 
 def revoke_token(config_path):
-    api = python_jamf.API(config_path=config_path)
-    api.revoke_token()
+    """
+    Revoke the existing API Bearer token for the specified configuration.
+
+    :param config_path: Path to the configuration file.
+    """
+    conf = config.Config(prompt=False, config_path=config_path)
+    conf.revoke_token()
 
 
 def interactive(args, config_path):
+    """
+    Interactively gather configuration details and save them.
+
+    :param args: Parsed command-line arguments.
+    :param config_path: Path where the configuration will be saved.
+    """
     if args.hostname:
         hostname = args.hostname
     else:
-        hostname = python_jamf.config.prompt_hostname()
+        hostname = config.prompt_hostname()
+
+    client = None
     if args.client is not None:
         if args.client in ["0", "no", "false"]:
             client = False
         if args.client in ["1", "yes", "true"]:
             client = True
     else:
-        client = python_jamf.config.prompt_userauth()
+        client = config.prompt_userauth()
+
     if client:
         username_type = "Client ID"
         password_type = "Client Secret"
     else:
         username_type = "Username"
         password_type = "Password"
+
     if args.user:
         user = args.user
     else:
@@ -150,7 +191,7 @@ def interactive(args, config_path):
         passwd = args.passwd
     else:
         passwd = getpass.getpass(prompt=f"{password_type}: ")
-    conf = python_jamf.config.Config(
+    conf = config.Config(
         hostname=hostname,
         username=user,
         password=passwd,
@@ -163,6 +204,11 @@ def interactive(args, config_path):
 
 
 def setconfig(argv):
+    """
+    Main entry point for setting the Jamf configuration.
+
+    :param argv: Command-line arguments.
+    """
     logger = logging.getLogger(__name__)
     args = Parser().parse(argv)
     logger.debug(f"args: {args!r}")
@@ -170,12 +216,13 @@ def setconfig(argv):
         config_path = args.path
     else:
         myplatform = platform.system()
+        default_pref = ""
         if myplatform == "Darwin":
-            default_pref = python_jamf.config.MACOS_PREFS_TILDA
+            default_pref = config.MACOS_PREFS_TILDA
         elif myplatform == "Linux":
-            default_pref = python_jamf.config.LINUX_PREFS_TILDA
+            default_pref = config.LINUX_PREFS_TILDA
         config_path = default_pref
-    config_path = python_jamf.config.resolve_config_path(config_path)
+    config_path = config.resolve_config_path(config_path)
     if args.test:
         test(config_path)
     elif args.print:

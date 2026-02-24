@@ -7,6 +7,70 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
+## [0.10.0] -- 2026-02-23
+
+Attack of the AI
+
+### Added
+
+- Added support for Jamf Pro API (`Pro` client) alongside Classic API in `Server`.
+- Added per-server, context-aware record caching via `Server.records()` and internal `_context_id`.
+- Added new exceptions:
+
+  - `JamfPatchNotEnabled`
+  - `JamfAuthorizationError`
+- Added `Computer` methods for Pro API operations:
+
+  - `create_mdm_command()`
+  - `get_recovery_lock_password()`
+  - `set_recovery_lock_password()`
+- Added `PatchSoftwareTitles.create_override()` with proper handling when Patch is not enabled.
+- Added comprehensive module, class, and method docstrings across `config` and `setconfig`.
+
+### Changed
+
+- Refactored `Record` and `Records` to be context-aware instead of using the `Singleton` metaclass.
+
+  - Instances are now cached per `context_id` instead of globally.
+  - Collections must be constructed with a Classic client.
+- Replaced global `set_classic()` and `set_debug()` helpers with per-`Server` configuration.
+- `jamf_records()` now requires a Classic client and supports `pro`, `debug`, and `context_id` parameters.
+- `categories()` updated to support client/context parameters.
+- `Server` now raises connection/authentication exceptions instead of calling `exit()`.
+- Updated CLI utility (`setconfig`) to use direct module imports and improved configuration handling.
+- Updated tests to use environment-based credentials and per-server record access.
+- Replaced some `print()` calls with logger usage in records logic.
+- Improved error handling during `refresh_records()` to properly surface authorization errors.
+
+### Fixed
+
+- Fixed typo in `JamfUnknownClass` docstring.
+- Corrected package criterion string to `"Packages Installed by Jamf Pro"`.
+- Fixed related-record caching to be stored per collection instance rather than at class level.
+- Improved handling of plural references within `Record` instances.
+
+### Removed
+
+- Removed `Singleton` metaclass from all `Records` subclasses.
+- Removed `set_classic()` and `set_debug()` global configuration helpers.
+
+### Breaking Changes
+
+- `Records` collections are no longer singletons and must be accessed via:
+
+  ```python
+  jps = Server(...)
+  packages = jps.records("Packages")
+  ```
+
+  or constructed with an explicit Classic client.
+- `jamf_records()` now requires a `classic` argument and will raise `ValueError` if omitted.
+- Code that relied on global record state or module-level client injection must be updated to use `Server.records()`.
+
+### REMOVAL NOTICE
+
+- api.py, This is the last version that will include this file. Please migrate off of it if you are using it!
+
 ## [0.9.9] -- 2024-05-06
 
 **Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.8...0.9.9
@@ -134,7 +198,7 @@ records.py changes:
 - Search for records by path: `jctl computers -p "location/[building==BIOL]"`.
 - When updating data with set_path, don't edit the data directly, modify a copy of the data.
   save() sends the "copy".
-- Split Package.refresh_related into Package.refresh_patchsoftwaretitles, 
+- Split Package.refresh_related into Package.refresh_patchsoftwaretitles,
   Package.refresh_patchpolicies, Package.refresh_policies, and Package.refresh_groups.
 
 ### Deprecated

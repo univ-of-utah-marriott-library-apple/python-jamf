@@ -2,6 +2,11 @@
 
 """
 Configuration for python-jamf
+
+This module provides the Config class for managing Jamf Pro server configuration,
+including connection details and authentication credentials. It handles loading
+and saving settings to plist files and uses the system keyring for secure
+storage of passwords and tokens.
 """
 
 __author__ = "Sam Forester"
@@ -32,6 +37,14 @@ EXPIRE_KEY = "python-jamf-expires"
 
 
 class Config:
+    """
+    Handles Jamf Pro configuration settings.
+
+    The Config class manages the hostname, username, password, and authentication
+    type for connecting to a Jamf Pro server. It supports loading from and
+    saving to plist files, and integrates with the system keyring for security.
+    """
+
     def __init__(
         self,
         config_path=None,
@@ -41,6 +54,16 @@ class Config:
         client=None,
         prompt=False,
     ):
+        """
+        Initialize the Config object.
+
+        :param config_path: Path to the configuration plist file.
+        :param hostname: Jamf Pro server URL.
+        :param username: Username for authentication.
+        :param password: Password for authentication.
+        :param client: Boolean indicating if API client authentication is used.
+        :param prompt: Whether to prompt the user for missing information.
+        """
         self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.prompt = prompt
         self.hostname = hostname
@@ -85,6 +108,11 @@ class Config:
             )
 
     def load(self):
+        """
+        Load configuration from the plist file.
+
+        :raises JamfConfigError: If the file cannot be loaded or is invalid.
+        """
         if path.exists(self.config_path):
             fptr = open(self.config_path, "rb")
             try:
@@ -127,6 +155,9 @@ the "conf-python-jamf" script.
             raise JamfConfigError(f"Config file does not exist: {self.config_path}")
 
     def save(self):
+        """
+        Save the current configuration to the plist file and password to keyring.
+        """
         keyring.set_password(self.hostname, self.username, self.password)
         data = {
             "JSSHostname": self.hostname,
@@ -139,6 +170,9 @@ the "conf-python-jamf" script.
         fptr.close()
 
     def load_token(self):
+        """
+        Load the API token from the keyring and check if it's expired.
+        """
         self.token = keyring.get_password(self.hostname, TOKEN_KEY)
         expires = keyring.get_password(self.hostname, EXPIRE_KEY)
         self.expired = False
@@ -160,12 +194,21 @@ the "conf-python-jamf" script.
                 )
 
     def save_new_token(self, token, expires):
+        """
+        Save a new API token and its expiration date to the keyring.
+
+        :param token: The API token string.
+        :param expires: The expiration timestamp string.
+        """
         self.token = token
         self.expires = expires
         keyring.set_password(self.hostname, TOKEN_KEY, self.token)
         keyring.set_password(self.hostname, EXPIRE_KEY, self.expires)
 
     def revoke_token(self):
+        """
+        Remove the API token and its expiration date from the keyring.
+        """
         try:
             keyring.delete_password(self.hostname, TOKEN_KEY)
         except:
@@ -176,6 +219,9 @@ the "conf-python-jamf" script.
             stderr.write("Warning: couldn't delete keyring token expire date\n")
 
     def reset(self):
+        """
+        Revoke the token, delete the password from keyring, and remove the config file.
+        """
         self.revoke_token()
         try:
             keyring.delete_password(self.hostname, self.username)
@@ -185,6 +231,12 @@ the "conf-python-jamf" script.
 
 
 def resolve_config_path(config_path=None):
+    """
+    Resolve the absolute path to the configuration file.
+
+    :param config_path: Optional path provided by the user.
+    :return: Resolved absolute path.
+    """
     if not config_path:
         macos_prefs = path.expanduser(MACOS_PREFS_TILDA)
         linux_prefs = path.expanduser(LINUX_PREFS_TILDA)
@@ -205,6 +257,11 @@ def resolve_config_path(config_path=None):
 
 
 def prompt_hostname():
+    """
+    Interactively prompt the user for the Jamf Pro hostname.
+
+    :return: Validated hostname string.
+    """
     valid = False
     while not valid:
         hostname = input("Hostname (don't forget https:// and :8443): ")
@@ -216,6 +273,11 @@ def prompt_hostname():
 
 
 def prompt_userauth():
+    """
+    Interactively prompt the user for the authentication type.
+
+    :return: Boolean (True for API Client Auth, False for User Auth).
+    """
     valid = False
     while not valid:
         client = input("User Auth [0] or API Client Auth [1]: ")
