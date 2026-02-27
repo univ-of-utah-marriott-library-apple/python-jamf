@@ -31,6 +31,9 @@ import warnings
 from pprint import pprint
 from sys import stderr
 
+import requests.exceptions import HTTPError
+from jps_api_wrapper.request_builder import NotFound
+
 from . import convert
 from .exceptions import (
     JamfAPISurprise,
@@ -757,13 +760,25 @@ class Computer(Record):
 
         :returns: Recovery lock password in JSON
         """
-        return self.server.pro.get_computer_inventory_recovery_lock_password(self.id)
+        return self.pro.get_computer_inventory_recovery_lock_password(self.id)
+
+    def get_recovery_lock_password_print_during(self):
+        """
+        Print the recovery lock password payload for this computer.
+        """
+        try:
+            result = self.get_recovery_lock_password()
+            result = {'name':self.data["general"]["name"], 'recoveryLockPassword':result['recoveryLockPassword']}
+        except NotFound:
+            result = {'name':self.data["general"]["name"], 'recoveryLockPassword': None}
+        print(result)
+        return True
 
     def set_recovery_lock_password(self, new_password):
         """
         """
         try:
-            inventory = self.server.pro.get_computer_inventory(self.id)
+            inventory = self.pro.get_computer_inventory(self.id)
             management_id = inventory['general']['managementId']
         except:
             raise JamfRecordInvalidPath(
@@ -781,7 +796,22 @@ class Computer(Record):
                 "newPassword": new_password
             }
         }
-        return self.server.pro.create_mdm_command(newdata)
+        try:
+            return self.pro.create_mdm_command(newdata)
+        except HTTPError as e:
+            status = getattr(e.response, "status_code", None)
+            if status in [401, 403]:
+                raise JamfAuthorizationError(
+                    "Permission denied: your account is not authorized to create MDM commands."
+                )
+            raise
+
+    def set_recovery_lock_password_update_during(self, new_password):
+        """
+        Set the recovery lock password for this computer via MDM command.
+        """
+        self.set_recovery_lock_password(new_password)
+        return True
 
 
 class Computers(Records):
@@ -801,6 +831,12 @@ class Computers(Records):
 
     sub_commands = {
         "apps": {"required_args": 0, "args_description": ""},
+        "get_recovery_lock_password": {"required_args": 0, "args_description": ""},
+        "set_recovery_lock_password": {
+            "required_args": 1,
+            "args_description": "new_password",
+            "skip_save": True,
+        },
     }
 
     def apps_print_after(self):

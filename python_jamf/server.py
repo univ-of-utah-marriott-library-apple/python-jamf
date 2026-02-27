@@ -74,13 +74,27 @@ class Server:
     def record_class(self, name, case_sensitive=False):
         return records.class_name(name, case_sensitive=case_sensitive)
 
+    def __getattr__(self, name):
+        """
+        Allow direct access to record collections, e.g. server.Computers().
+        """
+        try:
+            record_cls = self.record_class(name, case_sensitive=False)
+        except Exception:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
+        def _records_factory():
+            return self.records(record_cls)
+
+        return _records_factory
+
     def records(self, record_cls):
         if isinstance(record_cls, str):
             record_cls = self.record_class(record_cls, case_sensitive=False)
         if record_cls not in self._records_cache:
             self._records_cache[record_cls] = record_cls(
                 classic=self.classic,
-                #pro=self.pro,
+                pro=self.pro,
                 debug=self.debug,
                 context_id=self._context_id,
             )

@@ -236,6 +236,7 @@ class Parser:
             args.sub_command = {
                 "attr": sub_c,
                 "args": args.sub_command[1:],
+                "config": plural_cls.sub_commands.get(sub_c, {}),
             }
             # Get methods
             method_found = False
@@ -769,12 +770,16 @@ def main(argv=None):  # noqa: C901
                     )
                     success = method(record, *args.sub_command["args"])
                     if success:
-                        try:
-                            record.save()
-                        except KeyError as e:
-                            print(f"Couldn't find key: {e}")
-                        except Exception as e:
-                            print(f"Couldn't save changed record: {e}")
+                        skip_save = args.sub_command.get("config", {}).get(
+                            "skip_save", False
+                        )
+                        if not skip_save:
+                            try:
+                                record.save()
+                            except KeyError as e:
+                                print(f"Couldn't find key: {e}")
+                            except Exception as e:
+                                print(f"Couldn't save changed record: {e}")
                     else:
                         print("Sub command failed")
 
