@@ -34,6 +34,7 @@ from sys import stderr
 from . import convert
 from .exceptions import (
     JamfAPISurprise,
+    JamfAuthorizationError,
     JamfPatchNotEnabled,
     JamfRecordInvalidPath,
     JamfRecordNotFound,

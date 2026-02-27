@@ -104,7 +104,13 @@ class Parser:
             "-j",
             "--json",
             action="store_true",
-            help="Print json (for pretty pipe to `prettier --parser json`)",
+            help="Print json (for pretty pipe to `prettier --parser json`), or create from json. Note, do not use untrusted JSON data. JSON strs must have double quotes (-l uses single quotes, -j uses double!).",
+        )
+        self.parser.add_argument(
+            "-P",
+            "--plaintext",
+            action="store_true",
+            help="Print plain text output (no pretty formatting)",
         )
         self.parser.add_argument(
             "--quiet-as-a-mouse", action="store_true", help="Don't print anything"
@@ -133,6 +139,11 @@ class Parser:
         )
 
     def json_str_to_dict(self, value_):
+        if re.search("'", value_):
+            sys.stderr.write(
+                "Warning, your JSON string contains a single quote. "
+                "Keys in JSON dictionaries must be double quoted.\n"
+            )
         try:
             json_dump_ = json.dumps(ast.literal_eval(value_))
         except:  # SyntaxError  ValueError
@@ -254,8 +265,11 @@ class Parser:
                 exit(1)
         # Validate conflicting args, quiet
         if args.quiet_as_a_mouse:
-            if args.json:
+            if args.json and not (args.create or args.update):
                 sys.stderr.write("Can't print json if quiet...\n")
+                exit()
+            if args.plaintext:
+                sys.stderr.write("Can't print plaintext if quiet...\n")
                 exit()
             if args.print_id:
                 sys.stderr.write("Can't print ids if quiet...\n")
@@ -278,11 +292,14 @@ class Parser:
             elif args.path:
                 sys.stderr.write("Can't print ids and path at the same time...\n")
                 exit()
+        if args.json and args.plaintext:
+            sys.stderr.write("Can't print json and plaintext at the same time...\n")
+            exit()
         # Process the update parameters to validate them before proceeding.
         if args.create is not None:
             if len(args.create) == 1:
                 if args.json:
-                    args.create = [self.json_str_to_dict(args.create[0])]
+                    args.create = self.json_str_to_dict(args.create[0])
             else:
                 if args.json:
                     sys.stderr.write(
@@ -302,8 +319,11 @@ class Parser:
                 split1 = update_string_.split("=", 1)
                 if len(split1) == 2:
                     path_ = split1[0]
-                    value_ = self.json_str_to_dict(split1[1])
-                    update_processed_.append([path_, value_])
+                    if args.json:
+                        value_ = self.json_str_to_dict(split1[1])
+                        update_processed_.append({path_: value_})
+                    else:
+                        update_processed_.append({path_: split1[1]})
                 else:
                     if not args.quiet_as_a_mouse:
                         sys.stderr.write(
@@ -437,6 +457,31 @@ class JSONOutput(JCTLOutput):
         print("[" + self.json_output + "\n]")
 
 
+class PlainTextOutput(JCTLOutput):
+    def __init__(self, args):
+        self.andele_andele = args.andele_andele
+        self.use_the_force_luke = args.use_the_force_luke
+
+    def print_start(self):
+        pass
+
+    def print_id(self, record):
+        print(record.id)
+
+    def print_path(self, record, temp):
+        print(temp)
+
+    def print_long(self, record):
+        print({record.name: record.data})
+
+    def print_short(self, record):
+        print(record)
+
+    def print_end(self, filtered_results):
+        if len(filtered_results) > 1:
+            print("Count: " + str(len(filtered_results)))
+
+
 def confirm(_message):
     """
     Ask user to enter Y or N (case-insensitive).
@@ -474,7 +519,7 @@ def change_confirmation(args, rec_class, filtered_results, hostname):
             confirmed = confirm(
                 f"Are you sure you want to create a "
                 f"{rec_class.singular_class.__name__} with the data "
-                f'"{args.create[0]} on {hostname}" [y/n]? '
+                f'"{args.create} on {hostname}" [y/n]? '
             )
         else:
             confirmed = confirm(
@@ -557,7 +602,7 @@ def print_feedback(record, args, outputer, rec_class):
             for path_ in args.path:
                 try:
                     value = record.get_path(path_)
-                except JamfRecordNotFound:
+                except (JamfRecordNotFound, JamfRecordInvalidPath):
                     value = None
                 temp[path_] = value
             outputer.print_path(record, temp)
@@ -592,6 +637,8 @@ def main(argv=None):  # noqa: C901
     # What type of feedback (mutually exclusive)
     if args.json:
         outputer = JSONOutput(args)
+    elif args.plaintext:
+        outputer = PlainTextOutput(args)
     elif args.quiet_as_a_mouse:
         outputer = SilentOutput(args)
     else:
@@ -640,7 +687,8 @@ def main(argv=None):  # noqa: C901
         if not args.quiet_as_a_mouse:
             print_feedback(record, args, outputer, rec_class)
 
-    outputer.print_end(filtered_results)
+    if not args.create:
+        outputer.print_end(filtered_results)
 
     if args.sub_command and "print_after" in args.sub_command:
         method = getattr(rec_class, args.sub_command["print_after"])
@@ -683,9 +731,9 @@ def main(argv=None):  # noqa: C901
                     paths = []
                     print("-----")
                     for update_list in args.update:
-                        path_ = update_list[0]
+                        path_ = list(update_list.keys())[0]
                         paths.append(path_)
-                        value_ = update_list[1]
+                        value_ = update_list[path_]
                         if not args.quiet_as_a_mouse:
                             try:
                                 old_ = record.get_path(path_)
@@ -708,6 +756,8 @@ def main(argv=None):  # noqa: C901
                                 for path_ in paths:
                                     new_ = record.get_path(path_)
                                     print(f"New value: {path_} = {new_}")
+                        except KeyError as e:
+                            print(f"Couldn't find key: {e}")
                         except Exception as e:
                             print(f"Couldn't save changed record: {e}")
                     else:
@@ -721,6 +771,8 @@ def main(argv=None):  # noqa: C901
                     if success:
                         try:
                             record.save()
+                        except KeyError as e:
+                            print(f"Couldn't find key: {e}")
                         except Exception as e:
                             print(f"Couldn't save changed record: {e}")
                     else:
