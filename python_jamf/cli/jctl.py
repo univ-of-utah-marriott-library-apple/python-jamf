@@ -714,6 +714,7 @@ def main(argv=None):  # noqa: C901
             _ = jps.records(rec_class).create(args.create)
         except Exception as e:
             sys.stderr.write(f"Couldn't create record: {e}\n")
+            exit(1)
     elif confirmed:
         if args.sub_command and "update_before" in args.sub_command:
             method = getattr(rec_class, args.sub_command["update_before"])

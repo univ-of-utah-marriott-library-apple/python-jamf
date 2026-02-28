@@ -21,6 +21,12 @@ import logging
 import platform
 import sys
 
+from jamf_auth import (
+    AuthResponseConnectionError,
+    AuthResponseWasNotValid,
+    JamfAuthException,
+)
+
 from python_jamf import config, exceptions, server
 
 
@@ -108,6 +114,9 @@ def test(config_path):
             f"Could not load config: {config_path}\n"
             f"Reason: {e}\n"
         )
+        exit(1)
+    except (JamfAuthException, AuthResponseConnectionError, AuthResponseWasNotValid):
+        # Server() already printed a user-friendly message; avoid stack traces here.
         exit(1)
     try:
         print(jps.pro.get_jamf_pro_version())

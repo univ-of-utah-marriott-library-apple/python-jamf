@@ -88,6 +88,8 @@ class Config:
         if not self._password:
             if self.prompt:
                 self._password = getpass.getpass()
+        if self._hostname:
+            _ = self.hostname
 
     @property
     def hostname(self):

@@ -31,7 +31,8 @@ import warnings
 from pprint import pprint
 from sys import stderr
 
-import requests.exceptions import HTTPError
+#from requests.exceptions import HTTPError
+import requests
 from jps_api_wrapper.request_builder import NotFound
 
 from . import convert
@@ -464,7 +465,7 @@ class Records:
             records = records[self.plural_string]
             self.refresh_records2(self.singular_class, records)
         except JamfAuthorizationError:
-            self.log("Permission denied")
+            self.log.warning("Permission denied")
             raise
 
     def refresh_records2(
@@ -562,7 +563,7 @@ class Records:
             for recid in ids:
                 record = self.recordWithId(recid)
                 if feedback:
-                    self.log(f"Deleting record: {record}")
+                    self.log.info(f"Deleting record: {record}")
                 record.delete(refresh=False)
             self.refresh_records()
 
@@ -768,9 +769,9 @@ class Computer(Record):
         """
         try:
             result = self.get_recovery_lock_password()
-            result = {'name':self.data["general"]["name"], 'recoveryLockPassword':result['recoveryLockPassword']}
+            result = {'name': self.data["general"]["name"], 'recoveryLockPassword': result['recoveryLockPassword']}
         except NotFound:
-            result = {'name':self.data["general"]["name"], 'recoveryLockPassword': None}
+            result = {'name': self.data["general"]["name"], 'recoveryLockPassword': None}
         print(result)
         return True
 
@@ -798,7 +799,7 @@ class Computer(Record):
         }
         try:
             return self.pro.create_mdm_command(newdata)
-        except HTTPError as e:
+        except requests.exceptions.HTTPError as e:
             status = getattr(e.response, "status_code", None)
             if status in [401, 403]:
                 raise JamfAuthorizationError(
