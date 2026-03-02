@@ -9,6 +9,27 @@ from jps_api_wrapper.pro import Pro
 from . import config, exceptions, records
 
 
+class RecordsProxy:
+    def __init__(self, server):
+        self._server = server
+
+    def __call__(self, record_cls):
+        return self._server._records(record_cls)
+
+    def __getattr__(self, name):
+        try:
+            record_cls = self._server.record_class(name, case_sensitive=False)
+        except Exception:
+            raise AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute '{name}'"
+            )
+
+        def _records_factory():
+            return self._server._records(record_cls)
+
+        return _records_factory
+
+
 class Server:
     """
     Class that allows talking to a server
@@ -48,6 +69,7 @@ class Server:
         self.debug = debug
         self._context_id = f"server-{id(self)}"
         self._records_cache = {}
+        self._records_proxy = RecordsProxy(self)
         try:
             self.classic = Classic(
                 self.config.hostname,
@@ -84,11 +106,15 @@ class Server:
             raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
         def _records_factory():
-            return self.records(record_cls)
+            return self._records(record_cls)
 
         return _records_factory
 
-    def records(self, record_cls):
+    @property
+    def records(self):
+        return self._records_proxy
+
+    def _records(self, record_cls):
         if isinstance(record_cls, str):
             record_cls = self.record_class(record_cls, case_sensitive=False)
         if record_cls not in self._records_cache:
@@ -101,4 +127,4 @@ class Server:
         return self._records_cache[record_cls]
 
     def records_by_name(self, name, case_sensitive=False):
-        return self.records(self.record_class(name, case_sensitive=case_sensitive))
+        return self._records(self.record_class(name, case_sensitive=case_sensitive))
