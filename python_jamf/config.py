@@ -204,8 +204,7 @@ the "conf-python-jamf" script.
             try:
                 expires = expires[:-1]  # remove the Z because in case there's no "."
                 deadline = datetime.strptime(
-                    expires.split(".")[0],
-                    "%Y-%m-%dT%H:%M:%S"
+                    expires.split(".")[0], "%Y-%m-%dT%H:%M:%S"
                 ).replace(tzinfo=timezone.utc)
                 if deadline > datetime.now(timezone.utc):
                     self.expired = True
@@ -332,7 +331,9 @@ def prompt_username(existing_username=None, username_type="Username"):
         message = existing_username
     else:
         message = None
-    prompt = f"{username_type}: " if message is None else f"{username_type} ({message}): "
+    prompt = (
+        f"{username_type}: " if message is None else f"{username_type} ({message}): "
+    )
     username = input(prompt).strip()
     if existing_username and username == "":
         return existing_username

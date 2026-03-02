@@ -103,7 +103,9 @@ class Server:
         try:
             record_cls = self.record_class(name, case_sensitive=False)
         except Exception:
-            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+            raise AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute '{name}'"
+            )
 
         def _records_factory():
             return self._records(record_cls)

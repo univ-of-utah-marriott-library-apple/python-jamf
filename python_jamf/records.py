@@ -31,7 +31,7 @@ import warnings
 from pprint import pprint
 from sys import stderr
 
-#from requests.exceptions import HTTPError
+# from requests.exceptions import HTTPError
 import requests
 from jps_api_wrapper.request_builder import NotFound
 
@@ -769,33 +769,35 @@ class Computer(Record):
         """
         try:
             result = self.get_recovery_lock_password()
-            result = {'name': self.data["general"]["name"], 'recoveryLockPassword': result['recoveryLockPassword']}
+            result = {
+                "name": self.data["general"]["name"],
+                "recoveryLockPassword": result["recoveryLockPassword"],
+            }
         except NotFound:
-            result = {'name': self.data["general"]["name"], 'recoveryLockPassword': None}
+            result = {
+                "name": self.data["general"]["name"],
+                "recoveryLockPassword": None,
+            }
         print(result)
         return True
 
     def set_recovery_lock_password(self, new_password):
-        """
-        """
+        """ """
         try:
             inventory = self.pro.get_computer_inventory(self.id)
-            management_id = inventory['general']['managementId']
+            management_id = inventory["general"]["managementId"]
         except:
             raise JamfRecordInvalidPath(
                 "Computer record is missing management_id; refresh data and ensure the device is managed."
             )
         newdata = {
             "clientData": [
-                {
-                    "managementId": str(management_id),
-                    "clientType": "COMPUTER"
-                }
+                {"managementId": str(management_id), "clientType": "COMPUTER"}
             ],
             "commandData": {
                 "commandType": "SET_RECOVERY_LOCK",
-                "newPassword": new_password
-            }
+                "newPassword": new_password,
+            },
         }
         try:
             return self.pro.create_mdm_command(newdata)
@@ -2349,7 +2351,9 @@ def jamf_records(
     return [c for c in included if name in c.name]
 
 
-def categories(name="", exclude=(), classic=None, pro=None, debug=False, context_id="global"):
+def categories(
+    name="", exclude=(), classic=None, pro=None, debug=False, context_id="global"
+):
     """
     Get Jamf Categories
 

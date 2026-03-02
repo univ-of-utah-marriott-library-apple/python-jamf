@@ -110,10 +110,7 @@ def test(config_path):
     try:
         jps = server.Server(config_path=config_path)
     except exceptions.JamfConfigError as e:
-        sys.stderr.write(
-            f"Could not load config: {config_path}\n"
-            f"Reason: {e}\n"
-        )
+        sys.stderr.write(f"Could not load config: {config_path}\n" f"Reason: {e}\n")
         exit(1)
     except (JamfAuthException, AuthResponseConnectionError, AuthResponseWasNotValid):
         # Server() already printed a user-friendly message; avoid stack traces here.
@@ -134,10 +131,7 @@ def print_config(config_path):
     try:
         conf = config.Config(prompt=False, config_path=config_path)
     except exceptions.JamfConfigError as e:
-        sys.stderr.write(
-            f"Could not load config: {config_path}\n"
-            f"Reason: {e}\n"
-        )
+        sys.stderr.write(f"Could not load config: {config_path}\n" f"Reason: {e}\n")
         exit(1)
     print(conf.config_path)
     if conf.client:
@@ -182,7 +176,9 @@ def interactive(args, config_path):
     if args.hostname:
         hostname = args.hostname
     else:
-        existing_hostname = getattr(existing_conf, "_hostname", None) if existing_conf else None
+        existing_hostname = (
+            getattr(existing_conf, "_hostname", None) if existing_conf else None
+        )
         hostname = config.prompt_hostname(existing_hostname)
 
     client = None
@@ -192,7 +188,9 @@ def interactive(args, config_path):
         if args.client in ["1", "yes", "true"]:
             client = True
     else:
-        existing_client = getattr(existing_conf, "client", None) if existing_conf else None
+        existing_client = (
+            getattr(existing_conf, "client", None) if existing_conf else None
+        )
         client = config.prompt_userauth(existing_client)
 
     if client:
@@ -205,13 +203,17 @@ def interactive(args, config_path):
     if args.user:
         user = args.user
     else:
-        existing_username = getattr(existing_conf, "_username", None) if existing_conf else None
+        existing_username = (
+            getattr(existing_conf, "_username", None) if existing_conf else None
+        )
         user = config.prompt_username(existing_username, username_type=username_type)
 
     if args.passwd:
         passwd = args.passwd
     else:
-        existing_password = getattr(existing_conf, "_password", None) if existing_conf else None
+        existing_password = (
+            getattr(existing_conf, "_password", None) if existing_conf else None
+        )
         passwd = config.prompt_password(existing_password, password_type=password_type)
     conf = config.Config(
         hostname=hostname,

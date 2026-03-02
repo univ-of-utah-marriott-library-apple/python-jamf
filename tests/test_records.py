@@ -54,8 +54,8 @@ valid_records = (
     "WebHooks",
     ######################################################################################
     ## Requires setup
-    #"PatchPolicies",
-    #"PatchSoftwareTitles",
+    # "PatchPolicies",
+    # "PatchSoftwareTitles",
     ######################################################################################
     ## Who knows
     # "BYOProfiles",
@@ -180,17 +180,23 @@ def main():
     servers = []
     for env_var_names in [
         ["JAMF_HOSTNAME", "JAMF_USERNAME", "JAMF_PASSWORD"],
-        #["JAMF_HOSTNAME2", "JAMF_USERNAME2", "JAMF_PASSWORD2"],
+        # ["JAMF_HOSTNAME2", "JAMF_USERNAME2", "JAMF_PASSWORD2"],
     ]:
-        hostname, username, password = get_creds(env_var_names[0], env_var_names[1], env_var_names[2])
+        hostname, username, password = get_creds(
+            env_var_names[0], env_var_names[1], env_var_names[2]
+        )
         print(hostname, username)
         if password is not None and password != "":
             print("Password is set")
-            jps = server.Server(debug=True, hostname=hostname, username=username, password=password)
+            jps = server.Server(
+                debug=True, hostname=hostname, username=username, password=password
+            )
             servers.append(jps)
 
     for jps in servers:
-        print("------------------------------------------------------------------------------------------")
+        print(
+            "------------------------------------------------------------------------------------------"
+        )
         print(f"Server: {jps.config.hostname}")
         for valid_record in valid_records:
             print("-----------------------------------------")
