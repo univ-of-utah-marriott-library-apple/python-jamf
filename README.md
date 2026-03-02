@@ -44,20 +44,23 @@ computers = jps.Computers()
 # for a list of all record types, see the wiki
 # https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki#supported-jamf-records
 
-if "test" not in computers:
-    # Create the record (record is auto-saved)
-    test_computer = jps.Computers().create({'general':{'name': 'test'}})
-    record_to_delete = test_computer
-else:
-    # Get the existing record
-    results = computers.recordsWithName("test")
-    record_to_delete = None
+# Print the names of all the computers, then print all the ids
+computers.names()
+computers.ids()
 
-    # Note, it's possible to create computers with the same name using the API, so you
-    # must work with multiple records
-    if results > 0:
-        # Just take the first one (because multiple records is probably unintended)
-        test_computer = results[0]
+# Create the record (record is auto-saved)
+record_to_delete = None
+if "test" not in computers:
+    record_to_delete = jps.Computers().create({'general':{'name': 'test'}})
+
+# Get the computer named "test"
+results = computers.recordsWithName("test")
+
+# Note, it's possible to create computers with the same name using the API, so you
+# must work with multiple records
+if len(results) > 0:
+    # Just take the first one (because multiple records is probably unintended)
+    test_computer = results[0]
 
 # Change the name and then save
 test_computer.data["general"]["name"] = "test2"
@@ -74,7 +77,7 @@ for computer in computers.recordsWithRegex("tes"):
 # Search by ID
 last_result = computers.recordWithId(last_id)
 if last_result:
-    print(f"{last_result.data['general']['name']} has id {computer.data['general']['id']}")
+    print(f"{last_result.data['general']['id']} has name {computer.data['general']['name']}")
 
 # If this script created a record, delete it
 if record_to_delete:
