@@ -30,6 +30,10 @@ class JamfNoConnectionError(Error):
     """Error connecting to the server"""
 
 
+class JamfPatchNotEnabled(Error):
+    """Error: patch has not been enabled"""
+
+
 class JamfRecordNotFound(Error):
     """Record not found"""
 
@@ -66,8 +70,12 @@ class JamfAuthenticationError(JamfConnectionError):
     """Error connecting to the server"""
 
 
+class JamfAuthorizationError(Error):
+    """Error, not authorized for action"""
+
+
 class JamfUnknownClass(Error):
-    """Error, unkwown class"""
+    """Error, unknown class"""
 
 
 class JamfAPISurprise(Error):

@@ -17,6 +17,7 @@ __version__ = "0.5.2"
 
 import json
 import logging
+from sys import stderr
 
 import requests
 
@@ -57,6 +58,7 @@ class API(metaclass=Singleton):
         :param password <str>:       password for server
         :param prompt <bool>:        Allow the script to prompt if any info is missing
         """
+        stderr.write("The file api.py is deprecated. Please switch to jps_api_wrapper.")
         self.log = logging.getLogger(f"{__name__}.API")
         self.log.setLevel(LOGLEVEL)
         # Load Prefs and Init session
