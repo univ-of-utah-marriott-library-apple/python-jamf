@@ -23,7 +23,7 @@ There are a few other tools that are part of this project. `pkgctl` automates op
 
 Currently, the `python-jamf` and `jctl` support about 50 Jamf records like Buildings, Categories, Computers, OSXConfigurationProfiles, and Policies. The supported records are very similar to each other and so if learn how to work with one record type, you will know how to work with almost all of them.
 
-Each record is a generic Python object and most functionality comes from the parent Record class. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the data() method. All lists of records are subclasses of the Records class.
+Each record is a generic Python object and most functionality comes from the parent Record class. Objects do not have member variables for Jamf data. All Jamf Pro data is stored as a Python dictionary that is accessed with the `data` attribute. All lists of records are subclasses of the Records class.
 
 Except for create and delete, all changes you make are local until you save or refresh the object.
 
@@ -31,12 +31,63 @@ To work with Jamf records that we don't support yet, it's best to use the [jps-a
 
 ### Quick Example
 
-This is just a quick example of the power and ease-of-use of python-jamf. The following code creates a computer record, changes the new record's name, then shows some examples of how to find records, then deletes the record created by the script.
+`jctl` gives the shell access to Jamf records:
+
+```bash
+# List all computers.
+jctl computers
+
+# Show one computer.
+jctl computers --name "Lab Mac 01" --long
+
+# Print the serial number from matching records.
+jctl computers --regex "^Lab Mac" --path general/serial_number
+
+# Create a category from JSON.
+jctl categories --json --create '{"name": "Testing"}'
+
+# Update a category.
+jctl categories --name "Testing" --update name="Testing Updated"
+
+# Delete a category after confirmation.
+jctl categories --name "Testing Updated" --delete
+```
+
+`pkgctl` is a cli tool that allows package promotion and patch package patching.
+
+Here are some examples of jtcl and pkgctl.
+
+```
+# Create a smart computer group with a with a criteria.
+jctl computergroups -j -c {"name": "Needs Zoom 5.11.11", "is_smart": "true", "criteria": {"size": "1", "criterion": [{"name": "Computer Name", "priority": "0", "and_or": "and", "search_type": "is", "value": "computer1", "opening_paren": "false", "closing_paren": "false"}]}}
+
+# Create 3 packages
+jctl packages -c Zoom-5.11.11 (10514).pkg
+jctl packages -c Zoom-5.11.10 (10279).pkg
+jctl packages -c Zoom-5.11.9 (10046).pkg
+
+# Create a policy and add a package step
+jctl policies -c "Install Zoom1"
+jctl policies -r "Install Zoom1" -j -u package_configuration={"packages": {"package": [{"name": "Zoom-5.11.11 (10514).pkg", "action": "Install"}]}}
+
+# Create a patch policy
+jctl patchsoftwaretitles -j -c {"name": "Zoom Client for Meetings", "name_id": "0F9", "source_id": "1"}
+
+# Match patch with packages
+pkgctl -p
+
+# Create patch policies
+jctl patchpolicies -j -c {"general": {"name": "Zoom 1","target_version": "5.11.10 (10279)"},"software_title_configuration_id": "2"}
+jctl patchpolicies -j -c {"general": {"name": "Zoom 2","target_version": "5.11.11 (10514)"},"software_title_configuration_id": "2"}
+```
+
+The `python-jamf` library is what powers jctl. The following code creates a computer record, changes the new record's name, shows examples of how to find records, then deletes the record created by the script.
 
 ```python
-from python_jamf import server
+from python_jamf import Server
 
-jps = server.Server(hostname="http://localhost:8443", username="demo", password="demo", client=False)
+# Uses the config created by `conf-python-jamf`.
+jps = Server()
 
 # Get all the computer records.
 computers = jps.Computers()
@@ -45,44 +96,39 @@ computers = jps.Computers()
 # https://github.com/univ-of-utah-marriott-library-apple/python-jamf/wiki#supported-jamf-records
 
 # Print the names of all the computers, then print all the ids
-computers.names()
-computers.ids()
+print(computers.names())
+print(computers.ids())
 
-# Create the record (record is auto-saved)
-record_to_delete = None
-if "test" not in computers:
-    record_to_delete = jps.Computers().create({'general':{'name': 'test'}})
+# Clean up any records left by a previous run of this example.
+for computer in computers.recordsWithRegex("^python-jamf-example"):
+    computer.delete()
 
-# Get the computer named "test"
-results = computers.recordsWithName("test")
+# Create the record. The record is saved immediately.
+test_computer = computers.create({"general": {"name": "python-jamf-example"}})
 
-# Note, it's possible to create computers with the same name using the API, so you
-# must work with multiple records
-if len(results) > 0:
-    # Just take the first one (because multiple records is probably unintended)
-    test_computer = results[0]
+# Get the computer by name. It is possible for Jamf Pro to have multiple
+# records with the same name, so this returns a list.
+test_computer = computers.recordsWithName("python-jamf-example")[0]
 
-# Change the name and then save
-test_computer.data["general"]["name"] = "test2"
+# Change the name and then save.
+test_computer.set_path("general/name", "python-jamf-example-updated")
 test_computer.save()
 
-# Print the whole record
+# Print the whole record.
 print(test_computer.data)
 
-# Search by regex
-for computer in computers.recordsWithRegex("tes"):
-    print(f"{computer.data['general']['name']} has id {computer.data['general']['id']}")
-    last_id = computer.data['general']['id']
+# Search by regex.
+for computer in computers.recordsWithRegex("^python-jamf-example"):
+    print(f"{computer.name} has id {computer.id}")
 
-# Search by ID
-last_result = computers.recordWithId(last_id)
+# Search by ID.
+last_result = computers.recordWithId(test_computer.id)
 if last_result:
-    print(f"{last_result.data['general']['id']} has name {computer.data['general']['name']}")
+    print(f"{last_result.id} has name {last_result.name}")
 
-# If this script created a record, delete it
-if record_to_delete:
-    print(f"Deleting record created by this script")
-    record_to_delete.delete() # delete is instant, no need to save
+# Delete is instant, with no need to save.
+print("Deleting record created by this script")
+test_computer.delete()
 ```
 
 All supported record types are accessed like this: `jps.Computers()`, `jps.Policies()`, `jps.Packages()`, etc. Note: python-jamf versions prior to 0.10.0 used `jps.records.Computers()`. 0.10.0 deprecates this. Please switch to `jps.Computers()`.

@@ -59,6 +59,11 @@ class Parser:
             action="store_true",
             help="Spew out lots of output",
         )
+        self.parser.add_argument(
+            "--debug-show-auth",
+            action="store_true",
+            help="Include Authorization headers in debug output (sensitive)",
+        )
 
     def parse(self, argv):
         """
@@ -395,9 +400,17 @@ def main(argv=None):
         exit()
     try:
         if args.config:
-            jps = python_jamf.server.Server(config_path=args.config, debug=args.debug)
+            jps = python_jamf.server.Server(
+                config_path=args.config,
+                debug=args.debug,
+                debug_show_auth=args.debug_show_auth,
+            )
         else:
-            jps = python_jamf.server.Server(prompt=True, debug=args.debug)
+            jps = python_jamf.server.Server(
+                prompt=True,
+                debug=args.debug,
+                debug_show_auth=args.debug_show_auth,
+            )
     except JamfConfigError as e:
         print(e.message)
         exit()

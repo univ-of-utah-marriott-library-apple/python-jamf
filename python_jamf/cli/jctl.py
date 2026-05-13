@@ -137,6 +137,11 @@ class Parser:
             action="store_true",
             help="Spew out lots of output",
         )
+        self.parser.add_argument(
+            "--debug-show-auth",
+            action="store_true",
+            help="Include Authorization headers in debug output (sensitive)",
+        )
 
     def json_str_to_dict(self, value_):
         if re.search("'", value_):
@@ -628,9 +633,17 @@ def main(argv=None):  # noqa: C901
     logger.debug(f"args: {args!r}")
     try:
         if args.config:
-            jps = python_jamf.server.Server(config_path=args.config, debug=args.debug)
+            jps = python_jamf.server.Server(
+                config_path=args.config,
+                debug=args.debug,
+                debug_show_auth=args.debug_show_auth,
+            )
         else:
-            jps = python_jamf.server.Server(prompt=True, debug=args.debug)
+            jps = python_jamf.server.Server(
+                prompt=True,
+                debug=args.debug,
+                debug_show_auth=args.debug_show_auth,
+            )
     except JamfConfigError as e:
         print(e.message)
         exit()
@@ -743,8 +756,7 @@ def main(argv=None):  # noqa: C901
                             # except JamfRecordNotFound:
                             #    old_ = None
                             except JamfRecordInvalidPath:
-                                sys.stderr.write(f"Invalid path: {path_}\n")
-                                exit(1)
+                                old_ = None
                             if not args.quiet_as_a_mouse:
                                 print(f"Old value: {path_} = {old_}")
                                 print(f"Set value: {path_} = {value_}")

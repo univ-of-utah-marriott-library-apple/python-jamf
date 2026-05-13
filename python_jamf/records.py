@@ -319,14 +319,13 @@ class Record:
             placeholder = self.get_path(temp2)
         else:
             placeholder = self.data
-        if placeholder:
-            if endpoint in placeholder:
-                placeholder[endpoint] = value
-            else:
-                # This is here because there are unanswered questions
-                stderr.write(f"Error: '{endpoint}' missing from:")
-                pprint(placeholder)
-                success = False
+        if isinstance(placeholder, dict):
+            placeholder[endpoint] = value
+        elif placeholder:
+            # This is here because there are unanswered questions
+            stderr.write(f"Error: '{endpoint}' missing from:")
+            pprint(placeholder)
+            success = False
         else:
             # This is here because there are unanswered questions
             stderr.write("Error: empty data:")

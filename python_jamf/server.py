@@ -1,3 +1,7 @@
+import json
+import sys
+
+import requests
 from jamf_auth import (
     AuthResponseConnectionError,
     AuthResponseWasNotValid,
@@ -7,6 +11,62 @@ from jps_api_wrapper.classic import Classic
 from jps_api_wrapper.pro import Pro
 
 from . import config, exceptions, records
+
+_REQUESTS_DEBUG_INSTALLED = False
+_REQUESTS_ORIGINAL_SEND = None
+_REQUESTS_DEBUG_SHOW_AUTH = False
+
+
+def _format_debug_body(body):
+    if body is None:
+        return "<empty>"
+    if isinstance(body, bytes):
+        return body.decode("utf-8", errors="replace")
+    if isinstance(body, (dict, list)):
+        try:
+            return json.dumps(body, indent=2, sort_keys=True)
+        except (TypeError, ValueError):
+            return str(body)
+    return str(body)
+
+
+def _install_requests_debug(show_auth=False):
+    global _REQUESTS_DEBUG_INSTALLED
+    global _REQUESTS_ORIGINAL_SEND
+    global _REQUESTS_DEBUG_SHOW_AUTH
+    if _REQUESTS_DEBUG_INSTALLED:
+        return
+    _REQUESTS_DEBUG_SHOW_AUTH = bool(show_auth)
+    _REQUESTS_DEBUG_INSTALLED = True
+    _REQUESTS_ORIGINAL_SEND = requests.Session.send
+
+    def _debug_send(self, request, **kwargs):
+        sys.stderr.write("\n----- JAMF REQUEST -----\n")
+        sys.stderr.write(f"{request.method} {request.url}\n")
+        for header, value in request.headers.items():
+            if header.lower() == "authorization" and not _REQUESTS_DEBUG_SHOW_AUTH:
+                value = "<redacted>"
+            sys.stderr.write(f"{header}: {value}\n")
+        sys.stderr.write("\n")
+        sys.stderr.write(_format_debug_body(request.body))
+        sys.stderr.write("\n")
+
+        response = _REQUESTS_ORIGINAL_SEND(self, request, **kwargs)
+
+        sys.stderr.write("----- JAMF RESPONSE -----\n")
+        sys.stderr.write(
+            f"{request.method} {request.url} -> {response.status_code}\n"
+        )
+        for header, value in response.headers.items():
+            if header.lower() == "authorization" and not _REQUESTS_DEBUG_SHOW_AUTH:
+                value = "<redacted>"
+            sys.stderr.write(f"{header}: {value}\n")
+        sys.stderr.write("\n")
+        sys.stderr.write(_format_debug_body(response.text))
+        sys.stderr.write("\n")
+        return response
+
+    requests.Session.send = _debug_send
 
 
 class RecordsProxy:
@@ -45,6 +105,7 @@ class Server:
         client=None,
         prompt=False,
         debug=False,
+        debug_show_auth=False,
     ):
         """ """
         self.config = config_obj or config.Config(
@@ -67,6 +128,9 @@ class Server:
         self.classic = None
         self.pro = None
         self.debug = debug
+        self.debug_show_auth = debug_show_auth
+        if self.debug:
+            _install_requests_debug(show_auth=self.debug_show_auth)
         self._context_id = f"server-{id(self)}"
         self._records_cache = {}
         self._records_proxy = RecordsProxy(self)

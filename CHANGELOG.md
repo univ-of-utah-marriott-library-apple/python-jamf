@@ -7,6 +7,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
+## [0.10.1] -- 2026-05-13
+
+**Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.10.0...0.10.1
+
+### Added
+- Request and response debug logging for `Server(debug=True)`, with `Authorization` headers redacted by default.
+- `--debug-show-auth` option for `jctl` and `pkgctl` to include sensitive authorization headers in debug output when explicitly requested.
+- `requirements-test.txt` for pinned test and lint-only dependencies.
+- `tests/test-all.sh` to run the record integration test, destructive CLI integration test, unittest suite, and lint checks.
+- Destructive CLI integration coverage in `tests/test-cli.py` for `conf-python-jamf`, `jctl`, and `pkgctl` workflows.
+
+### Changed
+- `Record.set_path()` now writes missing keys into dictionary placeholders instead of treating them as errors.
+- `jctl` set operations now treat invalid old-value paths as unset values instead of exiting before the new value can be applied.
+- Raised package metadata to require Python 3.11 or newer.
+- Updated runtime dependencies: `requests` to `2.33.1`, `keyring` to `25.7.0`, and `jps_api_wrapper` to `1.17.0`.
+- GitHub build workflow now installs test and lint dependencies from `requirements-test.txt`.
+- Excluded local virtualenv and build artifact directories from `flake8`.
+- Updated README record examples to refer to the `data` attribute instead of a `data()` method.
+- Updated the README quick example to use the current `Server()` workflow and tested example code.
+- Added `jctl` and `pkgctl` examples to the README.
+- Updated pre-commit hook revisions and GitHub workflow actions to current releases.
+
+### Removed
+- `jamf/records.json` from `MANIFEST.in`.
+
+### Deprecated
+- This is the last version that will include `api.py`.
+- `python-jamf-docker` is old and has not been used in a long time, so it is deprecated and will be removed in the next release.
+- Note, we are well aware that [Jamf has deprecated the classic computer api](https://developer.jamf.com/jamf-pro/docs/deprecation-of-classic-api-computer-inventory-endpoints). We have not decided how we will handle this yet and we realize this is a bad thing because we only have I think 4 months to solve this issue.
+
 ## [0.10.0] -- 2026-03-02
 
 **Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.9.9...0.10.0
