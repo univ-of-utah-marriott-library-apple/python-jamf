@@ -22,7 +22,7 @@ once it reaches 1.0.
 - `Record.set_path()` now writes missing keys into dictionary placeholders instead of treating them as errors.
 - `jctl` set operations now treat invalid old-value paths as unset values instead of exiting before the new value can be applied.
 - Raised package metadata to require Python 3.11 or newer.
-- Updated runtime dependencies: `requests` to `2.33.1`, `keyring` to `25.7.0`, and `jps_api_wrapper` to `1.17.0`.
+- Updated runtime dependencies: `requests` to `2.34.1`, `keyring` to `25.7.0`, and `jps_api_wrapper` to `1.17.0`.
 - GitHub build workflow now installs test and lint dependencies from `requirements-test.txt`.
 - Excluded local virtualenv and build artifact directories from `flake8`.
 - Updated README record examples to refer to the `data` attribute instead of a `data()` method.
