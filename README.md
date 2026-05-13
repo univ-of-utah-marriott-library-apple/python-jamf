@@ -59,26 +59,26 @@ Here are some examples of jtcl and pkgctl.
 
 ```
 # Create a smart computer group with a with a criteria.
-jctl computergroups -j -c {"name": "Needs Zoom 5.11.11", "is_smart": "true", "criteria": {"size": "1", "criterion": [{"name": "Computer Name", "priority": "0", "and_or": "and", "search_type": "is", "value": "computer1", "opening_paren": "false", "closing_paren": "false"}]}}
+jctl computergroups -j -c '{"name": "Needs Zoom 5.11.11", "is_smart": "true", "criteria": {"size": "1", "criterion": [{"name": "Computer Name", "priority": "0", "and_or": "and", "search_type": "is", "value": "computer1", "opening_paren": "false", "closing_paren": "false"}]}}'
 
 # Create 3 packages
-jctl packages -c Zoom-5.11.11 (10514).pkg
-jctl packages -c Zoom-5.11.10 (10279).pkg
-jctl packages -c Zoom-5.11.9 (10046).pkg
+jctl packages -c "Zoom-5.11.11 (10514).pkg"
+jctl packages -c "Zoom-5.11.10 (10279).pkg"
+jctl packages -c "Zoom-5.11.9 (10046).pkg"
 
 # Create a policy and add a package step
 jctl policies -c "Install Zoom1"
-jctl policies -r "Install Zoom1" -j -u package_configuration={"packages": {"package": [{"name": "Zoom-5.11.11 (10514).pkg", "action": "Install"}]}}
+jctl policies -r "Install Zoom1" -j -u package_configuration='{"packages": {"package": [{"name": "Zoom-5.11.11 (10514).pkg", "action": "Install"}]}}'
 
 # Create a patch policy
-jctl patchsoftwaretitles -j -c {"name": "Zoom Client for Meetings", "name_id": "0F9", "source_id": "1"}
+jctl patchsoftwaretitles -j -c '{"name": "Zoom Client for Meetings", "name_id": "0F9", "source_id": "1"}'
 
 # Match patch with packages
 pkgctl -p
 
 # Create patch policies
-jctl patchpolicies -j -c {"general": {"name": "Zoom 1","target_version": "5.11.10 (10279)"},"software_title_configuration_id": "2"}
-jctl patchpolicies -j -c {"general": {"name": "Zoom 2","target_version": "5.11.11 (10514)"},"software_title_configuration_id": "2"}
+jctl patchpolicies -j -c '{"general": {"name": "Zoom 1","target_version": "5.11.10 (10279)"},"software_title_configuration_id": "2"}'
+jctl patchpolicies -j -c '{"general": {"name": "Zoom 2","target_version": "5.11.11 (10514)"},"software_title_configuration_id": "2"}'
 ```
 
 The `python-jamf` library is what powers jctl. The following code creates a computer record, changes the new record's name, shows examples of how to find records, then deletes the record created by the script.
