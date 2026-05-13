@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-"""
-
+""" """
 
 __author__ = "James Reynolds"
 __email__ = "reynolds@biology.utah.edu"
@@ -246,7 +244,7 @@ def package_group_items(packages):
 
 def process_package_group(jps, group, packages):
     while True:
-        (item_list, text) = package_group_items(packages)
+        item_list, text = package_group_items(packages)
         loop = True
         choices = list(map(str, range(1, len(item_list) + 1))) + ["b", "x", "q"]
         while loop:

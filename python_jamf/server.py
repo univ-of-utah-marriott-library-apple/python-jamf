@@ -54,9 +54,7 @@ def _install_requests_debug(show_auth=False):
         response = _REQUESTS_ORIGINAL_SEND(self, request, **kwargs)
 
         sys.stderr.write("----- JAMF RESPONSE -----\n")
-        sys.stderr.write(
-            f"{request.method} {request.url} -> {response.status_code}\n"
-        )
+        sys.stderr.write(f"{request.method} {request.url} -> {response.status_code}\n")
         for header, value in response.headers.items():
             if header.lower() == "authorization" and not _REQUESTS_DEBUG_SHOW_AUTH:
                 value = "<redacted>"

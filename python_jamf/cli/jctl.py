@@ -5,7 +5,6 @@
 Interact with Jamf Pro Server
 """
 
-
 __author__ = "James Reynolds, Sam Forester"
 __email__ = "reynolds@biology.utah.edu, sam.forester@utah.edu"
 __copyright__ = "Copyright (c) 2020 University of Utah, Marriott Library & School of Biological Sciences"
