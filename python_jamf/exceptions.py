@@ -82,6 +82,13 @@ class JamfAPISurprise(Error):
     """Error, unknown class"""
 
 
+class JamfProDataError(Error):
+    """Error converting or caching Jamf Pro API data"""
+
+    def __str__(self):
+        return f"{self.message}"
+
+
 # pylint: disable=super-init-not-called
 class APIError(Error):
     """Error in our call"""

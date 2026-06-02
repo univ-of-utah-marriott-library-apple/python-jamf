@@ -7,6 +7,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project will (try to) adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 once it reaches 1.0.
 
+## [0.10.2] -- 2026-
+
+**Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.10.1...0.10.2
+
+### Added
+- `Computer.pro_data` and `Computer.refresh_pro_data()` for retrieving Jamf Pro API computer inventory data through `jps_api_wrapper.Pro`.
+- Separate Pro inventory caching for `Computer` records, leaving Classic `.data` unchanged.
+- Pro computer inventory responses are returned as raw Python dictionaries.
+- Section support for `refresh_pro_data()`, including default/general inventory, specific sections, multiple sections, and `"all"`.
+- `jctl --pro` for Computer reads, updates, and deletes through records-layer Pro API methods.
+- Pro Computer collection lookup, path mutation, save, and delete helpers in `records.py`.
+- `JamfProDataError` for Pro inventory conversion and validation errors.
+- Unit tests for Pro computer inventory caching, response conversion, section handling, jctl routing, and error handling.
+
+### Notes
+- See https://developer.jamf.com/jamf-pro/docs/deprecation-of-classic-api-computer-inventory-endpoints
+
+### Removed
+- `api.py`
+- `python-jamf-docker`
+
 ## [0.10.1] -- 2026-05-13
 
 **Full Changelog**: https://github.com/univ-of-utah-marriott-library-apple/python-jamf/compare/0.10.0...0.10.1

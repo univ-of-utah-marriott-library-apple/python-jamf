@@ -23,6 +23,7 @@ __date__ = "2020-09-21"
 __version__ = "0.4.7"
 
 
+import json
 import logging
 import random
 import re
@@ -40,6 +41,7 @@ from .exceptions import (
     JamfAPISurprise,
     JamfAuthorizationError,
     JamfPatchNotEnabled,
+    JamfProDataError,
     JamfRecordInvalidPath,
     JamfRecordNotFound,
     JamfUnknownClass,
@@ -153,6 +155,7 @@ class Record:
             rec.id = jamf_id
             rec.name = jamf_name
             rec._data = {}
+            rec._pro_data = {}
             rec.plural = plural
             rec.cls = cls
             rec.classic = classic
@@ -384,9 +387,9 @@ class Records:
         return rec
 
     def __init__(self, classic=None, pro=None, debug=False, context_id="global"):
-        if classic is None:
+        if classic is None and pro is None:
             raise ValueError(
-                "Records collections must be constructed with a Classic client."
+                "Records collections must be constructed with a Classic or Pro client."
             )
         self.log = logging.getLogger(f"{__name__}.Records")
         self.classic = classic
@@ -717,6 +720,131 @@ class Computer(Record):
 
     plurals = {"computer": {"hardware": {"storage": []}, "extension_attributes": []}}
 
+    @property
+    def pro_data(self):
+        if not hasattr(self, "_pro_data") or not self._pro_data:
+            self.refresh_pro_data()
+        return self._pro_data
+
+    def refresh_pro_data(self, section=None):
+        if self.pro is None:
+            raise JamfProDataError("Computer record has no Jamf Pro API client.")
+
+        section = self._normalize_pro_inventory_section(section)
+        if section == ["ALL"]:
+            results = self.pro.get_computer_inventory_detail(self.id)
+        elif section is None:
+            results = self.pro.get_computer_inventory(self.id)
+        else:
+            results = self.pro.get_computer_inventory(self.id, section=section)
+
+        results = self._pro_inventory_to_dict(results)
+        self._pro_data = results
+        return self._pro_data
+
+    def get_pro_path(self, path):
+        return self.get_path_worker(path.rstrip("/").split("/"), self.pro_data)
+
+    @staticmethod
+    def _merge_pro_change(original, change):
+        for key, value in change.items():
+            if (
+                key in original
+                and isinstance(original[key], dict)
+                and isinstance(value, dict)
+            ):
+                Computer._merge_pro_change(original[key], value)
+            else:
+                original[key] = value
+        return original
+
+    @staticmethod
+    def _pro_change_from_path(path, value):
+        changed = value
+        for path_part in reversed(path.rstrip("/").split("/")):
+            changed = {path_part: changed}
+        return changed
+
+    def set_pro_path(self, path, value):
+        path_parts = path.rstrip("/").split("/")
+        endpoint = path_parts.pop()
+        parent_path = "/".join(path_parts)
+        if parent_path:
+            placeholder = self.get_pro_path(parent_path)
+        else:
+            placeholder = self.pro_data
+        if not isinstance(placeholder, dict):
+            raise JamfRecordInvalidPath(
+                f"Path not found {path} ('{parent_path}' is not a dictionary)"
+            )
+        placeholder[endpoint] = value
+        changed = self._pro_change_from_path(path, value)
+        if hasattr(self, "changed_pro_data"):
+            self.changed_pro_data = self._merge_pro_change(
+                self.changed_pro_data, changed
+            )
+        else:
+            self.changed_pro_data = changed
+        return True
+
+    def save_pro_data(self):
+        if self.pro is None:
+            raise JamfProDataError("Computer record has no Jamf Pro API client.")
+        changed = getattr(self, "changed_pro_data", None)
+        if not changed:
+            return self.pro_data
+        result = self.pro.update_computer_inventory(changed, self.id)
+        del self.changed_pro_data
+        self._pro_data = self._pro_inventory_to_dict(result)
+        return self._pro_data
+
+    def delete_pro(self):
+        if self.pro is None:
+            raise JamfProDataError("Computer record has no Jamf Pro API client.")
+        return self.pro.delete_computer_inventory(self.id)
+
+    @staticmethod
+    def _normalize_pro_inventory_section(section):
+        if section is None:
+            return None
+        if isinstance(section, str):
+            section = [section]
+        elif isinstance(section, tuple):
+            section = list(section)
+        elif not isinstance(section, list):
+            raise JamfProDataError(
+                "Computer Pro inventory section must be a string, list, tuple, or None."
+            )
+
+        normalized = []
+        for item in section:
+            if not isinstance(item, str):
+                raise JamfProDataError(
+                    "Computer Pro inventory sections must be strings."
+                )
+            normalized.append(item.upper())
+
+        if normalized == ["ALL"]:
+            return ["ALL"]
+        return normalized
+
+    @staticmethod
+    def _pro_inventory_to_dict(data):
+        if isinstance(data, bytes):
+            data = data.decode("utf-8")
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError as err:
+                raise JamfProDataError(
+                    "Computer Pro inventory response was not valid JSON."
+                ) from err
+        if not isinstance(data, dict):
+            raise JamfProDataError(
+                f"Computer Pro inventory response must be a dictionary, got {type(data).__name__}."
+            )
+        return data
+
     def apps_print_during(self):
         plural_obj = self.plural
         if not hasattr(plural_obj, "app_list"):
@@ -822,6 +950,96 @@ class Computers(Records):
     plural_string = "computers"
     refresh_method = "get_computers"
     create_method = "create_computer"
+
+    @staticmethod
+    def _pro_record_name(data):
+        if "name" in data:
+            return data["name"]
+        general = data.get("general", {})
+        return general.get("name") or general.get("computerName") or ""
+
+    def refresh_pro_records(self, page_size=100):
+        if self.pro is None:
+            raise JamfProDataError("Computers collection has no Jamf Pro API client.")
+        self._records = {}
+        page = 0
+        while True:
+            results = self.pro.get_computer_inventories(
+                page=page, page_size=page_size
+            )
+            results = Computer._pro_inventory_to_dict(results)
+            computers = results.get("results", [])
+            if not computers:
+                break
+            for data in computers:
+                record_id = data["id"]
+                record = self.singular_class(
+                    record_id,
+                    self._pro_record_name(data),
+                    classic=self.classic,
+                    pro=self.pro,
+                    debug=self.debug,
+                    context_id=self.context_id,
+                    plural=self,
+                )
+                record.plural_class = self.cls
+                self._records.setdefault(record.id, record)
+
+            total_count = results.get("totalCount") or results.get("total_count")
+            if total_count is not None and len(self._records) >= int(total_count):
+                break
+            if len(computers) < page_size:
+                break
+            page += 1
+
+    def pro_records(self):
+        if not self._records:
+            self.refresh_pro_records()
+        return [x for x in self._records.values()]
+
+    def pro_ids(self):
+        if not self._records:
+            self.refresh_pro_records()
+        return [x for x in self._records.keys()]
+
+    def pro_recordWithId(self, x):
+        if not self._records:
+            self.refresh_pro_records()
+        if type(x) is str:
+            x = int(x)
+        return self._records.get(x)
+
+    def pro_recordsWithName(self, name):
+        if not self._records:
+            self.refresh_pro_records()
+        return [record for record in self._records.values() if name == record.name]
+
+    def pro_recordsWithRegex(self, x):
+        if not self._records:
+            self.refresh_pro_records()
+        return [
+            record for record in self._records.values() if re.search(x, record.name)
+        ]
+
+    def pro_delete(self, ids, feedback=False):
+        if not self._records:
+            self.refresh_pro_records()
+        for recid in ids:
+            record = self.pro_recordWithId(recid)
+            if record is None:
+                record = self.singular_class(
+                    recid,
+                    str(recid),
+                    classic=self.classic,
+                    pro=self.pro,
+                    debug=self.debug,
+                    context_id=self.context_id,
+                    plural=self,
+                )
+            if feedback:
+                self.log.info(f"Deleting record: {record}")
+            record.delete_pro()
+        self.refresh_pro_records()
 
     def stub_record(self):
         return {

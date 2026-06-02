@@ -104,6 +104,8 @@ class Server:
         prompt=False,
         debug=False,
         debug_show_auth=False,
+        use_classic=True,
+        use_pro=True,
     ):
         """ """
         self.config = config_obj or config.Config(
@@ -133,18 +135,20 @@ class Server:
         self._records_cache = {}
         self._records_proxy = RecordsProxy(self)
         try:
-            self.classic = Classic(
-                self.config.hostname,
-                self.config.username,
-                self.config.password,
-                client=self.config.client,
-            )
-            self.pro = Pro(
-                self.config.hostname,
-                self.config.username,
-                self.config.password,
-                client=self.config.client,
-            )
+            if use_classic:
+                self.classic = Classic(
+                    self.config.hostname,
+                    self.config.username,
+                    self.config.password,
+                    client=self.config.client,
+                )
+            if use_pro:
+                self.pro = Pro(
+                    self.config.hostname,
+                    self.config.username,
+                    self.config.password,
+                    client=self.config.client,
+                )
         except AuthResponseConnectionError:
             print("Could not connect to " + self.config.hostname)
             raise

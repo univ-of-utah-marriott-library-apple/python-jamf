@@ -114,6 +114,11 @@ class Parser:
         self.parser.add_argument(
             "--quiet-as-a-mouse", action="store_true", help="Don't print anything"
         )
+        self.parser.add_argument(
+            "--pro",
+            action="store_true",
+            help="Use the Jamf Pro API for computer reads, updates, and deletes.",
+        )
 
         # Others
         self.parser.add_argument("-C", "--config", help="path to config file")
@@ -187,6 +192,16 @@ class Parser:
                 + "\n"
             )
             exit(1)
+        if args.pro:
+            if self.record is not python_jamf.records.Computers:
+                sys.stderr.write("--pro is only supported for computers.\n")
+                exit(1)
+            if args.create is not None:
+                sys.stderr.write("--pro does not support creating computers yet.\n")
+                exit(1)
+            if args.sub_command is not None:
+                sys.stderr.write("--pro does not support subcommands yet.\n")
+                exit(1)
         flags = 0
         if args.delete:
             flags += 1
@@ -370,8 +385,22 @@ def check_for_match(path_data, search, op):
         return op == "!=" or op == "!=~"
 
 
+def record_data(record, args):
+    if args.pro:
+        return record.refresh_pro_data("all")
+    return record.data
+
+
+def record_path(record, path, args):
+    if args.pro:
+        record.refresh_pro_data("all")
+        return record.get_pro_path(path)
+    return record.get_path(path)
+
+
 class SilentOutput:
     def __init__(self, args):
+        self.args = args
         self.andele_andele = args.andele_andele
         self.use_the_force_luke = args.use_the_force_luke
 
@@ -396,6 +425,7 @@ class SilentOutput:
 
 class JCTLOutput:
     def __init__(self, args):
+        self.args = args
         self.andele_andele = args.andele_andele
         self.use_the_force_luke = args.use_the_force_luke
 
@@ -409,7 +439,7 @@ class JCTLOutput:
         pprint({record.name: temp})
 
     def print_long(self, record):
-        pprint({record.name: record.data})
+        pprint({record.name: record_data(record, self.args)})
 
     def print_short(self, record):
         print(record)
@@ -421,6 +451,7 @@ class JCTLOutput:
 
 class JSONOutput(JCTLOutput):
     def __init__(self, args):
+        self.args = args
         self.andele_andele = args.andele_andele
         self.json_output = ""
         self.use_the_force_luke = args.use_the_force_luke
@@ -452,7 +483,7 @@ class JSONOutput(JCTLOutput):
             self.json_output += ","
 
     def print_long(self, record):
-        self.json_output += json.dumps(record.data) + ","
+        self.json_output += json.dumps(record_data(record, self.args)) + ","
 
     def print_short(self, record):
         self.json_output += json.dumps(record.name) + ","
@@ -464,6 +495,7 @@ class JSONOutput(JCTLOutput):
 
 class PlainTextOutput(JCTLOutput):
     def __init__(self, args):
+        self.args = args
         self.andele_andele = args.andele_andele
         self.use_the_force_luke = args.use_the_force_luke
 
@@ -477,7 +509,7 @@ class PlainTextOutput(JCTLOutput):
         print(temp)
 
     def print_long(self, record):
-        print({record.name: record.data})
+        print({record.name: record_data(record, self.args)})
 
     def print_short(self, record):
         print(record)
@@ -551,6 +583,47 @@ def change_confirmation(args, rec_class, filtered_results, hostname):
 
 
 def quick_filter(all_records, args):
+    if args.pro:
+        all_records.refresh_pro_records()
+        if args.regex or args.name or args.id:
+            temps = []
+            if args.regex:
+                for regex in args.regex:
+                    temps = temps + all_records.pro_recordsWithRegex(regex)
+            if args.name:
+                for name in args.name:
+                    temps = temps + all_records.pro_recordsWithName(name)
+            if args.id:
+                if len(args.id) == 1 and args.id[0] == "-":
+                    for line in sys.stdin:
+                        print("-", line)
+                        id = -1
+                        try:
+                            id = int(line)
+                        except ValueError:
+                            if not re.match(r"^Count: ", line):
+                                sys.stderr.write(f"ID must be a number: {line}\n")
+                                exit(1)
+                        if id > 0:
+                            temps = temps + [all_records.pro_recordWithId(id)]
+                else:
+                    for id in args.id:
+                        try:
+                            id = int(id)
+                        except ValueError:
+                            sys.stderr.write(f"ID must be a number: {id}\n")
+                            exit(1)
+                        temps = temps + [all_records.pro_recordWithId(id)]
+            quick = []
+            for temp in temps:
+                if temp:
+                    quick = quick + [temp]
+        else:
+            quick = all_records.pro_records()
+        if quick:
+            return sorted(quick)
+        return []
+
     if all_records and (args.regex or args.name or args.id):
         temps = []
         if args.regex:
@@ -606,7 +679,7 @@ def print_feedback(record, args, outputer, rec_class):
             temp = {}
             for path_ in args.path:
                 try:
-                    value = record.get_path(path_)
+                    value = record_path(record, path_, args)
                 except (JamfRecordNotFound, JamfRecordInvalidPath):
                     value = None
                 temp[path_] = value
@@ -636,12 +709,14 @@ def main(argv=None):  # noqa: C901
                 config_path=args.config,
                 debug=args.debug,
                 debug_show_auth=args.debug_show_auth,
+                use_classic=not args.pro,
             )
         else:
             jps = python_jamf.server.Server(
                 prompt=True,
                 debug=args.debug,
                 debug_show_auth=args.debug_show_auth,
+                use_classic=not args.pro,
             )
     except JamfConfigError as e:
         print(e.message)
@@ -683,7 +758,7 @@ def main(argv=None):  # noqa: C901
                 m = m1 if m1 else m2
                 if not_filtered and m:
                     try:
-                        path_data = record.get_path(m[1])
+                        path_data = record_path(record, m[1], args)
                     except (JamfRecordNotFound, JamfRecordInvalidPath):
                         path_data = None
                     not_filtered = check_for_match(path_data, m[3], m[2])
@@ -736,7 +811,10 @@ def main(argv=None):  # noqa: C901
             ids = []
             for result in filtered_results:
                 ids.append(result.id)
-            jps.records(rec_class).delete(ids, (not args.quiet_as_a_mouse))
+            if args.pro:
+                jps.records(rec_class).pro_delete(ids, (not args.quiet_as_a_mouse))
+            else:
+                jps.records(rec_class).delete(ids, (not args.quiet_as_a_mouse))
         else:
             # For each record
             for record in filtered_results:
@@ -750,7 +828,7 @@ def main(argv=None):  # noqa: C901
                         value_ = update_list[path_]
                         if not args.quiet_as_a_mouse:
                             try:
-                                old_ = record.get_path(path_)
+                                old_ = record_path(record, path_, args)
                             # JamfRecordNotFound vs JamfRecordInvalidPath needs to be figured out
                             # except JamfRecordNotFound:
                             #    old_ = None
@@ -759,15 +837,24 @@ def main(argv=None):  # noqa: C901
                             if not args.quiet_as_a_mouse:
                                 print(f"Old value: {path_} = {old_}")
                                 print(f"Set value: {path_} = {value_}")
-                        success = success and record.set_path(path_, value_)
+                        if args.pro:
+                            success = success and record.set_pro_path(path_, value_)
+                        else:
+                            success = success and record.set_path(path_, value_)
                     if success:
                         try:
-                            record.save()
+                            if args.pro:
+                                record.save_pro_data()
+                            else:
+                                record.save()
                             # Fetch updated record
                             if not args.quiet_as_a_mouse:
-                                record.refresh()
+                                if args.pro:
+                                    record.refresh_pro_data("all")
+                                else:
+                                    record.refresh()
                                 for path_ in paths:
-                                    new_ = record.get_path(path_)
+                                    new_ = record_path(record, path_, args)
                                     print(f"New value: {path_} = {new_}")
                         except KeyError as e:
                             print(f"Couldn't find key: {e}")

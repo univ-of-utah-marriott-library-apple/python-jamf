@@ -99,7 +99,7 @@ run_command(0, *confpythonjamf, "-t")
 reply = input("Press type 'yes' to delete all records.\n")
 
 if reply == "yes":
-    run_command(None, *jctl, "computers", "--use-the-force-luke", "-d")
+    run_command(None, *jctl, "computers", "--pro", "--use-the-force-luke", "-d")
     run_command(None, *jctl, "computergroups", "--use-the-force-luke", "-d")
     run_command(None, *jctl, "packages", "--use-the-force-luke", "-d")
     run_command(None, *jctl, "policies", "--use-the-force-luke", "-d")
@@ -116,6 +116,23 @@ run_command(0, *jctl, "computers", "-n", "computer1")
 run_command(0, *jctl, "computers", "-n", "computer1", "-l")
 run_command(0, *jctl, "computers", "-n", "computer1", "-p", "general")
 run_command(0, *jctl, "computers", "-n", "computer1", "-p", "general/asset_tag")
+run_command(0, *jctl, "computers", "--pro", "-n", "computer1")
+run_command(0, *jctl, "computers", "--pro", "-n", "computer1", "-l")
+run_command(0, *jctl, "computers", "--pro", "-n", "computer1", "-j", "-l")
+run_command(0, *jctl, "computers", "--pro", "-n", "computer1", "-p", "general/name")
+run_command(
+    0,
+    *jctl,
+    "computers",
+    "--pro",
+    "-n",
+    "computer1",
+    "--use-the-force-luke",
+    "--andele-andele",
+    "-u",
+    "general/assetTag=pro-test-asset",
+)
+run_command(0, *jctl, "computers", "--pro", "-n", "computer1", "-p", "general/assetTag")
 
 # with open('python-jamf/tests/data/computer.json', 'r') as f:
 #     computer_json = json.load(f)

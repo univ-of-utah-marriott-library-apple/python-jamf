@@ -7,6 +7,8 @@ from os import environ
 from pathlib import Path
 from pprint import pprint
 
+DEBUG = False
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -92,7 +94,17 @@ def print_one(item):
     print("---------------")
     print(f"Print one - {item}")
     pprint(item)
-    pprint(item.data)
+    print_record_data(item)
+
+
+def print_record_data(item):
+    # Print the Classic record data. Computer records also have Pro inventory data.
+    if hasattr(item, "data"):
+        print("data:")
+        pprint(item.data)
+    if hasattr(item, "refresh_pro_data"):
+        print("pro_data:")
+        pprint(item.refresh_pro_data("all"))
 
 
 def delete(item):
@@ -130,9 +142,7 @@ def print_all(objType):
             first_time = False
         print("---------------")
         pprint(item)
-        # Check if item contains the "data" attribute
-        if hasattr(item, "data"):
-            pprint(item.data)
+        print_record_data(item)
 
 
 def pre_patch_policy(jps, objType):
@@ -185,11 +195,11 @@ def main():
         hostname, username, password = get_creds(
             env_var_names[0], env_var_names[1], env_var_names[2]
         )
-        print(hostname, username)
+        print(f"Hostname: {hostname}, username: {username}")
         if password is not None and password != "":
             print("Password is set")
             jps = server.Server(
-                debug=True, hostname=hostname, username=username, password=password
+                debug=DEBUG, hostname=hostname, username=username, password=password
             )
             servers.append(jps)
 
@@ -215,7 +225,7 @@ def main():
 
                 if item is not None:
                     pprint(item)
-                    pprint(item.data)
+                    print_record_data(item)
 
                     item = objType.recordWithId(item.id)
                     print_one(item)
