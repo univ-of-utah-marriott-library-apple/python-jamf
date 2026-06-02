@@ -126,7 +126,11 @@ class JCTLProTests(unittest.TestCase):
         )
 
         self.assertIn(
-            ("update_computer_inventory", ({"general": {"name": "Updated Mac"}}, 1), {}),
+            (
+                "update_computer_inventory",
+                ({"general": {"name": "Updated Mac"}}, 1),
+                {},
+            ),
             calls,
         )
 

@@ -964,9 +964,7 @@ class Computers(Records):
         self._records = {}
         page = 0
         while True:
-            results = self.pro.get_computer_inventories(
-                page=page, page_size=page_size
-            )
+            results = self.pro.get_computer_inventories(page=page, page_size=page_size)
             results = Computer._pro_inventory_to_dict(results)
             computers = results.get("results", [])
             if not computers:

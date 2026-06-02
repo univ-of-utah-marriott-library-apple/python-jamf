@@ -143,7 +143,9 @@ class ComputerProDataTests(unittest.TestCase):
         self.assertEqual(computer.get_pro_path("general/name"), "Test Mac")
         self.assertTrue(computer.set_pro_path("general/name", "Updated Mac"))
         self.assertEqual(computer.get_pro_path("general/name"), "Updated Mac")
-        self.assertEqual(computer.changed_pro_data, {"general": {"name": "Updated Mac"}})
+        self.assertEqual(
+            computer.changed_pro_data, {"general": {"name": "Updated Mac"}}
+        )
 
     def test_save_pro_data_sends_changed_paths_only(self):
         pro = FakePro(detail={"id": "1", "general": {"name": "Test Mac"}})
@@ -157,7 +159,11 @@ class ComputerProDataTests(unittest.TestCase):
         )
         self.assertEqual(
             pro.calls[-1],
-            ("update_computer_inventory", ({"general": {"name": "Updated Mac"}}, 1), {}),
+            (
+                "update_computer_inventory",
+                ({"general": {"name": "Updated Mac"}}, 1),
+                {},
+            ),
         )
         self.assertFalse(hasattr(computer, "changed_pro_data"))
 
